@@ -200,7 +200,7 @@ class Layout:
     """
 
     def __init__(self, workspace: str, config: Dict) -> None:
-        self.workspace = os.path.abspath(workspace)
+        self.workspace = os.path.abspath(workspace).replace("\\", "/")
         decisions = (config.get("decisions") or {})
         self.decisions_rel = decisions.get("path") or "docs/decisions"
         self.shadow_name = decisions.get("shadow_dir") or "shadow"
@@ -209,27 +209,36 @@ class Layout:
         retention = ((config.get("interview") or {}).get("transcripts") or {}).get("retention")
         self.transcript_retention = retention or "committed"
 
+    def _path(self, *parts: str) -> str:
+        """Absolute path with POSIX separators.
+
+        BEARING compares and prints these paths in tests and docs. Normalizing
+        here keeps Windows checkouts from failing `.endswith("docs/adr/shadow")`
+        while remaining valid for `open()` and `os.path.isfile()`.
+        """
+        return os.path.join(*parts).replace("\\", "/")
+
     # -- decision content ---------------------------------------------------
 
     @property
     def decisions(self) -> str:
-        return os.path.join(self.workspace, self.decisions_rel)
+        return self._path(self.workspace, self.decisions_rel)
 
     @property
     def shadow(self) -> str:
-        return os.path.join(self.decisions, self.shadow_name)
+        return self._path(self.decisions, self.shadow_name)
 
     @property
     def index(self) -> str:
-        return os.path.join(self.decisions, self.index_name)
+        return self._path(self.decisions, self.index_name)
 
     @property
     def candidates(self) -> str:
-        return os.path.join(self.shadow, "candidates.jsonl")
+        return self._path(self.shadow, "candidates.jsonl")
 
     @property
     def rejected(self) -> str:
-        return os.path.join(self.shadow, "rejected.jsonl")
+        return self._path(self.shadow, "rejected.jsonl")
 
     @property
     def transcripts(self) -> str:
@@ -240,60 +249,60 @@ class Layout:
         subdirectory, for organizations that will not commit a named person's
         testimony to version control.
         """
-        base = os.path.join(self.shadow, self.transcripts_name)
+        base = self._path(self.shadow, self.transcripts_name)
         if self.transcript_retention == "local":
-            return os.path.join(base, "local")
+            return self._path(base, "local")
         return base
 
     # -- run state ----------------------------------------------------------
 
     @property
     def bearing(self) -> str:
-        return os.path.join(self.workspace, ".bearing")
+        return self._path(self.workspace, ".bearing")
 
     @property
     def config_file(self) -> str:
-        return os.path.join(self.bearing, "config.json")
+        return self._path(self.bearing, "config.json")
 
     @property
     def local_config_file(self) -> str:
-        return os.path.join(self.bearing, "config.local.json")
+        return self._path(self.bearing, "config.local.json")
 
     @property
     def pricing(self) -> str:
-        return os.path.join(self.bearing, "pricing.json")
+        return self._path(self.bearing, "pricing.json")
 
     @property
     def lock(self) -> str:
-        return os.path.join(self.bearing, "projections.lock.json")
+        return self._path(self.bearing, "projections.lock.json")
 
     @property
     def ledger_dir(self) -> str:
-        return os.path.join(self.bearing, "ledger")
+        return self._path(self.bearing, "ledger")
 
     @property
     def cost_ledger(self) -> str:
-        return os.path.join(self.ledger_dir, "cost.jsonl")
+        return self._path(self.ledger_dir, "cost.jsonl")
 
     @property
     def pass_fail(self) -> str:
-        return os.path.join(self.ledger_dir, "pass-fail-criteria.md")
+        return self._path(self.ledger_dir, "pass-fail-criteria.md")
 
     @property
     def runs(self) -> str:
-        return os.path.join(self.bearing, "runs")
+        return self._path(self.bearing, "runs")
 
     @property
     def cache(self) -> str:
-        return os.path.join(self.bearing, "cache")
+        return self._path(self.bearing, "cache")
 
     @property
     def eval_dir(self) -> str:
-        return os.path.join(self.bearing, "eval")
+        return self._path(self.bearing, "eval")
 
     @property
     def vendored_skills(self) -> str:
-        return os.path.join(self.workspace, ".agents", "skills")
+        return self._path(self.workspace, ".agents", "skills")
 
 
 def detect_decision_dirs(workspace: str) -> List[Dict[str, object]]:

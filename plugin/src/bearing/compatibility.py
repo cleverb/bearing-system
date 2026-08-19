@@ -22,6 +22,34 @@ from .util import dump_json, read_json, sha256_text
 COMPATIBILITY_API = 1
 EVIDENCE_SCHEMA_VERSION = 1
 
+_TEXT_ARTIFACT_SUFFIXES = (
+    ".py",
+    ".json",
+    ".md",
+    ".mdc",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".txt",
+    ".sh",
+    ".cfg",
+)
+
+
+def _artifact_digest_bytes(path: str, raw: bytes) -> str:
+    """Hash artifact bytes with CRLF normalized so fingerprints match across OSes."""
+    suffix = os.path.splitext(path)[1].lower()
+    if suffix in _TEXT_ARTIFACT_SUFFIXES:
+        try:
+            raw = raw.decode("utf-8").replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
+        except UnicodeDecodeError:
+            pass
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _artifact_digest_text(content: str) -> str:
+    return _artifact_digest_bytes("<override>", content.encode("utf-8"))
+
 
 def load_support() -> Dict[str, Any]:
     return read_json(os.path.join(data_dir(), "runtime-support.json"), {}) or {}
@@ -53,16 +81,19 @@ def runtime_inputs(
         "runtime": runtime,
         "artifacts": [],
     }
-    overrides = overrides or {}
+    overrides = {
+        os.path.abspath(key).replace("\\", "/"): value
+        for key, value in (overrides or {}).items()
+    }
     for relative in sorted(settings.get("artifacts") or []):
         path = os.path.join(workspace, relative.replace("/", os.sep))
-        absolute = os.path.abspath(path)
+        absolute = os.path.abspath(path).replace("\\", "/")
         if absolute in overrides:
-            digest = hashlib.sha256(overrides[absolute].encode("utf-8")).hexdigest()
+            digest = _artifact_digest_text(overrides[absolute])
         else:
             try:
                 with open(path, "rb") as handle:
-                    digest = hashlib.sha256(handle.read()).hexdigest()
+                    digest = _artifact_digest_bytes(path, handle.read())
             except OSError:
                 digest = "missing"
         payload["artifacts"].append({"path": relative, "sha256": digest})

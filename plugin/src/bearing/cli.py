@@ -57,6 +57,18 @@ def _heading(text: str) -> None:
     print()
 
 
+def _configure_stdio() -> None:
+    """Use UTF-8 for CLI output so JSON and disposition messages work on Windows."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="surrogateescape")
+        except (OSError, ValueError):
+            pass
+
+
 def _emit(data: Any, as_json: bool) -> None:
     if as_json:
         print(dump_json(data), end="")
@@ -1348,6 +1360,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
+    _configure_stdio()
     parser = build_parser()
     args = parser.parse_args(argv)
     if not getattr(args, "handler", None):
