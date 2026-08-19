@@ -1,3 +1,11 @@
+---
+name: decision-interview
+description: Conduct a structured, pressure-tested interview with a human at the moment an agent hits genuine architectural ambiguity, and record the answer as a candidate decision. Use when intent is missing or ambiguous and you cannot proceed safely without asking, or when a human asks to resolve and document a decision. Applies the deletion test and an explicit authority check before anything is recorded.
+metadata:
+  bearing-role: live-acquisition
+  writes-to: shadow-graph
+---
+
 # Skill: Decision Interview
 
 ## Context

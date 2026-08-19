@@ -1,3 +1,11 @@
+---
+name: decision-archaeologist
+description: Runs the EXTRACT and RESOLVE stages of decision recovery over a bounded corpus of commits, PRs, and comments, emitting evidence candidates without asserting that any decision was made. Use for scheduled or scoped recovery passes, never as a live PR check.
+model: inherit
+readonly: false
+is_background: true
+---
+
 # Subagent: Decision Archaeologist
 
 ## Mission

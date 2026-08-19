@@ -1,3 +1,10 @@
+---
+name: onboarding-coordinator
+description: Sequences the six steps of decision onboarding on one branch, enforcing scope discipline, wave-bounded review, and pre-registration of the pass/fail bar. Use once per repository when onboarding it into BEARING, after bearing init has run.
+model: inherit
+readonly: false
+---
+
 # Subagent: Onboarding Coordinator
 
 ## Mission
@@ -12,7 +19,7 @@ decision-interviewer, and coordinates between them.
 - Never proceeds past Step 4 with more than 5 promoted candidates without
   explicit human sign-off that the larger scope is intentional.
 - Never begins Step 5 without a completed
-  references/pass-fail-criteria.md already in place.
+  .bearing/ledger/pass-fail-criteria.md already in place.
 - Never merges the onboarding branch itself — Step 6 handoff is a human
   decision based on whether Step 5's bar was cleared.
 
@@ -26,11 +33,14 @@ decision-interviewer, and coordinates between them.
 
 ## Inputs
 - Repository to onboard, chosen scope, chosen interview participants
-- decision-recovery and decision-interview Skills (already installed by
-  Step 1's scaffold)
+- A passing Step 0a Preflight. decision-recovery and decision-interview are
+  resolved from the installed plugin, not installed by this Skill — install
+  is the distribution layer's job, and Preflight verifies it rather than
+  assuming it.
+- The selected profile (pilot, thorough, or audit)
 
 ## Expected Output
 - One branch, bearing-onboarding/<repo>, containing all six steps'
   artifacts as commits
-- One pilot report per references/pass-fail-criteria.md, ready for human
-  review at handoff
+- One pilot report per .bearing/ledger/pass-fail-criteria.md, ready for
+  human review at handoff

@@ -1,3 +1,11 @@
+---
+name: decision-onboarding
+description: Bootstrap a repository into the BEARING decision system as one reviewable branch — preflight, freeze a baseline, scaffold, run a scoped recovery pass, seed interviews, promote a small number of first anchors, then measure the result against the frozen baseline. Use once per repository when setting up BEARING, or when asked to onboard, pilot, or evaluate BEARING on a repo.
+metadata:
+  bearing-role: orchestration
+  run-once-per-repo: true
+---
+
 # Skill: Decision Onboarding
 
 ## Context

@@ -1,6 +1,6 @@
 # Skill Spec: Decision Recovery
 
-`.agents/skills/decision-recovery/`
+`plugin/skills/decision-recovery/`
 
 *Recovers evidence of latent, undocumented organizational intent from legacy code, commits, and tickets — preserving its provenance and uncertainty, and routing it across an explicit human authority boundary before it can participate in the Decision Graph.*
 
@@ -40,14 +40,14 @@ Three different claims, three different standings. The candidate schema througho
 
 ## Directory structure
 
-This Skill's tooling lives under `.agents/`, same as any Skill. Its *output* — the shadow graph itself — does not. See "Where the shadow graph actually lives" below for why.
+This Skill ships inside the plugin. Its *output* — the shadow graph — does not, and neither does any other file written at runtime. See "Where the shadow graph actually lives" and "The purity rule" below.
 
 ```
-.agents/skills/decision-recovery/
+plugin/skills/decision-recovery/
 ├── README.md                             # maintenance model, kept current automatically
 ├── SKILL.md                              # this Skill's instruction set
 ├── schemas/
-│   ├── candidate.schema.json
+│   ├── candidate.schema.json             # resolved by `bearing schema candidate`
 │   └── evidence.schema.json
 ├── scripts/
 │   ├── extract.py                        # stage 1 — cheap-tier, bulk
@@ -55,30 +55,47 @@ This Skill's tooling lives under `.agents/`, same as any Skill. Its *output* —
 │   ├── score.py                          # stage 3 — mid-tier, axis scoring (not a single scalar)
 │   └── budget-tracker.py                 # cost + reviewer-time ledger, hard stop
 ├── subagents/
-│   ├── decision-archaeologist.md         # runs extraction and resolution
-│   └── decision-recovery-reviewer.md     # prepares — never makes — the promotion judgment
+│   ├── decision-archaeologist.md         # canonical; runs extraction and resolution
+│   └── decision-recovery-reviewer.md     # canonical; prepares — never makes — the promotion judgment
 └── references/
-    ├── gold-set/                         # known decisions, known Anchors — tests recall
-    ├── dark-set/                         # undocumented legacy, independently investigated — tests real-world recovery
-    ├── negative-set/                     # historical chatter with no defensible decision — tests hallucination rate
-    └── cost-ledger.jsonl                 # append-only run history — Skill self-monitoring, not decision content
+    ├── evaluation-sets.md                # documents the format; the sets themselves live in the workspace
+    └── cost-ledger-format.md             # documents the ledger; the ledger itself lives in the workspace
 ```
+
+### The purity rule
+
+**Nothing writes inside the plugin at runtime.** Both Cursor and Claude Code *copy* a plugin into a versioned cache and replace that copy on update, so a file written inside the installation is a file scheduled for silent deletion. An earlier draft of this spec put the cost ledger and all three evaluation sets in `references/`; on the first plugin update, a repository would have lost its entire run history and its ground-truth corpus, and the kill switch would have quietly reset to "not enough history."
+
+So the split is by lifetime, not by subject:
+
+| Kind | Lives in | Why |
+| --- | --- | --- |
+| Instructions, schemas, scripts, templates, canonical subagents | the plugin, read-only | Ships with a version; identical for every repository |
+| Cost ledger, evaluation sets, price-book corrections, run state | `.bearing/` in the workspace | Accumulates over time; specific to this repository |
+| Candidates, rejections, transcripts, the disclosure index | the decisions directory | Decision content — the repository's knowledge, not BEARING's |
+
+The same rule is what makes `bearing uninstall` honest: everything BEARING generated can be removed without touching anything a human wrote or a run measured. It is verified rather than promised — the packaging suite makes the plugin tree read-only and runs a full pipeline against it, and CI installs from a git ref into an unrelated directory and asserts the tree is byte-identical afterwards.
+
+The same reasoning forbids `../` paths between skills. Agent Plugins v1.0.0 §4.1.3 requires a client to reject any package path resolving outside the plugin root, so `decision-interview` cannot reach `../decision-recovery/schemas/candidate.schema.json` — it asks the CLI (`bearing schema candidate`), which resolves from the plugin root and therefore works whether BEARING is installed, vendored, or run from a checkout.
 
 ## Where the shadow graph actually lives
 
 The shadow graph, the disclosure index, and the rejection ledger are decision *content* — evidence about the same repository `docs/decisions/` already documents — not Skill tooling. They live there, not under `.agents/`:
 
 ```
-docs/decisions/
-├── README.md                # documents the index and shadow/ below; states plainly what's authoritative
-├── index.json                # generated from the .md files in this directory — regenerated, never hand-edited
+docs/decisions/                # or docs/adr/ — whatever this repository already uses
+├── README.md                  # documents the index and shadow/ below; states plainly what's authoritative
+├── index.json                 # generated from the .md files in this directory — regenerated, never hand-edited
 ├── 0001-....md                # authored ADRs — the only authoritative content at this level
 ├── 0002-....md
 └── shadow/
     ├── README.md              # first line: nothing in this folder is authoritative
-    ├── candidates.jsonl        # shadow graph — written by decision-recovery AND decision-interview
-    └── rejected.jsonl          # rejection fingerprints, checked at resolution to prevent re-litigation
+    ├── candidates.jsonl       # shadow graph — written by decision-recovery AND decision-interview
+    ├── rejected.jsonl         # rejection fingerprints, checked at resolution to prevent re-litigation
+    └── transcripts/           # interview evidence, inheriting the shadow graph's standing
 ```
+
+The directory name is a repository fact, resolved from `decisions.path`, and `bearing init` **detects** it rather than imposing one. A repository already using `docs/adr/` keeps `docs/adr/`; BEARING never renames or migrates an existing corpus, because demanding a bulk move before the tool does anything useful is the same adoption friction the retrospective path exists to avoid. Every path above derives from that one setting, and nothing in the implementation hardcodes `docs/decisions` — which is checked by a test, since a single hardcoded default is enough to make the whole setting a fiction.
 
 Three things do the actual work of keeping this separation real rather than just a naming convention, since the single most repeated invariant in this whole architecture — inference stays a candidate graph, the authored graph stays authored — is exactly what a careless placement here could quietly undermine:
 
@@ -86,7 +103,20 @@ Three things do the actual work of keeping this separation real rather than just
 - **A folder boundary, not just a filename convention.** `shadow/` sits one level below `docs/decisions/`, so a directory listing at the top level shows only authored decisions plus one clearly-named subfolder — candidates are never interleaved with real ADRs.
 - **Enforcement extends to check it.** The same linter that validates `@see` links now also asserts that no Anchor ever points into `docs/decisions/shadow/`. That closes the gap between the README saying this isn't authoritative and the system actually verifying it can't be treated as such.
 
-The Skill's own operational data — `cost-ledger.jsonl`, the Gold/Dark/Negative eval sets — stays under `.agents/skills/decision-recovery/references/`. That's the Skill monitoring itself, not knowledge about the repository, so it belongs with the Skill's other internals, not with the decisions corpus.
+The Skill's own operational data — the cost ledger, the Gold/Dark/Negative eval sets — is the Skill monitoring itself rather than knowledge about the repository, so it does not belong with the decisions corpus. It does not belong inside the plugin either, per the purity rule above. It lives in `.bearing/`:
+
+```
+.bearing/
+├── ledger/cost.jsonl          # append-only run history — Skill self-monitoring
+├── pricing.json               # price-book corrections, merged over the packaged defaults
+└── eval/
+    ├── gold/                  # known decisions, known Anchors — tests recall
+    ├── dark/                  # undocumented legacy, independently investigated — tests real recovery
+    ├── negative/              # historical chatter with no defensible decision — tests hallucination rate
+    └── escalation/            # cases whose correct answer is known — tests ESCALATE recall
+```
+
+These are per-repository by nature, which is the second reason they cannot ship in the plugin: a Dark Set is only meaningful against the legacy code it was investigated in, and a cost ledger from someone else's repository tells you nothing about yours.
 
 ## The candidate schema is EOCR-aware, not Rationale-shaped
 
@@ -216,6 +246,12 @@ Exceptions — a LOW candidate IS surfaced when:
 - Resolution and scoring MAY use the mid/frontier tier, but only on the
   candidate set already narrowed by extraction.
 
+Which model fills each role is an operator choice, configured per role in
+`models`. The Contract is machine-enforced against the price book, so
+configuration cannot silently void it: `bearing doctor` rejects a config
+that puts a frontier model on extraction, and rejects a model the price
+book has never heard of rather than assuming it is cheap.
+
 ## PR-Time Signal Boundary (hard constraint)
 If this Skill's output ever feeds a PR-time check, the rule is not
 negotiable per-repository: a recovery signal MUST NOT block a merge, under
@@ -291,31 +327,58 @@ Precision/recall against well-annotated code (the original **Gold Set**) tests w
 
 All three are checked before a new extractor version or model tier goes live, not just the Gold Set.
 
+They live in `.bearing/eval/` in the workspace, and they start out empty. `bearing verify` reports an absent set as a **skip carrying its reason**, never as a pass — a conformance suite that reports green because it had nothing to measure is worse than one that fails, because it actively misinforms. The skip names the file to create and what belongs in it.
+
 ---
 
 ## Economy: cost, and the cost that actually dominates
 
-The ledger tracks model cost per stage as before, but adds the cost the earlier draft missed:
+### A price is a dated fact, not a constant
+
+The ledger records **tokens**, not dollars. Dollars are derived at report time from a dated price book, because a cost figure computed against last year's prices and stored as a number is indistinguishable from a current one.
+
+`.bearing/pricing.json` is merged per model over the packaged `pricing.default.json`, so a repository can correct one price without restating the book and silently losing the rest. Every entry carries `tier`, `as_of`, and a `source` URL. Every figure BEARING reports names the price-book version that produced it, and a book older than `cost.price_book_max_age_days` is reported as stale *in the report*, next to the number, rather than warned about somewhere a reader will not be looking.
+
+A model with no price is excluded from the total and named, never estimated. A silently omitted term makes a total look complete when it is not.
 
 ```json
-{"run_id": "2026-08-16-weekly", "stage": "extract", "model": "haiku",
- "items_processed": 4200, "cost_usd": 1.02, "candidates_emitted": 340}
-{"run_id": "2026-08-16-weekly", "stage": "resolve", "model": "sonnet",
- "items_processed": 340, "cost_usd": 2.15, "candidates_emitted": 118}
-{"run_id": "2026-08-16-weekly", "stage": "score", "model": "sonnet",
- "items_processed": 118, "cost_usd": 0.94, "candidates_queued": 61}
+{"run_id": "2026-08-16-weekly", "stage": "extract", "model": "claude-haiku-4.5",
+ "items_processed": 4200, "input_tokens": 3810000, "output_tokens": 214000,
+ "token_source": "measured", "candidates_emitted": 340}
+{"run_id": "2026-08-16-weekly", "stage": "resolve", "model": "claude-sonnet-4.5",
+ "items_processed": 340, "input_tokens": 611000, "output_tokens": 88000,
+ "token_source": "estimated", "candidates_emitted": 118}
+{"run_id": "2026-08-16-weekly", "stage": "score", "model": "claude-sonnet-4.5",
+ "items_processed": 118, "input_tokens": 240000, "output_tokens": 41000,
+ "token_source": "measured", "candidates_queued": 61}
 {"run_id": "2026-08-16-weekly", "stage": "review", "reviewer": "human",
  "candidates_reviewed": 61, "candidates_promoted": 9,
  "estimated_review_minutes": 87}
 ```
 
-Two derived metrics ride on this, and together they answer the "does this justify itself" question more honestly than either alone:
+### Two cost classes, reported differently on purpose
+
+**Model cost** is small and reasonably precise. Each row is marked `measured` or `estimated`; an estimated row widens the reported band by `cost.token_estimate_uncertainty`, so the output is a `low / expected / high` range rather than a point value implying precision the input never had. A total is marked estimated if any contributing row was, because a sum is only as measured as its weakest term.
+
+**Human review cost** dominates, and is the least knowable. It is reported in **minutes**. `cost.reviewer_rate_usd_per_hour` ships unset, and while it is unset BEARING never converts minutes to dollars — inventing an hourly figure for a senior engineer's attention would make the total look most precise exactly where it is least defensible. Supplying a rate is an explicit opt-in.
+
+Every cost report carries a caveat block stating what the numbers ignore: prompt caching, batch discounts, committed-use pricing, and any negotiated rate, all of which move real spend materially. The block's central point is that **the paired delta** between a baseline run and a BEARING run on the same ticket under the same price book is the deliverable, because pricing error is largely common-mode and mostly cancels in a difference while not cancelling at all in an absolute total.
+
+### The metrics that decide whether this keeps running
+
+Two derived metrics, and together they answer the "does this justify itself" question more honestly than either alone:
 
 **Acceptance rate** (promoted ÷ reviewable) — the original signal, kept, but now understood as necessary and not sufficient. A repo generating 100 trivial candidates at 30% acceptance and a repo generating 5 candidates at 20% acceptance where the one hit is a previously undocumented security constraint are not the same kind of system, even at similar rates.
 
-**Cost per promoted candidate** (total model cost + `estimated_review_minutes` × a configured reviewer-cost rate, divided by candidates promoted) — this is the metric that actually catches the case acceptance rate alone misses. It doesn't require an elaborate ROI engine; it's arithmetic over fields already in the ledger. The point isn't precision — it's making the dominant cost (a senior engineer's review time, not Haiku tokens) visible in the same number that decides whether the Skill keeps running on a given repository.
+**Cost per promoted candidate** (total model cost + `estimated_review_minutes` × the configured reviewer rate, divided by candidates promoted) — this is the metric that actually catches the case acceptance rate alone misses. It doesn't require an elaborate ROI engine; it's arithmetic over fields already in the ledger. The point isn't precision — it's making the dominant cost (a senior engineer's review time, not Haiku tokens) visible in the same number that decides whether the Skill keeps running on a given repository.
 
-The kill switch triggers on a sustained rise in cost-per-promoted-candidate, not on raw acceptance rate alone.
+Because review time is the dominant term, this metric is **withheld entirely** when no reviewer rate is configured. That is deliberate rather than a gap: computing it from tokens alone would report the small half and present it as the whole, which is more misleading than reporting nothing and saying why.
+
+The kill switch triggers on a sustained rise in cost-per-promoted-candidate over a trailing window of runs, not on raw acceptance rate alone.
+
+### Waves, not one queue
+
+The hard per-run budget cap stops a runaway. It does nothing about the *review* budget, which is the one that actually gets exceeded. So candidates are surfaced in waves sized by the tighter of `review.wave_size` and what `review.budget_minutes_per_session` can absorb at `review.seconds_per_candidate_estimate` each, and `bearing lint` warns when the queue exceeds one wave. A queue larger than one person clears in the declared budget does not get reviewed carefully; it gets rubber-stamped, which converts the authority boundary into a formality while leaving every metric looking healthy.
 
 ---
 

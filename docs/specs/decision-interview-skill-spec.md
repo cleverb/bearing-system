@@ -1,6 +1,6 @@
 # Skill Spec: Decision Interview
 
-`.agents/skills/decision-interview/`
+`plugin/skills/decision-interview/`
 
 *The live counterpart to Decision Recovery. Where Recovery mines historical evidence in batch, Interview elicits testimony from a human in the moment an agent hits real ambiguity — structured, EOCR-tagged, and pressure-tested before it's allowed to become a candidate decision.*
 
@@ -26,21 +26,48 @@ Three things are true of interview testimony that aren't true of mined evidence,
 
 ## Directory structure
 
-This Skill's tooling lives under `.agents/`, same as any Skill. Its output — candidates — goes to `docs/decisions/shadow/`, the same location Decision Recovery writes to. See that spec's "Where the shadow graph actually lives" for the full reasoning; it isn't repeated here since the two Skills share one shadow graph, not two.
+This Skill ships inside the plugin. Its output — candidates and transcripts — goes to the shadow graph, the same location Decision Recovery writes to. See that spec's "Where the shadow graph actually lives" for the full reasoning; it isn't repeated here since the two Skills share one shadow graph, not two.
 
 ```
-.agents/skills/decision-interview/
+plugin/skills/decision-interview/
 ├── README.md
 ├── SKILL.md
 ├── scripts/
-│   └── update-disclosure-index.py   # regenerates docs/decisions/index.json on promotion
+│   └── update-disclosure-index.py   # regenerates the disclosure index on promotion
 ├── subagents/
-│   └── decision-interviewer.md      # conducts the interview, applies the deletion test
+│   └── decision-interviewer.md      # canonical; conducts the interview, applies the deletion test
 └── references/
-    └── interview-transcripts/       # retained for audit; not authoritative on their own
+    └── transcript-handling.md       # where transcripts go, and the retention policy
 ```
 
-No separate schema directory — it imports `decision-recovery`'s `schemas/candidate.schema.json` and `evidence.schema.json` directly.
+### Resolving the shared schema
+
+No separate schema directory: this Skill validates against `decision-recovery`'s `candidate.schema.json` and `evidence.schema.json`. How it *reaches* them is not incidental.
+
+An earlier draft used a relative path — `../decision-recovery/schemas/candidate.schema.json`. That reads perfectly naturally in a monorepo checkout and is a path a conforming client is **required to refuse**: Agent Plugins v1.0.0 §4.1.3 states that a filesystem-resolved path must remain within the resolved plugin root, and clients must reject package paths that resolve outside it. Since Cursor and Claude Code both copy the plugin into a versioned cache, the reference would also simply not resolve.
+
+Packaging BEARING as a *single* plugin removes the cross-plugin problem, but not the `../` problem — the two skills are still sibling directories. So the schema is resolved through the CLI:
+
+```bash
+bearing schema candidate   # prints an absolute path inside the resolved plugin root
+bearing schema evidence
+```
+
+This works identically whether BEARING is installed from a marketplace, vendored into `.agents/skills/`, or run from a checkout, and it is enforced: the packaging suite fails on any `../` reference that escapes a skill directory, so the shortcut cannot come back by accident. <!-- bearing:ignore-paths: the vendored path exists only when `bearing vendor` has run -->
+
+### Where transcripts live, and for how long
+
+Transcripts are **evidence**, so they inherit the shadow graph's standing — non-authoritative on their own — and they live with it, at `<decisions.path>/shadow/transcripts/`. Not in the plugin's `references/`: the plugin is read-only and is replaced on update, so a transcript written there is a named person's testimony scheduled for silent deletion.
+
+Retention is a repository policy, set as `interview.transcripts.retention`, because organizations differ on this for legitimate reasons rather than technical ones:
+
+| Value | Behaviour | For |
+| --- | --- | --- |
+| `committed` | Transcripts are committed alongside the shadow graph | Audit contexts where the chain from testimony to record must be reconstructible |
+| `local` | Written to a gitignored subdirectory | Organizations that will not commit a named individual's testimony to a shared repository |
+| `none` | Discarded once the candidate is written | Where the candidate's `evidence_excerpt` is considered sufficient record |
+
+Under `none` the candidate still records that an interview occurred, who was asked, and the excerpt — what is discarded is the surrounding conversation, not the provenance. A candidate whose origin cannot be reconstructed at all would be inference wearing testimony's authority, which is the one thing this spec exists to prevent.
 
 ## SKILL.md
 
@@ -133,7 +160,7 @@ comparable across both acquisition modes.
 
 ## Feeding the progressive-disclosure index
 
-`docs/decisions/index.json` lives with the corpus it's compiled from, not under `.agents/` — same reasoning as the shadow graph: this is decision content, not Skill tooling. It's generated deterministically from `docs/decisions/*.md` front matter and never hand-maintained, but it's worth being precise that this isn't a Projection in the technical sense used elsewhere in this architecture — there's no runtime format divergence being bridged, no `.cursor/` vs `.codex/` split, just one tool-agnostic index compiled from one corpus. It's structured to be loaded the way Agent Skills already are, though: a compact index up front (id, one-line trigger, EOCR function, lifecycle state, scope), full ADR body pulled only when the trigger matches the current task. Any agent already comfortable with Skill-style progressive disclosure needs no second mental model to use it.
+The disclosure index lives with the corpus it's compiled from, not in the plugin — same reasoning as the shadow graph: this is decision content, not Skill tooling. It's generated deterministically from the decision records' front matter and never hand-maintained, but it's worth being precise that this isn't a Projection in the technical sense used elsewhere in this architecture — there's no runtime format divergence being bridged, no `.cursor/` vs `.codex/` split, just one tool-agnostic index compiled from one corpus. It's structured to be loaded the way Agent Skills already are, though: a compact index up front (id, one-line trigger, EOCR function, lifecycle state, scope), full ADR body pulled only when the trigger matches the current task. Any agent already comfortable with Skill-style progressive disclosure needs no second mental model to use it.
 
 ```json
 {
@@ -150,8 +177,12 @@ Both Decision Recovery and Decision Interview write to this index on promotion �
 
 Contracts are indexed for near-always visibility (the index entry itself is cheap enough to sit in working context at session start); Rationale stays fully lazy-loaded, pulled only when an Anchor fires or a trigger phrase matches — the category-specific disclosure policy this index exists to support, which a single flat file can't express.
 
+Because the index is loaded on every task, it is held to a token ceiling (`verify.index_token_budget`). `bearing index` fails when the estimate exceeds it. An always-loaded file that grows without bound silently reverses the framework's value: at some size, the cost of carrying the index exceeds the cost of the rework it prevents, and nothing in the system would otherwise notice that point being crossed.
+
 ---
 
 ## What this deliberately reuses rather than reinvents
 
-The evidence schema, the five confidence axes, the cost ledger, the acceptance-rate and cost-per-promoted-candidate metrics, and the Gold/Dark/Negative evaluation sets all carry over unchanged from Decision Recovery. Interview transcripts can even be added to the Dark Set over time — a live, authority-checked interview is close to the best available ground truth for "what does a knowledgeable human believe can defensibly be recovered here," which is exactly what the Dark Set is for.
+The evidence schema, the five confidence axes, the cost ledger, the acceptance-rate and cost-per-promoted-candidate metrics, and the Gold/Dark/Negative evaluation sets all carry over unchanged from Decision Recovery — the ledger at `.bearing/ledger/cost.jsonl` and the sets at `.bearing/eval/`, per that spec's purity rule. Interview transcripts can even be added to the Dark Set over time — a live, authority-checked interview is close to the best available ground truth for "what does a knowledgeable human believe can defensibly be recovered here," which is exactly what the Dark Set is for. Under `retention: none` that particular option is given up, which is a real cost of that setting and worth stating rather than discovering later.
+
+Interview duration is logged exactly, and one thing it inherits is the reporting policy: it is minutes until a reviewer rate is configured, and never converted to a dollar figure on BEARING's initiative.

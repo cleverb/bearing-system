@@ -20,7 +20,7 @@ This document is written to be read twice, by two different kinds of readers.
 
 Engineering teams are in an uncomfortable transitional period. AI coding agents have moved faster than the practices required to govern them. Most repositories now contain some combination of:
 
-- editor-specific rule files (`.cursor/`, `.windsurf/`, `.github/copilot-instructions.md`)
+- editor-specific rule files (`.cursor/`, `.windsurf/`, `.github/copilot-instructions.md`) <!-- bearing:ignore-paths: describes other repositories -->
 - `AGENTS.md`, `CLAUDE.md`, or similar repository instructions
 - custom prompts, MCP servers, linters, CI checks
 - emerging agent Skills and specialized subagents
@@ -34,7 +34,7 @@ The symptoms show up downstream, not at the point of failure. An agent generates
 
 ### A concrete failure: the missing guardrail
 
-Here is what this looks like in practice, and why this document was rewritten.
+Here is what this looks like in practice, and an example  of why this framework was written.
 
 The repository has an established cyclomatic-complexity ceiling for Java services — a real constraint, agreed on, backed by a linter rule. An agent working a routine feature request extended a method past that ceiling. Nothing stopped it. The constraint existed in the codebase's tooling, but it did not exist anywhere the agent was reading *before* it wrote the code. The failure surfaced downstream, in review, after the work was already done and needed to be redone.
 
@@ -151,6 +151,8 @@ docs/
 Numbered, zero-padded, sequential filenames are the one part of this convention with no real disagreement across sources — every tool and every style guide surveyed uses them, because sequential numbering is what makes chronological order legible at a glance without opening a file. Keep that part regardless of which directory name is chosen.
 
 This is also a direct application of the Projection principle from Part IV: don't invent a bespoke convention when an emerging one already carries real-world momentum and a documented reason for existing. Settle into `docs/decisions/` for the same reason this document settles into deterministic renderers over portable file formats — it's the option the ecosystem is actively converging toward, not the option that happens to be first alphabetically or most familiar from five years ago.
+
+**A recommendation for a new repository, not a migration order for an existing one.** A repository already using another convention keeps it. `bearing init` detects the existing directory and adopts it — recording the location as a repository fact rather than assuming a default — and never renames or moves a corpus. Demanding a bulk relocation before the tooling does anything useful is the same adoption friction the retrospective recovery path exists to remove, and it would trade a real cost (broken links, rewritten history, an afternoon of review) for a naming preference. Where the choice is genuinely open, choose `docs/decisions/`. Where it is not, `bearing init --record-deviation` writes a short decision record explaining the location, so the next person who looks in the recommended place finds an explanation rather than an empty directory.
 
 ---
 
@@ -271,39 +273,38 @@ The governing principle:
 
 > **Standardize the organizational source. Do not require a standardized runtime representation.**
 
-Canonical definitions — a subagent's mission, boundaries, escalation rules, tool access, or any other Contract — live as organizational source material, typically alongside the capability they serve:
+Canonical definitions — a subagent's mission, boundaries, escalation rules, tool access, or any other Contract — live as organizational source material, alongside the capability they serve:
 
 ```
-.agents/
-└── skills/
-    └── migration/
-        ├── README.md
-        ├── SKILL.md
-        ├── subagents/
-        │   ├── migration-reviewer.md
-        │   └── migration-planner.md
-        └── scripts/
-            └── render-subagents.py
+skills/
+└── decision-recovery/
+    ├── README.md
+    ├── SKILL.md
+    └── subagents/
+        ├── decision-archaeologist.md        # canonical
+        └── decision-recovery-reviewer.md    # canonical
 ```
 
-A deterministic renderer produces whatever representation each runtime actually consumes:
+One deterministic renderer, owned by the tooling rather than by each Skill, produces whatever representation each runtime actually consumes:
 
 ```
-.agents/skills/migration/subagents/
+skills/*/subagents/*.md          canonical definitions
              │
-             │ canonical definitions
              ▼
-.agents/skills/migration/scripts/render-subagents.py
+      bearing render
              │
-        ┌────┴────┐
-        ▼         ▼
-.cursor/skills/   .codex/skills/
-migration/        migration/
-subagents/        subagents/
-*.md              *.toml
+    ┌────────┼────────┐
+    ▼        ▼        ▼
+.cursor/  .claude/  .codex/
+agents/   agents/   agents/
+*.md      *.md      *.toml
 ```
 
-The generated files are **adapters, not independent sources of organizational truth.** `AGENTS.md` establishes that these generated representations exist and points agents to the canonical Skills architecture producing them. The Skill's README documents the maintenance model. The script performs the translation.
+The renderer is a single command, not a script per Skill. That is a correction worth stating explicitly, because a `render-subagents.py` inside every Skill is the natural-looking first design and it is wrong in two ways: it duplicates the same translation logic once per Skill, and it puts a writable script inside a tree that must be read-only at runtime. Worse, it invites exactly the mistake the next section warns against — once each Skill owns a renderer, adding one for `SKILL.md` looks like consistency rather than the pointless work it is.
+
+The generated files are **adapters, not independent sources of organizational truth.** Each one carries a `DO NOT EDIT` header naming the canonical source it came from and the command that regenerates it, `bearing render --check` reports any hand edit as drift, and `.bearing/projections.lock.json` records every artifact produced *and* every target deliberately skipped — so an absent adapter is distinguishable from a broken one without anyone having to guess.
+
+**Where adapters land is an operator choice, not a repository one.** `projections.<kind>.scope` takes three values, and each answers a real situation: `repo` commits adapters into the working tree so anyone cloning the repository gets them; `user` writes to the home directory, for machinery identical across every repository or for repositories you do not own; `ephemeral` renders to a temp directory at session start and commits nothing at all. Which *runtimes* a repository supports is a repository fact and lives in committed config; which directory this machine writes them to is not.
 
 This produces a durable property: **one organizational definition → multiple runtime representations.** When a subagent's responsibility changes, the team edits the canonical source and regenerates. When a new runtime shows up, the organization adds a renderer instead of rewriting the operational model. When a generated file drifts, it's regenerated rather than manually reconciled.
 
@@ -319,20 +320,25 @@ The organizational layer owns meaning. Adapters own representation. Runtimes own
 
 ### Projection isn't the default treatment for everything — only for genuine format gaps
 
-It's tempting to read the subagent example above as the general pattern for anything living under `.agents/skills/`. It isn't. Projection solves one specific problem — a runtime that cannot read an artifact's canonical format — and applies only where that problem actually exists:
+It's tempting to read the subagent example above as the general pattern for every artifact a Skill ships. It isn't. Projection solves one specific problem — a runtime that cannot read an artifact's canonical format — and applies only where that problem actually exists:
 
 > **Projection applies when a runtime consuming the knowledge cannot read its canonical format. It does not apply when an open standard already lets every relevant runtime consume the canonical file directly.**
 
 That splits the artifact types this document covers into two groups, not one:
 
 **Needs Projection — genuine, unresolved format divergence:**
-- **Subagents** — Cursor and Codex settled on incompatible native representations (`.md` vs `.toml`); a canonical source has to compile to both.
-- **Rules** — `.cursor/rules`, `.windsurf/rules`, `.github/copilot-instructions.md`, and `CLAUDE.md` are mutually unreadable, proprietary formats expressing substantially the same repo-level guidance. Without a canonical source and renderer, a team either hand-duplicates the same rule four times or picks one tool as authoritative and leaves the rest stale.
+- **Subagents** — Cursor and Codex settled on incompatible native representations; a canonical source has to compile to both. Cursor reads markdown with frontmatter, Claude Code reads markdown with a slightly different frontmatter vocabulary, and Codex reads TOML requiring `name`, `description`, and a `developer_instructions` *string*. The same prose is a document body in one runtime and a quoted scalar in another, which is about as unbridgeable as two text formats get.
+- **Rules** — `.cursor/rules`, `.windsurf/rules`, `.github/copilot-instructions.md`, and `CLAUDE.md` are mutually unreadable, proprietary formats expressing substantially the same repo-level guidance. Without a canonical source and renderer, a team either hand-duplicates the same rule four times or picks one tool as authoritative and leaves the rest stale. <!-- bearing:ignore-paths: names targets this repo does not enable -->
+- **Contracts** — one canonical Contract projects to a linter config, a CI check, and an agent-facing summary. None of those three is the authoritative copy.
+- **Distribution manifests** — the same plugin definition has to appear under a different directory per client, plus a per-client marketplace catalog. BEARING generates every one of them from a single canonical `plugin/plugin.json`, which is the framework applying its own principle to its own distribution rather than exempting itself.
 
 **Doesn't need Projection — the format gap has already been closed:**
-- **`SKILL.md`** — Agent Skills is an open standard multiple runtimes read natively (Part VI). There's no representational gap for a renderer to bridge. The canonical file *is* the consumable artifact, full stop — writing a renderer here would be solving a problem that doesn't exist.
+- **`SKILL.md`** — Agent Skills is an open standard multiple runtimes read natively (Part VII). There's no representational gap for a renderer to bridge. The canonical file *is* the consumable artifact, full stop — writing a renderer here would be solving a problem that doesn't exist.
+- **The disclosure index** — one tool-agnostic JSON file compiled from one corpus. No runtime split, so no adapter.
 
 This is worth checking explicitly for any new artifact type this architecture takes on later, rather than assuming Projection by default: ask whether the runtimes involved already share one open format before building a canonical/adapter split for it. If they do, skip Projection — the canonical source stands alone.
+
+**And check it with a machine, since the failure is gradual.** No single unnecessary renderer looks like a mistake; a pile of them is how a clean principle becomes machinery nobody can justify. So `bearing verify` fails a projection whose declared targets all consume one identical format, and fails outright if anything resembling a `SKILL.md` renderer appears in a Skill's `scripts/`. The rule that would otherwise decay into a paragraph people stop reading is the one most worth making executable.
 
 ### Two ways knowledge enters the graph
 
@@ -407,20 +413,19 @@ Subagents are the specialized cells that carry out narrow, high-context function
 Following the Projection pattern from Part IV, subagent definitions live **inside the Skill package they serve**, as canonical source material — not in a separate tree, and not as a file every tool is expected to read identically:
 
 ```
-.agents/
-├── commands/                      # the "Tools"
-└── skills/
-    └── migration/                 # the Skill package
-        ├── README.md              # documents the maintenance model, kept current automatically
-        ├── SKILL.md                # the "How"
-        ├── subagents/              # the "Who" — canonical source, lives with its Skill
-        │   ├── migration-reviewer.md
-        │   └── migration-planner.md
-        └── scripts/
-            └── render-subagents.py # deterministic renderer
+skills/
+└── migration/                    # the Skill package
+    ├── README.md                 # documents the maintenance model, kept current automatically
+    ├── SKILL.md                  # the "How"
+    ├── subagents/                # the "Who" — canonical source, lives with its Skill
+    │   ├── migration-reviewer.md
+    │   └── migration-planner.md
+    └── scripts/                  # the Skill's own tooling — never a subagent renderer
 ```
 
-`.agents/skills/migration/subagents/migration-planner.md` is the canonical, hand-maintained definition:
+The renderer is deliberately absent here. Projection is performed by one command over every Skill, for the reasons given in Part IV; a Skill owning its own renderer duplicates the translation and puts writable tooling inside a read-only tree.
+
+`subagents/migration-planner.md` is the canonical, hand-maintained definition:
 
 ```markdown
 # Subagent: Migration Planner
@@ -448,7 +453,9 @@ Escalate to a human when:
 - Decision links remain intact.
 ```
 
-`render-subagents.py` deterministically projects that single source into whatever each runtime needs — `.cursor/skills/migration/subagents/migration-planner.md` and `.codex/skills/migration/subagents/migration-planner.toml`. Neither generated file is edited by hand, and neither carries authority independent of the canonical copy in `.agents/skills/migration/subagents/`. `AGENTS.md` and the Skill's own `README.md` are what keep this discoverable and current — the README documents that the subagents are maintained automatically via the renderer, so nobody mistakes a generated `.toml` for a second source of truth.
+`bearing render` deterministically projects that single source into whatever each runtime needs — `.cursor/agents/migration-planner.md`, `.claude/agents/migration-planner.md`, and `.codex/agents/migration-planner.toml`. <!-- bearing:ignore-paths: `migration` is an illustrative Skill, not one this repo ships --> Note what survives the format change and what does not: `readonly: true` on the canonical definition becomes `sandbox_policy = "read-only"` in the Codex output, because Codex expresses tool restriction as a sandbox policy rather than a boolean. The authority boundary is preserved; its spelling is not. Fields a runtime does not recognize are dropped rather than emitted, since a generated file that produces warnings is a generated file people learn to ignore.
+
+Neither generated file is edited by hand, and neither carries authority independent of the canonical copy. Each opens with a `DO NOT EDIT` header naming its source and the command that regenerates it, `bearing render --check` fails on drift, and `AGENTS.md` states the rule directly so an agent reading a generated file knows it is reading an adapter.
 
 This works because it never asks any tool to understand a shared file format — it asks every tool to understand its own native format, generated deterministically from one canonical place.
 
@@ -490,7 +497,52 @@ The point is not that any single piece here is novel — teams already have lint
 
 ---
 
-## Part VI — Why now: the ecosystem has caught up
+## Part VI — Distribution and boundaries, stated as Contracts
+
+Everything above describes what the system knows. This part describes where the machinery lives, what it may write, and how a repository configures it — held as Contracts rather than conventions, because each one is a boundary that erodes quietly when it is only documented.
+
+### The distribution layer is separate from the pipeline
+
+Install is not a step in any workflow. It is a precondition satisfied by a different layer, and conflating the two is what produces a Skill that tries to install itself:
+
+| Layer | Owns | Answers |
+|---|---|---|
+| Distribution | Marketplace, `plugin.json`, per-client manifests | How does the machinery get onto this machine? |
+| Bootstrap | `bearing init`, `bearing doctor` | How does *this* repository start using it? |
+| Operation | The Skills — recovery, interview, onboarding | How is the work performed? |
+
+BEARING ships as one plugin rather than three, because the three Skills share a schema, a ledger, a config layer, and a renderer. Splitting them would mean either duplicating that substrate in each package or inventing a cross-plugin dependency mechanism the standard does not offer. The onboarding Skill accordingly opens with a **preflight that verifies rather than installs** — it reports which copy of the Skills resolved and from where, whether config resolves cleanly, whether the working tree is clean, and whether every projection target is writable. When a precondition is unmet it fails with the command that fixes it, rather than proceeding on an assumption.
+
+**Contract — the plugin tree is read-only at runtime.** Nothing BEARING writes may land inside its own installation. Plugin directories are replaced wholesale on update, so a ledger, a transcript, or an evaluation result stored beside a Skill is data with a deletion date nobody chose. Writes go to `.bearing/` for run state and operator data, or to the decisions directory for decision content. This is the reason the cost ledger lives at `.bearing/ledger/cost.jsonl` and interview transcripts live under `<decisions.path>/shadow/transcripts/` — a transcript is evidence, so it belongs with the shadow graph it justifies and inherits *nothing here is authoritative*.
+
+The rule is enforced, not asserted: the packaging suite runs a full cycle with the plugin tree mounted read-only and compares a content digest of the tree before and after. A write inside the plugin fails the build rather than surfacing as lost data months later.
+
+**Contract — a path may not escape the plugin root.** Agent Plugins v1.0.0 §4.1.3 requires a conforming client to reject any package path resolving outside the resolved plugin root, and both Cursor and Claude Code copy a plugin into a versioned cache where a `../` reference simply has nothing to point at. So a Skill needing another Skill's schema asks the CLI — `bearing schema candidate` — which resolves from the plugin root and therefore works identically whether BEARING was installed from a marketplace, vendored, or run from a checkout.
+
+### Configuration: one key, and a rule about who wins
+
+Everything derives from `decisions.path`. No script hardcodes a decisions directory, which is what allows a repository that already uses `docs/adr/` to adopt BEARING without renaming anything.
+
+Config resolves through five layers — packaged defaults, then user, repo, and local files, then environment and flags — and the interesting question is not the order but *what kind of fact* each key holds:
+
+- A **repo fact** describes the repository, so the repository wins. Where decisions live, what may block a merge, which runtimes the team supports, whether transcripts are committed. One developer's machine does not get to disagree.
+- An **operator fact** describes one person or one runner, so the user wins. Which model fills a role, that person's hourly rate, where their generated adapters go.
+
+Getting this backwards is the failure mode: if a repo config could pin a model, a repository would dictate spending on machines it does not pay for; if a user config could redefine `decisions.path`, one clone would write its records somewhere no other clone reads. `bearing init` therefore refuses to write resolved operator facts into repo config, and a repo fact overridden locally is reported every time, because that is a machine deliberately behaving unlike every other clone.
+
+### Projection scope is the operator's choice
+
+A rendered adapter can go in three places, and which one is correct depends on facts BEARING cannot see:
+
+- **`repo`** — committed to the working tree. Right for a team standardizing on one runtime, and the only workable answer on a CI runner, which has no user-level agent directories and should not create any.
+- **`user`** — written under the operator's own configuration directory. Right when three developers use three different runtimes and none of them wants the other two's adapters in the diff.
+- **`ephemeral`** — generated into a temporary directory, handed to the runtime for one session, never written to the repository at all.
+
+What does not vary is the accounting. Every generated file opens with a `DO NOT EDIT` header naming its canonical source and the command that regenerates it; every one is recorded in `projections.lock.json` with a content hash; and every *deliberate* absence is recorded there too, with its reason. That last part matters more than it looks: absence has to be distinguishable from breakage, or a renderer that silently stopped emitting a target looks exactly like a target somebody turned off on purpose.
+
+---
+
+## Part VII — Why now: the ecosystem has caught up
 
 This architecture isn't a bet on a hypothetical future. The primitives it depends on already exist, independently, across the industry — which is a sign this is closer to convergence than invention.
 
@@ -500,7 +552,7 @@ What remains comparatively immature, industry-wide, is the *architecture connect
 
 ---
 
-## Part VII — Quick Reference
+## Part VIII — Quick Reference
 
 **The four knowledge functions:**
 - **Entry** — how do I safely begin?

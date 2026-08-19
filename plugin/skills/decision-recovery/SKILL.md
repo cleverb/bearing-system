@@ -1,3 +1,11 @@
+---
+name: decision-recovery
+description: Recover evidence of undocumented architectural decisions from commit history, PR descriptions, tickets, and code comments into a reviewable shadow graph of candidates. Use when auditing a legacy area for missing decision ancestry, running a scheduled BEARING recovery pass, or asked why code looks the way it does when no ADR exists. Never writes to the authored decision record directly.
+metadata:
+  bearing-role: retrospective-acquisition
+  writes-to: shadow-graph
+---
+
 # Skill: Decision Recovery
 
 ## Context

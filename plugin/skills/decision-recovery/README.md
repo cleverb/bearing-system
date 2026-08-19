@@ -1,9 +1,31 @@
 # decision-recovery
 
-Batch archaeology over commits, PRs, and tickets for evidence of undocumented decisions. Produces candidates in `docs/decisions/shadow/`, never writes directly to `docs/decisions/`.
+Batch archaeology over commits, PRs, and tickets for evidence of undocumented decisions. Produces candidates in the workspace shadow graph and never writes to the authored decision record directly.
 
-Full spec: see `SKILL.md` in this directory, and the extended rationale in the project's `decision-recovery-skill-spec.md`.
+## What is in this directory
 
-Maintained automatically: `schemas/` and `scripts/` define the pipeline; `subagents/` are generated/maintained per BEARING's subagent convention; `references/` holds this Skill's own evaluation sets (gold/dark/negative) and cost ledger — self-monitoring data, not decision content.
+Generic, versioned tooling only. Nothing here is written to at runtime.
 
-Run schedule: weekly batch by default, scoped per repository policy. Never triggered per-commit or per-PR.
+- `SKILL.md` — the instruction set an agent loads.
+- `schemas/` — `candidate.schema.json` and `evidence.schema.json`. Shared with `decision-interview`, which resolves them through `bearing schema candidate` rather than by a relative path, because a `../` reference to a sibling skill does not survive plugin installation.
+- `scripts/` — the four pipeline stages plus the budget tracker.
+- `subagents/` — canonical definitions for `decision-archaeologist` and `decision-recovery-reviewer`. Hand-maintained here and projected into each runtime's native format by `bearing render`; the generated `.md` and `.toml` files carry no authority of their own.
+- `references/` — format documentation for the evaluation sets and the cost ledger.
+
+## Where this Skill's data actually lives
+
+In the workspace, never in this directory:
+
+- Candidates and rejections — `<decisions.path>/shadow/`
+- Cost ledger — `.bearing/ledger/cost.jsonl`
+- Evaluation sets — `.bearing/eval/{gold,dark,negative}/`
+
+Resolve these with `bearing ledger path` and `bearing eval path <set>` rather than assuming a layout. The earlier draft of the spec kept the ledger and eval sets under `references/` here, which would have erased both on every plugin update.
+
+## Run schedule
+
+Weekly batch by default, scoped per repository policy. Never triggered per-commit, never a live PR check.
+
+## Maintenance model
+
+`subagents/` is the canonical source; the runtime adapters are generated. `bearing render --check` fails CI when a generated adapter drifts from its source, so a hand-edited adapter is caught rather than silently becoming a second source of truth.
