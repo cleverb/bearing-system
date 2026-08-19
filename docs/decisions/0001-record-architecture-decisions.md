@@ -9,9 +9,9 @@ scope: docs/decisions/**
 # ADR-0001: Record Architecture Decisions
 
 * **Status:** Accepted
-* **Date:** <!-- fill in on adoption -->
-* **Deciders:** <!-- fill in -->
-* **Tickets:** <!-- fill in -->
+* **Date:** 2026-08-18
+* **Deciders:** BEARING maintainers
+* **Tickets:**
 
 ## Context and Problem Statement
 

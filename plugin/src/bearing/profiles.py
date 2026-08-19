@@ -1,5 +1,7 @@
 """Onboarding profiles.
 
+@see ADR-0008 — profiles gate the Skill; they do not run extraction.
+
 "Should I run full recovery before evaluating?" is a real question with no single
 right answer, so it becomes a named profile rather than a flag buried in prose.
 

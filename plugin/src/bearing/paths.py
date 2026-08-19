@@ -1,5 +1,8 @@
 """Locating the workspace, the plugin, and the decision corpus.
 
+@see ADR-0002 — the plugin tree is read-only at runtime; this module finds it,
+it never writes inside it.
+
 Every path BEARING touches derives from one of three roots:
 
 - the **plugin root** -- read-only after install, holds Skills and templates.

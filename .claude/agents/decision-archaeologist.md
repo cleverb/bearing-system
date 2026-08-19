@@ -36,7 +36,7 @@ Escalate (route to the review queue, not interrupt) when:
 
 ## Expected Output
 - Candidates appended to docs/decisions/shadow/candidates.jsonl
-- Full cost and token accounting via scripts/budget-tracker.py
+- Full cost and token accounting appended to the path from `bearing ledger`
 
 ## Success Criteria
 - Every candidate is EOCR-tagged, not assumed Rationale by default.

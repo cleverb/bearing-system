@@ -1,5 +1,8 @@
 """A validator for the JSON Schema subset BEARING's own schemas use.
 
+@see ADR-0005 — this exists rather than a dependency so `bearing init` runs on
+a bare Python 3.9.
+
 Not a general-purpose implementation. It covers exactly the keywords used by
 `config.schema.json`, `candidate.schema.json`, and `evidence.schema.json`:
 type, enum, const, properties, additionalProperties, required, items,

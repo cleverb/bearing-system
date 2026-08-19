@@ -7,7 +7,7 @@ That location is a correction, not a preference. An earlier draft of the Recover
 1. Plugin directories are replaced wholesale on update, so every upgrade would silently erase the repository's entire cost history.
 2. The ledger is per-repository run history — it is knowledge about the repository, not about the Skill — and the kill switch depends on trends across many runs and many contributors.
 
-Resolve it with `bearing ledger path` rather than assuming a relative path.
+Resolve it with `bearing ledger` rather than assuming a relative path.
 
 ## Row shapes
 

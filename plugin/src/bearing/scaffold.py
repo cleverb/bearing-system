@@ -1,5 +1,7 @@
 """`bearing init`: bootstrap a workspace without guessing anything about it.
 
+@see ADR-0002 — scaffold writes `.bearing/` and the decisions directory, never `plugin/`.
+
 The one decision this command must not get wrong is where decision records live.
 `decisions.path` is the key every other path derives from, and a wrong guess
 produces a second, empty decision tree beside a repository's real one -- which is
@@ -97,6 +99,7 @@ def scaffold(config: ResolvedConfig, decisions_rel: str) -> Dict[str, List[str]]
         os.path.join(layout.eval_dir, "gold"),
         os.path.join(layout.eval_dir, "dark"),
         os.path.join(layout.eval_dir, "negative"),
+        os.path.join(layout.eval_dir, "escalation"),
         layout.decisions,
         layout.shadow,
         layout.transcripts,
@@ -129,7 +132,7 @@ def scaffold(config: ResolvedConfig, decisions_rel: str) -> Dict[str, List[str]]
         else:
             note(path, False)
 
-    for name in ("gold", "dark", "negative"):
+    for name in ("gold", "dark", "negative", "escalation"):
         cases = os.path.join(layout.eval_dir, name, "cases.jsonl")
         if not os.path.isfile(cases):
             note(cases, write_text(cases, ""))

@@ -14,9 +14,11 @@ BEARING develops itself, so this repository is both the tool and a repository us
 ## Before you open a pull request
 
 ```bash
-python3 -m unittest discover -s tests    # 100+ tests, zero dependencies
+python3 -m unittest discover -s tests
+PYTHONPATH=plugin/src python3 -m bearing doctor
 PYTHONPATH=plugin/src python3 -m bearing render --check
 PYTHONPATH=plugin/src python3 -m bearing package --check
+PYTHONPATH=plugin/src python3 -m bearing index
 PYTHONPATH=plugin/src python3 -m bearing lint
 PYTHONPATH=plugin/src python3 -m bearing verify
 ```
@@ -57,4 +59,18 @@ When escalating, stop and ask. Do not silently choose the next plausible interpr
 - **Do not write to `docs/decisions/` on the basis of inference.** Every promotion out of `shadow/` requires human review, and that review determines scope, current validity, and lifecycle state — it is not a confirmation that a summary read correctly.
 - **A generated file is never a second source of truth.** Anything carrying a `DO NOT EDIT` header derives its authority from the canonical source it was rendered from and has none of its own. Edit the source and re-run `bearing render`.
 - **The plugin tree is read-only at runtime.** Writes go to `.bearing/` for run state, or `docs/decisions/` for decision content.
+
+### Accepted Contracts
+
+These are the accepted Contracts. Load the index first. `bearing context <path>`
+returns the subset whose scope matches the file you are editing.
+
+- **ADR-0001** (`docs/decisions/**`) — ADR-0001: Record Architecture Decisions. Trigger: adopting or modifying the decision-recording process itself.
+- **ADR-0002** (`plugin/src/bearing/*.py`) — ADR-0002: Plugin tree is read-only at runtime. Trigger: writing run state, ledgers, transcripts, or skill output.
+- **ADR-0003** (`plugin/src/bearing/render.py, plugin/src/bearing/agentsmd.py, plugin/src/bearing/manifests.py, plugin/src/bearing/artifacts.py, plugin/src/bearing/decisions.py`) — ADR-0003: Project canonical sources into runtime adapters. Trigger: adding a runtime adapter, renderer, or generated agent/rule file.
+- **ADR-0004** (`plugin/src/bearing/config.py, plugin/src/bearing/verify.py, plugin/src/bearing/lint.py`) — ADR-0004: Inference never blocks a merge. Trigger: adding a CI job, linter, or config key that could block a merge.
+- **ADR-0005** (`plugin/src/bearing/*.py`) — ADR-0005: Standard library only, Python 3.9. Trigger: adding a Python dependency, raising the minimum interpreter, or replacing the in-tree JSON Schema validator.
+- **ADR-0006** (`plugin/src/bearing/render.py`) — ADR-0006: SKILL.md is not projected. Trigger: adding a SKILL.md renderer or a projection whose targets all share one format.
+- **ADR-0007** (`plugin/src/bearing/config.py`) — ADR-0007: Repo facts versus operator facts. Trigger: adding a config key or changing which layer wins for an existing key.
+- **ADR-0008** (`plugin/src/bearing/cli.py`) — ADR-0008: Recovery is agent-executed until a real extractor exists. Trigger: implementing or invoking decision-recovery extraction.
 <!-- BEARING:END -->

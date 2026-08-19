@@ -228,6 +228,69 @@ def estimate_index_tokens(index: Dict[str, Any]) -> int:
     return max(1, len(dump_json(index)) // 4)
 
 
+def path_matches_scope(rel_path: str, scope: str) -> bool:
+    """True when a workspace-relative path falls inside a record's scope glob.
+
+    Scope is a comma-separated list of globs (fnmatch, where `*` matches `/`).
+    """
+    from .util import match_any
+
+    rel_path = rel_path.replace(os.sep, "/").lstrip("./")
+    patterns = [part.strip() for part in (scope or "").replace(";", ",").split(",") if part.strip()]
+    return bool(patterns) and match_any(rel_path, patterns)
+
+
+def context_entries(layout: Layout, rel_path: str) -> List[Dict[str, Any]]:
+    """Index entries whose scope matches `rel_path`. The generation-time slice."""
+    rel_path = rel_path.replace(os.sep, "/").lstrip("./")
+    entries: List[Dict[str, Any]] = []
+    for record in load_records(layout):
+        if record.status not in (ACCEPTED, PROPOSED):
+            continue
+        if path_matches_scope(rel_path, record.scope or ""):
+            entries.append(record.index_entry())
+    return entries
+
+
+def contracts_digest(layout: Layout) -> str:
+    """Compact accepted-Contract list compiled into the AGENTS.md block.
+
+    @see ADR-0003 — this is the agent-facing half of contracts projection: the
+    same records the index already lists, pushed into the constitution so an
+    agent reads them before generating rather than only when CI fails.
+    """
+    records = [
+        record
+        for record in load_records(layout)
+        if record.status == ACCEPTED and record.eocr_function == "Contract"
+    ]
+    lines = ["### Accepted Contracts", ""]
+    if not records:
+        lines += [
+            "None recorded yet. Load the index before editing; escalate rather than guessing.",
+            "Once Contracts exist, `bearing context <path>` returns the subset that governs a file.",
+            "",
+        ]
+        return "\n".join(lines)
+    lines += [
+        "These are the accepted Contracts. Load the index first. `bearing context <path>`",
+        "returns the subset whose scope matches the file you are editing.",
+        "",
+    ]
+    for record in records:
+        lines.append(
+            "- **%s** (`%s`) — %s. Trigger: %s."
+            % (
+                record.id,
+                record.scope or "unscoped",
+                record.title or record.id,
+                record.trigger or record.title or record.id,
+            )
+        )
+    lines.append("")
+    return "\n".join(lines)
+
+
 class Anchor:
     def __init__(self, file: str, line: int, adr_id: str, raw: str) -> None:
         self.file = file

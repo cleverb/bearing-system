@@ -1,8 +1,8 @@
 # Evaluation sets: format and obligations
 
-This document is generic reference material. **The sets themselves do not live here** — they live in the workspace at `.bearing/eval/{gold,dark,negative}/`, because their content is specific to the repository under evaluation and this directory is replaced wholesale on every plugin update.
+This document is generic reference material. **The sets themselves do not live here** — they live in the workspace at `.bearing/eval/{gold,dark,negative,escalation}/`, because their content is specific to the repository under evaluation and this directory is replaced wholesale on every plugin update.
 
-Locate them with `bearing eval path <set>` rather than assuming a relative path.
+Locate them with `bearing eval <set>` rather than assuming a relative path.
 
 ## Why three sets and not one
 

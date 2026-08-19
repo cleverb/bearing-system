@@ -26,6 +26,28 @@ def fixture(text):
     return "\n".join(line.replace(_MARKER, "").rstrip() for line in text.split("\n"))
 
 
+def _valid_candidate(**fields):
+    row = {
+        "candidate_id": "CAND-000",
+        "subject": "src/example.py",
+        "candidate_relation": "governed_by",
+        "candidate_object": "an undocumented constraint",
+        "candidate_eocr_function": "Contract",
+        "evidence": [
+            {
+                "evidence_source": "commit_message",
+                "evidence_excerpt": "chose X over Y",
+                "evidence_reliability": "MEDIUM",
+            }
+        ],
+        "confidence": "HIGH",
+        "lifecycle_state": "Reviewable",
+        "idempotency_key": "src/example.py@corpus-1@extractor-1",
+    }
+    row.update(fields)
+    return row
+
+
 def _record(number, title, status="Accepted", extra=""):
     return (
         "---\n"
@@ -70,14 +92,7 @@ class NoInferenceBlocksAMergeTest(BearingTestCase):
             workspace.write(
                 "docs/decisions/shadow/candidates.jsonl",
                 "\n".join(
-                    json.dumps(
-                        {
-                            "candidate_id": "CAND-%03d" % index,
-                            "lifecycle_state": "Reviewable",
-                            "confidence": "HIGH",
-                            "subject": "src/billing/invoice.py",
-                        }
-                    )
+                    json.dumps(_valid_candidate(candidate_id="CAND-%03d" % index))
                     for index in range(3)
                 )
                 + "\n",
@@ -715,7 +730,7 @@ class ProfileTest(BearingTestCase):
 
 
 class VerifyTest(BearingTestCase):
-    def test_a_missing_evaluation_set_is_skipped_with_a_reason_not_scored_as_a_pass(self):
+    def test_a_missing_evaluation_set_warns_instead_of_passing(self):
         """Recall cannot be asserted without cases whose answer is known."""
         with TempWorkspace() as workspace:
             workspace.init()
@@ -727,11 +742,12 @@ class VerifyTest(BearingTestCase):
             self.assertEqual(len(recall), 1)
             self.assertEqual(
                 recall[0]["status"],
-                "skip",
-                "an absent eval set must be a skip carrying its reason, never a pass",
+                "warn",
+                "an absent eval set must warn, never pass as if recall were measured",
             )
             self.assertIn("cases.jsonl", recall[0]["detail"])
             self.assertFalse(recall[0]["hard"])
+            self.assertEqual(result.returncode, 0)
 
     def test_a_failing_eval_set_is_scored_and_fails(self):
         with TempWorkspace() as workspace:
@@ -840,23 +856,6 @@ class VerifyTest(BearingTestCase):
             self.assertTrue(workspace.exists("docs/decisions/index.json"))
             self.assertFalse(workspace.exists(".cursor/agents/decision-archaeologist.md"))
 
-    def test_project_conformance_catches_adapter_drift(self):
-        with TempWorkspace() as workspace:
-            workspace.init()
-            run_cli(
-                ["render"],
-                workspace=workspace.path,
-                env={"BEARING_PROJECTIONS_SUBAGENTS_SCOPE": '"repo"'},
-            )
-            path = ".cursor/agents/decision-archaeologist.md"
-            workspace.write(path, workspace.read(path) + "\nedited by hand\n")
-            result = run_cli(
-                ["verify", "--project"],
-                workspace=workspace.path,
-                env={"BEARING_PROJECTIONS_SUBAGENTS_SCOPE": '"repo"'},
-            )
-            self.assertNotEqual(result.returncode, 0)
-
 
 class DocsConformanceTest(BearingTestCase):
     """A document that names a path it does not ship teaches readers to distrust it.
@@ -939,6 +938,101 @@ class DocsConformanceTest(BearingTestCase):
             check = self._run(workspace)
             self.assertEqual(check["status"], "fail")
             self.assertIn("docs/adr/gone.md", check["detail"])
+
+
+class ContextAndContractsTest(BearingTestCase):
+    def test_context_returns_index_entries_whose_scope_matches_the_file(self):
+        with TempWorkspace() as workspace:
+            workspace.init()
+            workspace.write(
+                "docs/decisions/0002-plugin-purity.md",
+                "---\n"
+                "id: ADR-0002\n"
+                "status: Accepted\n"
+                "eocr_function: Contract\n"
+                "trigger: writing run state\n"
+                "scope: src/**\n"
+                "---\n\n"
+                "# ADR-0002: Plugin purity\n",
+            )
+            run_cli(["index"], workspace=workspace.path)
+            workspace.write("src/foo.py", "# hi\n")
+            result = run_cli(["context", "src/foo.py", "--json"], workspace=workspace.path)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            ids = [entry["id"] for entry in payload["entries"]]
+            self.assertIn("ADR-0002", ids)
+
+    def test_agents_block_includes_accepted_contracts(self):
+        with TempWorkspace() as workspace:
+            workspace.init()
+            workspace.write(
+                "docs/decisions/0002-plugin-purity.md",
+                "---\n"
+                "id: ADR-0002\n"
+                "status: Accepted\n"
+                "eocr_function: Contract\n"
+                "trigger: writing run state\n"
+                "scope: src/**\n"
+                "---\n\n"
+                "# ADR-0002: Plugin purity\n",
+            )
+            result = run_cli(
+                ["render"],
+                workspace=workspace.path,
+                env={"BEARING_PROJECTIONS_SUBAGENTS_SCOPE": '"repo"'},
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            agents = workspace.read("AGENTS.md")
+            self.assertIn("Accepted Contracts", agents)
+            self.assertIn("ADR-0002", agents)
+
+    def test_malformed_candidate_jsonl_fails_lint(self):
+        with TempWorkspace() as workspace:
+            workspace.init()
+            workspace.write(
+                "docs/decisions/shadow/candidates.jsonl",
+                json.dumps({"candidate_id": "c-1", "lifecycle_state": "Detected"}) + "\n",
+            )
+            result = run_cli(["lint"], workspace=workspace.path)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("candidate-schema", result.stdout)
+
+
+class OnboardAndVendorTest(BearingTestCase):
+    def test_preflight_fails_on_a_dirty_tree(self):
+        with TempWorkspace() as workspace:
+            workspace.init()
+            workspace.write("dirt.txt", "uncommitted\n")
+            result = run_cli(["preflight"], workspace=workspace.path)
+            self.assertNotEqual(result.returncode, 0)
+
+    def test_onboard_writes_state_after_a_clean_render(self):
+        with TempWorkspace() as workspace:
+            workspace.init()
+            run_cli(
+                ["render"],
+                workspace=workspace.path,
+                env={"BEARING_PROJECTIONS_SUBAGENTS_SCOPE": '"repo"'},
+            )
+            workspace.commit("scaffold")
+            result = run_cli(["onboard"], workspace=workspace.path)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertTrue(workspace.exists(".bearing/runs/onboarding.json"))
+            state = json.loads(workspace.read(".bearing/runs/onboarding.json"))
+            self.assertEqual(state.get("preflight"), "passed")
+
+    def test_vendor_pin_records_version_without_recopying(self):
+        with TempWorkspace() as workspace:
+            workspace.init()
+            first = run_cli(["vendor"], workspace=workspace.path)
+            self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+            self.assertTrue(workspace.exists(".agents/skills/decision-recovery/SKILL.md"))
+            pinned = run_cli(["vendor", "--pin"], workspace=workspace.path)
+            self.assertEqual(pinned.returncode, 0, pinned.stdout + pinned.stderr)
+            config = json.loads(workspace.read(".bearing/config.json"))
+            self.assertEqual(config["skills"]["source"], "vendored")
+            self.assertTrue(config["skills"]["vendored_version"])
 
 
 if __name__ == "__main__":

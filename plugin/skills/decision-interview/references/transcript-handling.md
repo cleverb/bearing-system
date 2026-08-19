@@ -1,6 +1,6 @@
 # Interview transcripts: location, retention, and standing
 
-Transcripts do **not** live in this directory. They live in the workspace at `<decisions.path>/shadow/<transcripts_dir>/`, alongside the shadow graph they justify. Resolve the path with `bearing transcripts path`.
+Transcripts do **not** live in this directory. They live in the workspace at `<decisions.path>/shadow/<transcripts_dir>/`, alongside the shadow graph they justify. Resolve the path with `bearing transcripts`.
 
 ## Why they sit with the shadow graph
 

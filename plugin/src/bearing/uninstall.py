@@ -1,5 +1,7 @@
 """`bearing uninstall`: leave cleanly.
 
+@see ADR-0002 — generated adapters and run state go; decision content stays.
+
 A framework you cannot back out of is a framework people are unwilling to try, so
 removal is a first-class operation with a test behind it rather than a paragraph
 in a FAQ.

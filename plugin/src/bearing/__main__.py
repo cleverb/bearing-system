@@ -1,5 +1,7 @@
 """Entry point for `python -m bearing`.
 
+@see ADR-0005 — checkout invocation needs nothing but PYTHONPATH and stdlib.
+
 Also makes `python plugin/src/bearing/__main__.py <command>` work from a checkout
 without installing anything, which is how the test suite and CI invoke the CLI.
 """

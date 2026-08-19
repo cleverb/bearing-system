@@ -30,3 +30,5 @@ When escalating, stop and ask. Do not silently choose the next plausible interpr
 - **Do not write to `{{decisions_path}}/` on the basis of inference.** Every promotion out of `{{shadow_dir}}/` requires human review, and that review determines scope, current validity, and lifecycle state — it is not a confirmation that a summary read correctly.
 - **A generated file is never a second source of truth.** Anything carrying a `DO NOT EDIT` header derives its authority from the canonical source it was rendered from and has none of its own. Edit the source and re-run `bearing render`.
 - **The plugin tree is read-only at runtime.** Writes go to `.bearing/` for run state, or `{{decisions_path}}/` for decision content.
+
+{{contracts_section}}

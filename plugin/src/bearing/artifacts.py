@@ -1,5 +1,7 @@
 """Generated artifacts, and the lock file that keeps them honest.
 
+@see ADR-0003 — every generated file is recorded; a skip is a recorded absence.
+
 Every file BEARING generates passes through here, so three properties hold
 uniformly rather than per-renderer:
 

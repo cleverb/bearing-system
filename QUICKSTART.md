@@ -1,6 +1,6 @@
 # BEARING Quickstart
 
-*30 minutes to your first onboarded repository. This is Entry knowledge — orientation, not the full reference. See `BEARING.md` for the complete architecture.*
+*Orientation, not a closed loop. Reading this and running `bearing init` takes a short sitting. A measured onboarding pilot — recovery, interviews, promoted anchors, paired tickets — takes reviewer sessions, not thirty minutes. See `BEARING.md` for the complete architecture.*
 
 ---
 
@@ -10,7 +10,7 @@ Every piece of engineering knowledge is doing one of four jobs: **Entry** helps 
 
 ## What you're about to do
 
-You're going to run `decision-onboarding` against a real repository. It's a single, bounded procedure — not a big rewrite, not a company-wide rollout. By the end you'll have one branch containing a small amount of real, promoted decision knowledge, and a measured comparison showing whether it actually helped.
+You're going to bootstrap BEARING and then run `bearing onboard`, which gates the `decision-onboarding` Skill. The CLI records state and checks preconditions; the Skill (an agent, with you reviewing) carries out the six steps. By the end of a completed pilot you'll have one branch containing a small amount of real, promoted decision knowledge, and a measured comparison showing whether it actually helped.
 
 ## Before you start
 
@@ -21,10 +21,12 @@ You're going to run `decision-onboarding` against a real repository. It's a sing
 ## Run it
 
 ```
-decision-onboarding init
+bearing init          # detect the decisions directory, scaffold .bearing/ and docs/decisions/
+bearing doctor        # confirm the plugin, CLI, and config resolve
+bearing onboard       # Step 0a preflight, then load the decision-onboarding Skill
 ```
 
-This runs six steps, in order, on a branch — nothing touches `main` directly:
+`bearing onboard` does not itself mine git or promote ADRs. It gates the pipeline and records run state (gitignored). The Skill then runs six steps, in order, on a branch — nothing touches `main` directly:
 
 1. **Freeze** — tags the current commit as the baseline, so later comparisons are against a fixed point, not a moving target.
 2. **Scaffold** — creates `docs/decisions/`, the `.agents/` tree, and an `AGENTS.md` stub. No content yet, just structure.

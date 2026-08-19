@@ -10,14 +10,15 @@ metadata:
 
 ## Context
 Bootstraps a repository into BEARING. Everything downstream (decision-
-recovery, decision-interview) assumes docs/decisions/, .agents/, and an
-AGENTS.md already exist and are populated with at least some real,
-promoted knowledge. This Skill produces that starting state, deliberately
-scoped small, as one reviewable branch.
+recovery, decision-interview) assumes a decisions directory, an AGENTS.md
+constitution, and at least some real, promoted knowledge. This Skill
+produces that starting state, deliberately scoped small, as one reviewable
+branch.
 
 ## Trigger
-Explicit human invocation only: `decision-onboarding init`. Run once per
-repository by whoever owns the pilot.
+Explicit human invocation only: `bearing onboard`, then load this Skill.
+Run once per repository by whoever owns the pilot. The CLI gates and
+records; this Skill carries out steps 0 through 6.
 
 ## Pipeline
 
@@ -29,9 +30,10 @@ Every later comparison in Step 5 runs against this frozen tag, not
 whatever main happens to be on the day a given ticket runs.
 
 ### Step 1 — Scaffold
-Pure structure: docs/decisions/ (with README.md, index.json, shadow/),
-.agents/ (with AGENTS.md stub and the decision-recovery /
-decision-interview Skills installed but not yet run).
+Pure structure, performed by `bearing init` (idempotent). Creates
+`.bearing/`, the decisions directory with `index.json` and `shadow/`,
+and the AGENTS.md constitution on render. Skills are *not* copied into
+`.agents/` unless someone later runs `bearing vendor`.
 
 ### Step 2 — Scoped recovery pass
 Run decision-recovery restricted to ONE directory or service — never the
@@ -55,7 +57,7 @@ real ADR, a @see annotation, and a docs/decisions/index.json entry.
 
 ### Step 5 — Pilot: onboarding branch vs. frozen baseline
 Define the pass/fail bar BEFORE running any tickets — record it in
-references/pass-fail-criteria.md. Select test tickets from the Step 2
+`.bearing/ledger/pass-fail-criteria.md`. Select test tickets from the Step 2
 coordination. Run each ticket twice: once against the frozen baseline tag,
 once against the onboarding branch. Track per run:
   - token consumption

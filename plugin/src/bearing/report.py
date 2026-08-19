@@ -1,5 +1,7 @@
 """`bearing report`: cost and outcome reporting, with two refusals built in.
 
+@see ADR-0005 — reporting refusals are code, not a documentation plea.
+
 **Refusal one: token counts are not printed alone.** The onboarding spec lists
 this as a Success Criterion, and a criterion that depends on someone remembering
 it will be violated the first time somebody just wants the token number. So the

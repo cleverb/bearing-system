@@ -1,5 +1,9 @@
 """The `bearing` command line.
 
+@see ADR-0008 — judgment belongs to Skills; this file is mechanical. Recovery
+has no extractor binary.
+@see ADR-0005 — standard library argparse, no third-party CLI framework.
+
 Everything here is deterministic and side-effect-explicit. That is a deliberate
 division of labour: the *judgment* in this system belongs to Skills and to humans,
 and the CLI's job is the mechanical part -- resolving config, generating adapters,
@@ -172,7 +176,7 @@ def cmd_preflight(args: argparse.Namespace) -> int:
 def cmd_render(args: argparse.Namespace) -> int:
     from .agentsmd import apply_block, check_block, rule_body, targets as agents_targets
     from .artifacts import apply as apply_artifacts, build_lock, read_lock, write_lock
-    from .render import load_subagents, render_rules, render_subagents
+    from .render import load_subagents, render_contracts, render_rules, render_subagents
 
     config = _load(args)
     ephemeral_dir = None
@@ -185,6 +189,9 @@ def cmd_render(args: argparse.Namespace) -> int:
     rule_artifacts, rule_skips = render_rules(config, body, ephemeral_dir)
     artifacts += rule_artifacts
     skips += rule_skips
+    contract_artifacts, contract_skips = render_contracts(config, ephemeral_dir)
+    artifacts += contract_artifacts
+    skips += contract_skips
 
     if getattr(args, "emit_plugin_paths", False):
         # Cursor's workspaceOpen hook consumes this to load ephemeral adapters
@@ -464,11 +471,22 @@ def cmd_verify(args: argparse.Namespace) -> int:
         print(status_line(verdict, _PILLAR_LABEL.get(pillar, pillar), ""))
 
     failed = [pillar for pillar, verdict in verdicts.items() if verdict == "fail"]
+    warned = [pillar for pillar, verdict in verdicts.items() if verdict == "warn"]
     print()
     if failed:
         print(paint("FAIL: %s" % ", ".join(failed), "fail"))
         print()
         return EXIT_FAIL
+    if warned:
+        print(paint("PASS with warnings: %s" % ", ".join(warned), "warn"))
+        print(
+            paint(
+                "Warnings mean a mandate metric was unmeasured or soft-failed, not that it passed.",
+                "dim",
+            )
+        )
+        print()
+        return EXIT_OK
     print(paint("PASS: every pillar conforms.", "ok"))
     print()
     return EXIT_OK
@@ -495,7 +513,7 @@ def cmd_report(args: argparse.Namespace) -> int:
 # ---------------------------------------------------------------------------
 
 def cmd_vendor(args: argparse.Namespace) -> int:
-    from .vendor import unvendor, vendor
+    from .vendor import pin, unvendor, vendor
 
     config = _load(args)
     _heading("bearing vendor")
@@ -504,6 +522,13 @@ def cmd_vendor(args: argparse.Namespace) -> int:
         for path in removed:
             print(status_line("ok", "removed", path))
         print(status_line("ok", "skills.source", "reset to 'plugin'"))
+        print()
+        return EXIT_OK
+
+    if args.pin:
+        outcome = pin(config)
+        print(status_line("ok", "pinned version", str(outcome["pinned_version"])))
+        print(status_line("ok", "skills.source", "vendored"))
         print()
         return EXIT_OK
 
@@ -636,6 +661,45 @@ def cmd_onboard(args: argparse.Namespace) -> int:
 # ---------------------------------------------------------------------------
 # path resolution helpers used by the Skills
 # ---------------------------------------------------------------------------
+
+def cmd_context(args: argparse.Namespace) -> int:
+    """Print index entries whose scope matches a file — generation-time discovery."""
+    from .decisions import context_entries
+
+    config = _load(args)
+    raw = args.path
+    if os.path.isabs(raw):
+        rel = os.path.relpath(raw, config.workspace)
+    else:
+        rel = raw
+    rel = rel.replace(os.sep, "/").lstrip("./")
+    entries = context_entries(config.layout, rel)
+    if args.json:
+        print(dump_json({"path": rel, "entries": entries}), end="")
+        return EXIT_OK
+    if not entries:
+        print("No decision records in scope for %s." % rel)
+        print(
+            "Load %s first; escalate rather than guessing."
+            % os.path.join(config.layout.decisions_rel, config.layout.index_name)
+        )
+        return EXIT_OK
+    _heading("bearing context  %s" % rel)
+    for entry in entries:
+        print(
+            "  %s  [%s / %s]  %s"
+            % (
+                entry.get("id"),
+                entry.get("eocr_function"),
+                entry.get("lifecycle_state"),
+                entry.get("trigger"),
+            )
+        )
+        print(paint("    scope: %s" % entry.get("scope"), "dim"))
+        print(paint("    source: %s" % entry.get("source"), "dim"))
+    print()
+    return EXIT_OK
+
 
 def cmd_schema(args: argparse.Namespace) -> int:
     """Resolve a schema path from the plugin root.
@@ -809,6 +873,11 @@ def build_parser() -> argparse.ArgumentParser:
     vendor_cmd = add("vendor", "Copy the Skills into this repository and pin the version.", cmd_vendor)
     vendor_cmd.add_argument("--force", action="store_true", help="replace an existing vendored copy")
     vendor_cmd.add_argument("--remove", action="store_true", help="remove vendored copies")
+    vendor_cmd.add_argument(
+        "--pin",
+        action="store_true",
+        help="record skills.source=vendored and the current version without copying",
+    )
 
     uninstall_cmd = add("uninstall", "Remove generated adapters and run state; keep decisions.", cmd_uninstall)
     uninstall_cmd.add_argument("--dry-run", action="store_true", help="list what would change")
@@ -820,6 +889,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     schema = add("schema", "Print the resolved path to a shared schema.", cmd_schema)
     schema.add_argument("name", choices=("candidate", "evidence", "config"))
+
+    context = add(
+        "context",
+        "Print decision-index entries whose scope matches a file.",
+        cmd_context,
+    )
+    context.add_argument("path", help="workspace-relative file path")
+    context.add_argument("--json", action="store_true")
 
     add("ledger", "Print the resolved cost-ledger path.", cmd_ledger)
 

@@ -149,14 +149,10 @@ Read-only, shipped inside the plugin:
 plugin/skills/decision-onboarding/
 ├── README.md
 ├── SKILL.md
-├── scripts/
-│   ├── freeze-baseline.py          # step 0 — tags the fork point
-│   ├── scaffold.py                 # step 1 — pure structure
-│   └── evaluate-pilot.py           # step 5 — computes metrics against the frozen tag
 ├── subagents/
 │   └── onboarding-coordinator.md   # canonical; projected to each runtime's format
 └── references/
-    ├── pass-fail-criteria-template.md   # the blank template only
+    ├── agent-procedure.md          # git tag, bearing init, bearing report --pilot
     └── pilot-metrics.md
 ```
 
@@ -165,7 +161,7 @@ Writable, in the workspace:
 ```
 .bearing/ledger/pass-fail-criteria.md   # the filled-in, committed, pre-registered bar
 .bearing/ledger/cost.jsonl              # pilot rows, per condition
-.bearing/runs/onboarding.json           # which step this repository reached
+.bearing/runs/onboarding.json           # which step this repository reached <!-- bearing:ignore-paths -->
 ```
 
 `subagents/onboarding-coordinator.md` is canonical and is never read by a runtime directly. It is projected to `.cursor/agents/*.md`, `.claude/agents/*.md`, and `.codex/agents/*.toml`, because those three formats are mutually unreadable — Codex requires TOML with a `developer_instructions` key where Cursor and Claude Code read a markdown body. Where the output lands is an operator choice (`projections.subagents.scope`): `repo` commits adapters so anyone cloning gets them, `user` writes to the home directory, and `ephemeral` renders to a temp directory at session start and commits nothing.

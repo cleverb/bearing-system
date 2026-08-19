@@ -1,5 +1,9 @@
 """`bearing lint`: structural integrity of the decision graph.
 
+@see ADR-0004 — this is the *only* class of check permitted to block a merge,
+alongside violation of an accepted Contract. A recovery confidence score may
+not.
+
 This is the *only* class of check permitted to block a merge, alongside violation
 of an accepted Contract. Everything here is a broken link or a dead end -- a
 verifiable structural fact, not a judgment about evidence.
@@ -169,6 +173,7 @@ def run(config: ResolvedConfig) -> List[Finding]:
 
     # --- shadow graph hygiene -----------------------------------------------
     findings.extend(_shadow_findings(config))
+    findings.extend(_candidate_schema_findings(config))
 
     return findings
 
@@ -257,6 +262,57 @@ def _shadow_findings(config: ResolvedConfig) -> List[Finding]:
                 )
             )
 
+    return findings
+
+
+def _candidate_schema_findings(config: ResolvedConfig) -> List[Finding]:
+    """Validate shadow-graph JSONL against the packaged candidate schema.
+
+    Agents write these rows by hand. The CLI's job is to catch a malformed
+    object before a reviewer spends time on it.
+    """
+    from .jsonschema import validate
+    from .paths import plugin_root
+    from .util import read_json
+
+    layout = config.layout
+    findings: List[Finding] = []
+    candidates = load_candidates(layout)
+    if not candidates:
+        return findings
+
+    root = plugin_root()
+    schema = read_json(
+        os.path.join(root, "skills", "decision-recovery", "schemas", "candidate.schema.json")
+    )
+    evidence = read_json(
+        os.path.join(root, "skills", "decision-recovery", "schemas", "evidence.schema.json")
+    )
+    if not isinstance(schema, dict):
+        return findings
+    items = ((schema.get("properties") or {}).get("evidence") or {}).get("items")
+    if isinstance(items, dict) and items.get("$ref") == "evidence.schema.json" and isinstance(
+        evidence, dict
+    ):
+        schema = dict(schema)
+        properties = dict(schema.get("properties") or {})
+        evidence_prop = dict(properties.get("evidence") or {})
+        evidence_prop["items"] = evidence
+        properties["evidence"] = evidence_prop
+        schema["properties"] = properties
+
+    location = os.path.relpath(layout.candidates, config.workspace).replace(os.sep, "/")
+    for candidate in candidates:
+        ident = candidate.get("candidate_id") or "?"
+        for error in validate(candidate, schema):
+            findings.append(
+                Finding(
+                    "error",
+                    "candidate-schema",
+                    "candidate %s: %s" % (ident, error),
+                    location,
+                )
+            )
     return findings
 
 

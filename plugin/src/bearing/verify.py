@@ -1,5 +1,7 @@
 """`bearing verify`: the mandate, as computed pass/fail.
 
+@see ADR-0004 — CI is inspected so a recovery command cannot quietly gate a merge.
+
 BEARING's mandate has four pillars. Stated as prose they are aspirations that
 sound good in a README and cannot be falsified. This module turns each into a
 check against repository state and run logs, so "does this framework do what it
@@ -86,10 +88,11 @@ def check_escalate(config: ResolvedConfig) -> List[Result]:
             Result(
                 "escalate",
                 "escalation recall on seeded fixtures",
-                SKIP,
-                "no .bearing/eval/escalation/cases.jsonl. Recall cannot be asserted without "
-                "tickets whose correct answer is known in advance -- seed them with "
-                "deliberately missing, ambiguous, and superseded intent.",
+                WARN,
+                "no scored rows in .bearing/eval/escalation/cases.jsonl. Recall cannot be "
+                "asserted without tickets whose correct answer is known in advance -- seed "
+                "them with deliberately missing, ambiguous, and superseded intent. This is "
+                "a warning, not a pass: an unmeasured mandate is not a met mandate.",
                 hard=False,
             )
         )
@@ -371,7 +374,7 @@ def _scope_coverage(
 def check_project(config: ResolvedConfig) -> List[Result]:
     from .agentsmd import check_block, rule_body, targets as agents_targets
     from .artifacts import apply as apply_artifacts, build_lock, read_lock
-    from .render import load_subagents, render_rules, render_subagents
+    from .render import load_subagents, render_contracts, render_rules, render_subagents
 
     results: List[Result] = []
     layout = config.layout
@@ -382,6 +385,9 @@ def check_project(config: ResolvedConfig) -> List[Result]:
     rule_artifacts, rule_skips = render_rules(config, body)
     artifacts += rule_artifacts
     skips += rule_skips
+    contract_artifacts, contract_skips = render_contracts(config)
+    artifacts += contract_artifacts
+    skips += contract_skips
 
     # Determinism is a hard pass/fail, and it is cheap to test: render twice and
     # compare. A renderer that embeds a timestamp passes every other check in
@@ -389,7 +395,8 @@ def check_project(config: ResolvedConfig) -> List[Result]:
     first = [artifact.sha256 for artifact in artifacts]
     again, _ = render_subagents(config, load_subagents())
     again_rules, _ = render_rules(config, rule_body(config))
-    second = [artifact.sha256 for artifact in again + again_rules]
+    again_contracts, _ = render_contracts(config)
+    second = [artifact.sha256 for artifact in again + again_rules + again_contracts]
     results.append(
         Result(
             "project",
@@ -675,10 +682,11 @@ def check_usability(config: ResolvedConfig) -> List[Result]:
             Result(
                 "usability",
                 "Negative Set hallucination rate",
-                SKIP,
-                "no results in .bearing/eval/negative/cases.jsonl. This is the metric that "
-                "gates every extractor or model change: the risk is not only missing real "
-                "decisions, it is inventing convincing fictional ones.",
+                WARN,
+                "no scored results in .bearing/eval/negative/cases.jsonl. This is the metric "
+                "that gates every extractor or model change: the risk is not only missing "
+                "real decisions, it is inventing convincing fictional ones. Unmeasured is "
+                "not a pass.",
                 hard=False,
             )
         )
@@ -700,9 +708,9 @@ def check_usability(config: ResolvedConfig) -> List[Result]:
             Result(
                 "usability",
                 "time to first value",
-                SKIP,
-                "no measured run yet. QUICKSTART.md promises %d minutes; that number is held "
-                "as a measured criterion, so either measure it or change the promise."
+                WARN,
+                "no measured run yet (no ledger row with minutes_to_first_anchor). The "
+                "configured ceiling is %d minutes. Unmeasured is not a pass."
                 % promised,
                 hard=False,
             )

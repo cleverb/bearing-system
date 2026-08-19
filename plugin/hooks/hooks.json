@@ -2,7 +2,7 @@
   "hooks": {
     "workspaceOpen": [
       {
-        "command": "bearing render --ephemeral --emit-plugin-paths",
+        "command": "python3 hooks/render_ephemeral.py",
         "timeout": 30
       }
     ]

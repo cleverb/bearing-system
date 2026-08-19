@@ -5,8 +5,8 @@ Primes a repository for BEARING. Not a new mechanism — a bounded, sequenced co
 Run once, explicitly. Never automatic, never re-run silently on an already-onboarded repository.
 
 ```bash
-bearing onboard start                 # default profile: pilot
-bearing onboard start --profile audit # measure first, promote nothing
+bearing onboard                      # default profile: pilot (from config)
+bearing onboard --profile audit      # measure first, promote nothing
 ```
 
 ## Install is not step one
@@ -29,9 +29,9 @@ The guardrails that do not relax in any profile: the human authority boundary, w
 
 ## Where this Skill's data lives
 
-- Pass/fail criteria — `.bearing/ledger/pass-fail-criteria.md`, written from a packaged template by `bearing init --pass-fail`. Not in this directory: a completed criteria document is repository content and would be destroyed on plugin update.
+- Pass/fail criteria — `.bearing/ledger/pass-fail-criteria.md`, written from a packaged template by `bearing init`. Not in this directory: a completed criteria document is repository content and would be destroyed on plugin update.
 - Pilot run rows — `.bearing/ledger/cost.jsonl`.
-- Onboarding state — `.bearing/runs/onboarding.json`, so a resumed session knows which step it is on.
+- Onboarding state — `.bearing/runs/onboarding.json`, so a resumed session knows which step it is on. <!-- bearing:ignore-paths -->
 
 `references/pilot-metrics.md` here documents what the four metrics mean and why token count is never reportable on its own.
 

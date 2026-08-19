@@ -1,6 +1,6 @@
 # Pilot metrics: definitions and the reporting rule
 
-Generic reference for Step 5. The filled-in criteria for a specific repository live at `.bearing/ledger/pass-fail-criteria.md`, written by `bearing init --pass-fail` from a packaged template — not in this directory, because a completed criteria document is repository content and would be destroyed on plugin update.
+Generic reference for Step 5. The filled-in criteria for a specific repository live at `.bearing/ledger/pass-fail-criteria.md`, written by `bearing init` from a packaged template — not in this directory, because a completed criteria document is repository content and would be destroyed on plugin update. Compare runs with `bearing report --pilot`.
 
 ## The four metrics, defined
 

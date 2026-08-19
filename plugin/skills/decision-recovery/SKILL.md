@@ -17,17 +17,22 @@ only that evidence suggesting one exists. It never writes to
 docs/decisions/ or adds annotations directly.
 
 ## Trigger
-Runs as a scheduled batch job (default: weekly) against a bounded scope.
-Never a live PR check. Never triggered per-commit.
+Runs as a scheduled *agent* session (weekly is a policy, not a shipped
+cron) against a bounded scope. Never a live PR check. Never triggered
+per-commit. There is no `extract.py`: this Skill is agent-executed.
 
 ## Pipeline (bounded, non-recursive)
 
-1. EXTRACT (Haiku-tier, decision-archaeologist): scan the scoped corpus
-   once. For each code symbol with no existing Anchor, extract candidate
-   evidence tagged with its EOCR function (Entry / Operations / Contract /
-   Rationale). Runs once per item per corpus version. No self-invocation.
+The stages are judgment. The CLI validates the result. Follow
+`references/agent-procedure.md` for the mechanical steps.
 
-2. RESOLVE (Sonnet-tier, decision-archaeologist, candidates only): cluster
+1. EXTRACT (cheap-tier, decision-archaeologist): using git log, `gh`,
+   and code comments, scan the scoped corpus once. For each code symbol
+   with no existing Anchor, extract candidate evidence tagged with its
+   EOCR function. Runs once per item per corpus version. Do not invoke
+   any Skill `scripts/` — there are none.
+
+2. RESOLVE (mid-tier, decision-archaeologist, candidates only): cluster
    evidence referring to the same underlying decision. If evidence
    conflicts, do NOT reconcile it into one confident answer — emit a
    "conflicting evidence" candidate with all sources attached and
@@ -35,15 +40,16 @@ Never a live PR check. Never triggered per-commit.
    before emitting — suppress by default if evidence substantially
    overlaps a prior rejection fingerprint.
 
-3. SCORE (Sonnet-tier): compute all five evidence axes (reliability,
+3. SCORE (mid-tier): compute all five evidence axes (reliability,
    authority, corroboration, specificity, temporal relevance) per source,
    and a collapsed top-line confidence. Store the full breakdown
    regardless of whether it's surfaced by default.
 
-4. QUEUE: candidates are written to docs/decisions/shadow/candidates.jsonl
-   and enter lifecycle state Detected, then Corroborated once resolution
-   completes. Reviewable candidates are those with confidence MEDIUM or
-   higher, OR any LOW candidate meeting an exception below.
+4. QUEUE: append candidates to docs/decisions/shadow/candidates.jsonl
+   matching `bearing schema candidate`. Then run `bearing lint`.
+   Reviewable candidates are those with confidence MEDIUM or higher, OR
+   any LOW candidate meeting an exception below. Append a cost row to
+   the path printed by `bearing ledger`.
 
 ## Instructions for the Agent
 1. Never write directly to docs/decisions/ or add a code annotation.

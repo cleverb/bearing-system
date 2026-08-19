@@ -2,7 +2,7 @@
 
 *An EOCR-based decision system for human-agent engineering, packaged as an installable Agent Plugin.*
 
-BEARING makes the decisions governing a codebase discoverable at the moment code is generated, rather than enforceable only after it is written. It does that with four Skills-worth of machinery over one durable idea: **standardize the organizational source, project it into whatever each runtime natively reads.**
+BEARING makes the decisions governing a codebase discoverable at the moment code is generated, rather than enforceable only after it is written. It does that with three Skills and a governance CLI over one durable idea: **standardize the organizational source, project it into whatever each runtime natively reads.**
 
 - **Read the architecture:** [`BEARING.md`](BEARING.md)
 - **Get oriented in 30 minutes:** [`QUICKSTART.md`](QUICKSTART.md)
@@ -15,7 +15,7 @@ BEARING makes the decisions governing a codebase discoverable at the moment code
 - **PROJECT** — standardize the organizational source; generate the tool adapters.
 - **EVOLVE** — treat the system as a stateful graph, not a static library.
 
-`bearing verify` turns each of those four into a computed pass/fail rather than an aspiration. See [Fit and finish](docs/specs/bearing-distribution-spec.md#6-fit-and-finish-the-conformance-suite).
+`bearing verify` turns each of those four into a computed pass/fail rather than an aspiration. See [Fit and finish](docs/specs/bearing-distribution-spec.md#6-fit-and-finish-the-conformance-suite). Missing eval fixtures warn rather than pass silently.
 
 ## What's in this repository
 
@@ -31,22 +31,22 @@ The line between those first two is a hard rule, not a convention: **the plugin 
 
 ```bash
 # From the BEARING marketplace (Cursor)
-cursor-agent plugin marketplace add https://github.com/<org>/bearing-system
+cursor-agent plugin marketplace add https://github.com/oeist/bearing-system
 # then install `bearing` from /plugin
 
 # From the BEARING marketplace (Claude Code)
-/plugin marketplace add <org>/bearing-system
+/plugin marketplace add oeist/bearing-system
 /plugin install bearing@bearing
 ```
 
-The CLI is bundled in the plugin, and can also be installed on its own:
+The plugin delivers Skills and the workspace hook. Interactive commands still need the CLI:
 
 ```bash
 pipx install ./plugin        # or: uv tool install ./plugin
 bearing --help
 ```
 
-Requires Python 3.9 or newer and no third-party packages.
+Requires Python 3.9 or newer and no third-party packages. Plugin install alone is not enough to run `bearing init`.
 
 ## Bootstrap a repository
 

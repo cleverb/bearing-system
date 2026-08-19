@@ -32,11 +32,10 @@ This Skill ships inside the plugin. Its output — candidates and transcripts �
 plugin/skills/decision-interview/
 ├── README.md
 ├── SKILL.md
-├── scripts/
-│   └── update-disclosure-index.py   # regenerates the disclosure index on promotion
 ├── subagents/
 │   └── decision-interviewer.md      # canonical; conducts the interview, applies the deletion test
 └── references/
+    ├── agent-procedure.md           # `bearing index` on promotion; no Skill script
     └── transcript-handling.md       # where transcripts go, and the retention policy
 ```
 

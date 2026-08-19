@@ -1,5 +1,7 @@
 """`bearing vendor`: copy the Skills into the repository, deliberately.
 
+@see ADR-0002 — vendored copies live in the workspace, never inside the plugin.
+
 The default is the installed plugin, and vendoring is not a "safer" alternative
 that people should reach for by habit. It is right in four specific situations:
 
@@ -56,7 +58,6 @@ def vendor(config: ResolvedConfig, force: bool = False) -> Dict[str, object]:
         copied.append(os.path.relpath(destination, config.workspace).replace(os.sep, "/"))
 
     _pin(config)
-
     return {
         "copied": copied,
         "pinned_version": __version__,
@@ -65,6 +66,17 @@ def vendor(config: ResolvedConfig, force: bool = False) -> Dict[str, object]:
             "Cursor and Codex. `bearing doctor` reports which copy is in effect."
         ),
     }
+
+
+def pin(config: ResolvedConfig) -> Dict[str, object]:
+    """Record source and version without copying. Copies must already exist."""
+    if not os.path.isdir(config.layout.vendored_skills):
+        raise BearingError(
+            "no .agents/skills/ to pin. Run `bearing vendor` to copy the Skills first, "
+            "or delete a stray copy so the installed plugin is used."
+        )
+    _pin(config)
+    return {"pinned_version": __version__, "copied": []}
 
 
 def unvendor(config: ResolvedConfig) -> List[str]:

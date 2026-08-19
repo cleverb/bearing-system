@@ -1,5 +1,7 @@
 """Cost: the price book, the tiering Contract, and what BEARING refuses to claim.
 
+@see ADR-0005 — price math is stdlib; a fabricated dollar figure is worse than minutes.
+
 Three positions this module exists to hold.
 
 **A price is a dated fact, not a constant.** Every price book entry carries

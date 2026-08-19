@@ -8,9 +8,8 @@ Generic, versioned tooling only. Nothing here is written to at runtime.
 
 - `SKILL.md` — the instruction set an agent loads.
 - `schemas/` — `candidate.schema.json` and `evidence.schema.json`. Shared with `decision-interview`, which resolves them through `bearing schema candidate` rather than by a relative path, because a `../` reference to a sibling skill does not survive plugin installation.
-- `scripts/` — the four pipeline stages plus the budget tracker.
 - `subagents/` — canonical definitions for `decision-archaeologist` and `decision-recovery-reviewer`. Hand-maintained here and projected into each runtime's native format by `bearing render`; the generated `.md` and `.toml` files carry no authority of their own.
-- `references/` — format documentation for the evaluation sets and the cost ledger.
+- `references/` — format documentation for the evaluation sets, the cost ledger, and the agent-executed mining procedure. There is no `extract.py`: an agent using git/gh writes JSONL, then `bearing lint` validates it.
 
 ## Where this Skill's data actually lives
 
@@ -20,7 +19,7 @@ In the workspace, never in this directory:
 - Cost ledger — `.bearing/ledger/cost.jsonl`
 - Evaluation sets — `.bearing/eval/{gold,dark,negative}/`
 
-Resolve these with `bearing ledger path` and `bearing eval path <set>` rather than assuming a layout. The earlier draft of the spec kept the ledger and eval sets under `references/` here, which would have erased both on every plugin update.
+Resolve these with `bearing ledger` and `bearing eval <set>` rather than assuming a layout. The earlier draft of the spec kept the ledger and eval sets under `references/` here, which would have erased both on every plugin update.
 
 ## Run schedule
 

@@ -1,5 +1,7 @@
 """Manifest projection: one canonical `plugin.json`, many client manifests.
 
+@see ADR-0003 — BEARING's own distribution is the first test of Projection.
+
 BEARING's own distribution is the first test of its own Projection principle. The
 canonical source is `plugin/plugin.json` in the Agent Plugins v1.0.0 format --
 the vendor-neutral floor, whose closed schema permits exactly `$schema`, `name`,
@@ -357,7 +359,7 @@ def hooks_manifest(plugin_root: str) -> Artifact:
         "hooks": {
             "workspaceOpen": [
                 {
-                    "command": "bearing render --ephemeral --emit-plugin-paths",
+                    "command": "python3 hooks/render_ephemeral.py",
                     "timeout": 30,
                 }
             ]

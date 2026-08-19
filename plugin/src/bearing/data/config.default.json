@@ -24,14 +24,14 @@
   "projections": {
     "subagents": {
       "targets": ["cursor", "claude", "codex"],
-      "scope": "user"
+      "scope": "repo"
     },
     "rules": {
       "targets": ["cursor", "agents-md"],
       "scope": "repo"
     },
     "contracts": {
-      "targets": ["lint", "ci", "agents-md"],
+      "targets": ["agents-md"],
       "scope": "repo"
     }
   },

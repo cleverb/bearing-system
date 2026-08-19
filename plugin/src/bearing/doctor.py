@@ -1,5 +1,7 @@
 """`bearing doctor` and the Step 0a preflight gate.
 
+@see ADR-0002 — doctor flags runtime data that has drifted back into the plugin tree.
+
 Install is not a pipeline step. It is a precondition owned by the distribution
 layer, and the gap the original onboarding spec skipped over -- a repository with
 no `.agents/` tree at all -- is closed by *verifying* that precondition rather

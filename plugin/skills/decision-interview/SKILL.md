@@ -60,7 +60,8 @@ new behavior layered on top of it.
 7. INDEX ON PROMOTION: if promoted, the question that triggered the
    interview becomes the docs/decisions/index.json trigger phrase — the
    most accurate available summary of when this decision matters, since
-   it's the actual situation that required it.
+   it's the actual situation that required it. Run `bearing index`; do
+   not invoke a Skill script.
 
 ## Escalation Rules
 - Deletion test with no defensible answer → cap at Rationale, never

@@ -44,23 +44,24 @@ This Skill ships inside the plugin. Its *output* — the shadow graph — does n
 
 ```
 plugin/skills/decision-recovery/
-├── README.md                             # maintenance model, kept current automatically
+├── README.md                             # maintenance model
 ├── SKILL.md                              # this Skill's instruction set
 ├── schemas/
 │   ├── candidate.schema.json             # resolved by `bearing schema candidate`
 │   └── evidence.schema.json
-├── scripts/
-│   ├── extract.py                        # stage 1 — cheap-tier, bulk
-│   ├── resolve.py                        # stage 2 — mid-tier, clustering + conflict detection
-│   ├── score.py                          # stage 3 — mid-tier, axis scoring (not a single scalar)
-│   └── budget-tracker.py                 # cost + reviewer-time ledger, hard stop
 ├── subagents/
 │   ├── decision-archaeologist.md         # canonical; runs extraction and resolution
 │   └── decision-recovery-reviewer.md     # canonical; prepares — never makes — the promotion judgment
 └── references/
+    ├── agent-procedure.md                # how an agent mines without an extractor binary
     ├── evaluation-sets.md                # documents the format; the sets themselves live in the workspace
     └── cost-ledger-format.md             # documents the ledger; the ledger itself lives in the workspace
 ```
+
+EXTRACT / RESOLVE / SCORE are stages of judgment performed by the agent
+with git/`gh` and the host tools. There is no Skill-local extractor script. The CLI
+validates JSONL (`bearing lint`) and reports cost (`bearing report`). A
+model-client extractor is future work, not a stub an agent should run.
 
 ### The purity rule
 
@@ -70,7 +71,7 @@ So the split is by lifetime, not by subject:
 
 | Kind | Lives in | Why |
 | --- | --- | --- |
-| Instructions, schemas, scripts, templates, canonical subagents | the plugin, read-only | Ships with a version; identical for every repository |
+| Instructions, schemas, templates, canonical subagents | the plugin, read-only | Ships with a version; identical for every repository |
 | Cost ledger, evaluation sets, price-book corrections, run state | `.bearing/` in the workspace | Accumulates over time; specific to this repository |
 | Candidates, rejections, transcripts, the disclosure index | the decisions directory | Decision content — the repository's knowledge, not BEARING's |
 

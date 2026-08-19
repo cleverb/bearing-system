@@ -1,4 +1,7 @@
-"""Small shared helpers. Standard library only, Python 3.9 compatible."""
+"""Small shared helpers. Standard library only, Python 3.9 compatible.
+
+@see ADR-0005 — no third-party packages; even JSON and front matter stay in-tree.
+"""
 
 from __future__ import annotations
 

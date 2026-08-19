@@ -1,5 +1,8 @@
 """Managing a delimited block inside a file BEARING does not own.
 
+@see ADR-0003 — AGENTS.md is the repository's document; BEARING owns a region.
+Accepted Contracts compile into that region.
+
 `AGENTS.md` and `CLAUDE.md` are the repository's own documents. They accumulate
 team conventions, onboarding notes, and local quirks that have nothing to do with
 BEARING, and overwriting them is the fastest available way to get BEARING
@@ -62,6 +65,8 @@ def rule_body(config: ResolvedConfig) -> str:
     repository that has used `docs/adr/` for a decade gets a constitution that
     names `docs/adr/`.
     """
+    from .decisions import contracts_digest
+
     template = read_text(template_path("agents-block.md")) or ""
     layout = config.layout
     replacements = {
@@ -70,6 +75,7 @@ def rule_body(config: ResolvedConfig) -> str:
         "shadow_dir": layout.shadow_name,
         "transcripts_dir": layout.transcripts_name,
         "version": __version__,
+        "contracts_section": contracts_digest(layout).rstrip(),
     }
     for key, value in replacements.items():
         template = template.replace("{{%s}}" % key, str(value))

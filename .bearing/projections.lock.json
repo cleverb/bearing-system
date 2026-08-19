@@ -4,7 +4,7 @@
       "kind": "subagents",
       "path": ".claude/agents/decision-archaeologist.md",
       "scope": "repo",
-      "sha256": "f8eaa99c4d795c9566c0bfc330ab920d98882476f859eadf631a2a294c3a54aa",
+      "sha256": "c2a5c7fe4eb8c19076e30d687da9763ad25f3aaebd215d713ff6fafa13a778e7",
       "source": "plugin/skills/decision-recovery/subagents/decision-archaeologist.md",
       "target": "claude"
     },
@@ -36,7 +36,7 @@
       "kind": "subagents",
       "path": ".codex/agents/decision-archaeologist.toml",
       "scope": "repo",
-      "sha256": "bcd5e4aee103f34a267668a9cfdec461c64bf22d0f4814e3ddbc607317c94038",
+      "sha256": "68914797ba3b28c41a54e1d4eecb5b6f53f8e1088c00a4af0298eac5934eddcc",
       "source": "plugin/skills/decision-recovery/subagents/decision-archaeologist.md",
       "target": "codex"
     },
@@ -68,7 +68,7 @@
       "kind": "subagents",
       "path": ".cursor/agents/decision-archaeologist.md",
       "scope": "repo",
-      "sha256": "c06976e39426f1d72716364e3f04be385a98edffbed197040dd27877f75ecee6",
+      "sha256": "d2bcb91ecc602004e9a2bae111bf1dbcc35d54f9cdb83e3bc4d28fbb4adb75df",
       "source": "plugin/skills/decision-recovery/subagents/decision-archaeologist.md",
       "target": "cursor"
     },
@@ -100,14 +100,29 @@
       "kind": "rules",
       "path": ".cursor/rules/bearing.mdc",
       "scope": "repo",
-      "sha256": "17fc6a3ab91d2d2a7713dcdeaf94acaec3656c6fb80c75f15ddf6e967218ef5a",
+      "sha256": "fc9306ffc6ec181a94534627eef76440fd770639106a811c4e2fb3772680bdb1",
       "source": "plugin/src/bearing/data/templates/agents-block.md",
       "target": "cursor"
     }
   ],
   "bearing_version": "0.1.0",
-  "renderer_version": 1,
+  "renderer_version": 2,
   "skipped": [
+    {
+      "kind": "contracts",
+      "reason": "compiled into the AGENTS.md constitution block by `bearing render`, not written as a separate file",
+      "target": "agents-md"
+    },
+    {
+      "kind": "contracts",
+      "reason": "not in projections.contracts.targets",
+      "target": "ci"
+    },
+    {
+      "kind": "contracts",
+      "reason": "not in projections.contracts.targets",
+      "target": "lint"
+    },
     {
       "kind": "rules",
       "reason": "managed as a delimited block inside a hand-maintained file by `bearing render`, not written as a whole generated file",

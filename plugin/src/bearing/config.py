@@ -1,5 +1,8 @@
 """Config resolution.
 
+@see ADR-0007 — every key is a repo fact or an operator fact; unclassified keys fail.
+@see ADR-0004 — recovery_signal is banned from enforcement.block_on.
+
 Five layers, and one rule that decides which of them wins.
 
 The naive approach -- "nearest file wins" -- breaks immediately in practice. A

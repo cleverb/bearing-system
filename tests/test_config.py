@@ -42,6 +42,12 @@ class ClassificationTest(BearingTestCase):
         self.assertEqual(classify("projections.subagents.targets"), REPO_FACT)
         self.assertEqual(classify("projections.subagents.scope"), OPERATOR_FACT)
 
+    def test_packaged_default_commits_subagent_adapters_into_the_repo(self):
+        from bearing.config import default_config
+
+        self.assertEqual(default_config()["projections"]["subagents"]["scope"], "repo")
+        self.assertEqual(default_config()["projections"]["contracts"]["targets"], ["agents-md"])
+
     def test_budget_cap_is_a_repo_fact_despite_living_under_cost(self):
         from bearing.config import OPERATOR_FACT, REPO_FACT, classify
 

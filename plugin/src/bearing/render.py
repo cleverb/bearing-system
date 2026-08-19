@@ -1,5 +1,8 @@
 """Projection: canonical sources into runtime-native adapters.
 
+@see ADR-0003 — project canonical sources; do not hand-edit adapters.
+@see ADR-0006 — SKILL.md is not projected; Agent Skills is already an open standard.
+
 Three projections, each justified by a real format gap:
 
 - **subagents** -- Cursor reads `.cursor/agents/*.md` with frontmatter, Codex
@@ -9,8 +12,11 @@ Three projections, each justified by a real format gap:
 - **rules** -- `.cursor/rules/*.mdc`, `AGENTS.md`, `CLAUDE.md`, and
   `.github/copilot-instructions.md` express substantially the same repo-level
   guidance in four incompatible formats.
-- **contracts** -- one canonical Contract projects to a linter config, a CI
-  check, and an agent-facing summary. None of those three is authoritative.
+- **contracts** -- accepted Contract records compile into the AGENTS.md
+  constitution block (agent-facing digest) and are queryable via
+  `bearing context`. `bearing lint` / `bearing verify` already consume them
+  structurally; this renderer does not emit a second linter config or CI
+  workflow.
 
 And one deliberate non-projection: `SKILL.md`. Agent Skills is an open standard
 that Cursor, Codex, and Claude Code all read natively from `.agents/skills/`, so
@@ -123,7 +129,7 @@ def render_subagents(
 ) -> Tuple[List[Artifact], List[Skip]]:
     settings = config.get("projections.subagents") or {}
     targets = list(settings.get("targets") or [])
-    scope = settings.get("scope") or "user"
+    scope = settings.get("scope") or "repo"
 
     artifacts: List[Artifact] = []
     skips: List[Skip] = []
@@ -282,6 +288,41 @@ def render_rules(
             )
 
     return artifacts, skips
+
+
+def render_contracts(
+    config: ResolvedConfig,
+    ephemeral_dir: Optional[str] = None,
+) -> Tuple[List[Artifact], List[Skip]]:
+    """Record how Contracts reach each declared target.
+
+    The agent-facing digest is applied as a delimited block by `agentsmd.py`,
+    the same way `rules.agents-md` is. Lint and CI already consume Contracts
+    via `bearing lint` and `bearing verify`; generating a second copy of either
+    would be a second source of truth.
+    """
+    del ephemeral_dir
+    settings = config.get("projections.contracts") or {}
+    targets = list(settings.get("targets") or [])
+    skips: List[Skip] = []
+    known = ("lint", "ci", "agents-md")
+    reasons = {
+        "agents-md": (
+            "compiled into the AGENTS.md constitution block by `bearing render`, "
+            "not written as a separate file"
+        ),
+        "lint": "bearing lint already consumes accepted Contracts structurally",
+        "ci": "bearing verify in CI already consumes accepted Contracts",
+    }
+    for target in known:
+        if target not in targets:
+            skips.append(Skip("contracts", target, "not in projections.contracts.targets"))
+            continue
+        skips.append(Skip("contracts", target, reasons[target]))
+    for target in targets:
+        if target not in known:
+            skips.append(Skip("contracts", target, "unknown contracts target"))
+    return [], skips
 
 
 def projection_necessity_errors(config: ResolvedConfig) -> List[str]:
