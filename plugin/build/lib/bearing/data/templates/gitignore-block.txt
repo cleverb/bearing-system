@@ -1,5 +1,0 @@
-# --- BEARING run state: never committed ---
-.bearing/runs/
-.bearing/cache/
-.bearing/config.local.json
-{{transcripts_local}}

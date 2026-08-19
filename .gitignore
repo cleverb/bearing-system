@@ -20,6 +20,8 @@ __pycache__/
 *.egg-info/
 .eggs/
 build/
+# Local symlink some checkouts accumulate; marketplace source is `./plugin`, not this path.
+plugin/plugin
 .venv/
 venv/
 .pytest_cache/

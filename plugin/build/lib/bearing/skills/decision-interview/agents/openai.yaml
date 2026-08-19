@@ -1,7 +1,0 @@
-# DO NOT EDIT. Generated from plugin/skills/decision-interview/SKILL.md by bearing 0.2.0. Run `bearing render` to update; edits here are overwritten and reported as drift by `bearing render --check`.
-
-interface:
-  display_name: "Decision Interview"
-  short_description: "Conduct a structured, pressure-tested interview with a human at the moment an agent hits genuine architectural ambiguity, and record the answer as a candidate decision"
-policy:
-  allow_implicit_invocation: true
