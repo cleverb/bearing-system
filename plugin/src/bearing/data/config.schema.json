@@ -20,7 +20,7 @@
       "properties": {
         "path": {
           "type": "string",
-          "description": "Path to the authored decision records, relative to the workspace root. Every other path derives from this one; nothing hardcodes 'docs/decisions'.",
+          "description": "Root of the authored decision-record tree, relative to the workspace. Category subdirectories are traversed recursively and do not create separate ADR namespaces. Every other path derives from this one; nothing hardcodes 'docs/decisions'.",
           "examples": ["docs/decisions", "docs/adr", "docs/ADRs"]
         },
         "shadow_dir": {

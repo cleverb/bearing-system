@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 import re
+import xml.etree.ElementTree as ET
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from . import __version__
@@ -53,12 +54,34 @@ _REVIEW_EXTRA_RE = re.compile(
 
 _STUB_BODY_CHARS = 250
 
+_QUALITY_ASSIGNMENT_RE = re.compile(
+    r"(?P<key>ruleSetFiles|ruleSetConfig|configFile|config)\s*=\s*"
+    r"(?P<factory>(?:rootProject\.)?(?:files?|resources\.text\.fromFile))"
+    r"\s*\((?P<args>[^)]*)\)",
+    re.MULTILINE,
+)
+_QUOTED_XML_RE = re.compile(r"[\"']([^\"']+\.xml)[\"']", re.IGNORECASE)
+_GRADLE_QUALITY_CHECK_RE = re.compile(
+    r"(?:\./gradlew|\bgradle)\s+(?:check\b|pmd\w*\b|checkstyle\w*\b)",
+    re.IGNORECASE,
+)
+_CHECKSTYLE_PLUGIN_RE = re.compile(
+    r"(?:id\s*\(?\s*[\"']checkstyle[\"']|"
+    r"apply\s+plugin\s*:\s*[\"']checkstyle[\"']|"
+    r"\bcheckstyle\s*\{)",
+    re.MULTILINE,
+)
+_QUALITY_RULE_KEYWORDS = (
+    "complexity", "npath", "methodlength", "returncount", "nestedif",
+    "executablestatement", "classfanout", "illegal", "forbidden",
+)
+
 # Fixed table. Order is the order recommendations print. Only fired ids emit.
 _RECOMMENDATIONS: Tuple[Tuple[str, str], ...] = (
     (
         "corpus-missing",
-        "Add numbered decision records under docs/decisions/ (or run `bearing init` "
-        "to adopt an existing convention).",
+        "Add numbered decision records under docs/decisions/ or its category "
+        "subdirectories (or run `bearing init` to adopt an existing convention).",
     ),
     (
         "corpus-split",
@@ -126,6 +149,26 @@ _RECOMMENDATIONS: Tuple[Tuple[str, str], ...] = (
         "After init, mention `bearing lint` in CI for structural checks. Do not "
         "gate merges on assessment or on a recovery signal.",
     ),
+    (
+        "build-rules-missing",
+        "Fix Gradle references to missing PMD or Checkstyle XML files so the "
+        "machine-enforced rules can be inspected and run.",
+    ),
+    (
+        "build-rules-unwired",
+        "Review PMD or Checkstyle XML that is present but not selected by Gradle. "
+        "Its presence is configuration evidence, not proof that the rules are active; "
+        "wire it into the build, surface it if otherwise operative, or remove stale configuration.",
+    ),
+    (
+        "build-rules-unsurfaced",
+        "Surface configured PMD and Checkstyle rules before generation: name "
+        "their XML paths in an agent instruction file and summarize consequential "
+        "thresholds such as cyclomatic complexity. A Gradle check command remains "
+        "useful as verification, but does not make a rule visible before code is written. "
+        "Treat customized thresholds as evidence to review for decision ancestry, not "
+        "as decisions inferred from configuration.",
+    ),
 )
 
 
@@ -149,6 +192,7 @@ def assess(config: ResolvedConfig) -> Dict[str, Any]:
     nested_only = os.path.isfile(agents_nested) and not os.path.isfile(agents_root)
 
     baselines = _agent_baselines(workspace, primary)
+    build_rules = _build_quality_contracts(workspace, baselines)
     names_corpus = any(item["present"] and item["mentions_corpus"] for item in baselines)
     discovery_status, discovery_detail = _discovery_status(
         os.path.isfile(agents_root), nested_only, names_corpus, primary
@@ -188,6 +232,9 @@ def assess(config: ResolvedConfig) -> Dict[str, Any]:
         discoverable=discovery_status == PRESENT,
         anchored=anchor_count > 0,
         review_related=review_related,
+        build_contracts_ready=(
+            not build_rules["configured_count"] or build_rules["status"] == PRESENT
+        ),
     )
 
     findings = _findings(
@@ -207,6 +254,7 @@ def assess(config: ResolvedConfig) -> Dict[str, Any]:
         overlay=overlay,
         has_index=has_index,
         ci_mentions=ci_mentions,
+        build_rules=build_rules,
     )
     recommendations = [
         {"id": finding_id, "text": text}
@@ -250,6 +298,7 @@ def assess(config: ResolvedConfig) -> Dict[str, Any]:
                 "contributing": contributing_rel,
             },
             "baselines": baselines,
+            "build_quality_contracts": build_rules,
             "bearing": {
                 "overlay": overlay,
                 "index": index_rel if has_index else None,
@@ -272,6 +321,42 @@ def render_text(result: Dict[str, Any]) -> str:
     dims = result["dimensions"]
     lines.extend(_section("Corpus", dims["corpus"]["status"], dims["corpus"]["detail"]))
     lines.extend(_section("Discovery", dims["discovery"]["status"], dims["discovery"]["detail"]))
+    lines.extend(
+        _section(
+            "Build quality evidence",
+            dims["build_quality_contracts"]["status"],
+            dims["build_quality_contracts"]["detail"],
+        )
+    )
+    for item in dims["build_quality_contracts"]["files"]:
+        selected = [
+            rule for rule in item["rules"]
+            if rule["name"] in item["consequential_rules"]
+        ] or item["rules"][:5]
+        rule_summaries = []
+        for rule in selected:
+            properties = ", ".join(
+                "%s=%s" % pair for pair in sorted(rule["properties"].items())
+            )
+            rule_summaries.append(
+                "%s%s" % (rule["name"], " [%s]" % properties if properties else "")
+            )
+        rule_detail = ", ".join(rule_summaries) if rule_summaries else "no rules parsed"
+        lines.append(
+            "  %-10s  %s  (%s; evidence: %s; surfaced: %s%s)"
+            % (
+                item["tool"],
+                item["path"],
+                rule_detail,
+                item["evidence"],
+                item["surfacing"],
+                "; missing" if not item["exists"] else (
+                    "; XML parse error" if item["parse_error"] else ""
+                ),
+            )
+        )
+    if dims["build_quality_contracts"]["files"]:
+        lines.append("")
     lines.extend(_section("Anchors", dims["anchors"]["status"], dims["anchors"]["detail"]))
     lines.extend(_section("Review", dims["review"]["status"], dims["review"]["detail"]))
 
@@ -314,14 +399,74 @@ def render_text(result: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def render_build_quality_advisory(result: Dict[str, Any]) -> str:
+    """Render bootstrap findings without changing guidance or decision content."""
+    quality = result["dimensions"]["build_quality_contracts"]
+    if not quality["evidence_count"]:
+        return ""
+
+    lines = ["Build quality rule evidence discovered:"]
+    for item in quality["files"]:
+        if not item["wired"]:
+            state = "file evidence only; not selected by Gradle"
+            source = "workspace scan"
+        else:
+            state = "missing" if not item["exists"] else (
+                "surfaced to agents" if item["surfaced"] else "not surfaced to agents"
+            )
+            source = "selected by %s" % item["build_script"]
+        lines.append(
+            "  %s  %s  (%s; %s)"
+            % (item["tool"], item["path"], state, source)
+        )
+        selected = [
+            rule for rule in item["rules"]
+            if rule["name"] in item["consequential_rules"]
+        ]
+        for rule in selected:
+            properties = ", ".join(
+                "%s=%s" % pair for pair in sorted(rule["properties"].items())
+            )
+            lines.append(
+                "    %s%s"
+                % (rule["name"], " [%s]" % properties if properties else "")
+            )
+
+    if quality["configured_count"] and quality["status"] != PRESENT:
+        lines.extend(
+            [
+                "  Surface relevant paths or consequential thresholds in agent instructions",
+                "  so they are available before generation, not only when Gradle runs later.",
+                "  Gradle selection is a stronger decision-recovery signal than file presence,",
+                "  but it is not proof that an architectural decision was made. Review",
+                "  customized values separately before",
+                "  creating or accepting any decision record.",
+            ]
+        )
+    elif quality["unwired_count"]:
+        lines.extend(
+            [
+                "  File presence is configuration evidence only. Confirm whether these rules",
+                "  are operative before surfacing them or reviewing their decision ancestry.",
+            ]
+        )
+    return "\n".join(lines) + "\n"
+
+
 def _section(title: str, status: str, detail: str) -> List[str]:
     return ["## %s" % title, "  %-8s  %s" % (status, detail), ""]
 
 
-def _band(record_count: int, discoverable: bool, anchored: bool, review_related: bool) -> str:
+def _band(
+    record_count: int,
+    discoverable: bool,
+    anchored: bool,
+    review_related: bool,
+    build_contracts_ready: bool,
+) -> str:
     if record_count <= 0:
         return BAND_UNPREPARED
-    if discoverable and anchored and review_related:
+    if discoverable and anchored and review_related and build_contracts_ready:
         return BAND_REVIEW_AWARE
     if discoverable and anchored:
         return BAND_ANCHORED
@@ -364,7 +509,10 @@ def _corpus_status(
 ) -> Tuple[str, str]:
     if record_count <= 0:
         if primary:
-            return ABSENT, "%s exists but has no numbered NNNN-*.md records" % primary
+            return ABSENT, (
+                "%s exists but has no numbered NNNN-*.md or ADR-NNNN-*.md records "
+                "in its directory tree" % primary
+            )
         return ABSENT, "no numbered decision records in a known location"
     location = primary or "?"
     detail = "%s  (%d numbered record(s), %d with title and status" % (
@@ -459,6 +607,258 @@ def _agent_baselines(workspace: str, primary: Optional[str]) -> List[Dict[str, A
     add(".github/copilot-instructions.md", [".github/copilot-instructions.md"])
     add("GEMINI.md", ["GEMINI.md"])
     return items
+
+
+def _build_quality_contracts(
+    workspace: str, baselines: Sequence[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """Discover PMD/Checkstyle XML, Gradle selection, and agent visibility.
+
+    This is deliberately static. Assessment must work before init and must not
+    execute a repository's build. Literal Gradle file references and
+    Checkstyle's conventional location are enough to identify the common case;
+    dynamic paths are left unclaimed rather than guessed.
+    """
+    baseline_text = _baseline_text(workspace, baselines)
+    files: List[Dict[str, Any]] = []
+    seen = set()
+
+    for script in _gradle_build_scripts(workspace):
+        text = read_text(script) or ""
+        script_dir = os.path.dirname(script)
+        found_checkstyle = False
+        for match in _QUALITY_ASSIGNMENT_RE.finditer(text):
+            key = match.group("key")
+            tool = "pmd" if key.startswith("ruleSet") else "checkstyle"
+            found_checkstyle = found_checkstyle or tool == "checkstyle"
+            for literal in _QUOTED_XML_RE.findall(match.group("args")):
+                base = workspace if match.group("factory").startswith("rootProject.") else script_dir
+                _add_quality_file(
+                    files, seen, workspace, base, literal, tool,
+                    os.path.relpath(script, workspace), baseline_text, wired=True
+                )
+
+        # Gradle's Checkstyle convention is config/checkstyle/checkstyle.xml.
+        # Recognize it only when the plugin is applied and no explicit config in
+        # this build script already identified the source.
+        if not found_checkstyle and _CHECKSTYLE_PLUGIN_RE.search(text):
+            conventional = os.path.join(workspace, "config", "checkstyle", "checkstyle.xml")
+            if os.path.isfile(conventional):
+                _add_quality_file(
+                    files,
+                    seen,
+                    workspace,
+                    workspace,
+                    "config/checkstyle/checkstyle.xml",
+                    "checkstyle",
+                    os.path.relpath(script, workspace),
+                    baseline_text,
+                    wired=True,
+                )
+
+    # An unreferenced ruleset is still useful evidence, but Gradle wiring is the
+    # stronger signal that the repository actively selected it for enforcement.
+    for absolute, tool in _quality_xml_candidates(workspace):
+        _add_quality_file(
+            files,
+            seen,
+            workspace,
+            workspace,
+            os.path.relpath(absolute, workspace),
+            tool,
+            "",
+            baseline_text,
+            wired=False,
+        )
+
+    wired = [item for item in files if item["wired"]]
+    unwired = [item for item in files if not item["wired"]]
+    missing = [item for item in wired if not item["exists"]]
+    surfaced = [item for item in wired if item["surfaced"]]
+    check_guidance = bool(_GRADLE_QUALITY_CHECK_RE.search(baseline_text))
+
+    if not files:
+        status = ABSENT
+        detail = "no custom PMD or Checkstyle XML evidence discovered"
+    elif not wired:
+        status = PARTIAL
+        detail = "%d XML ruleset file(s) found as evidence; none selected by Gradle" % len(files)
+    elif not missing and len(surfaced) == len(wired):
+        status = PRESENT
+        detail = "%d Gradle-selected XML file(s); all are named or summarized for agents" % len(wired)
+        if unwired:
+            detail += "; %d additional unwired file(s) found" % len(unwired)
+    elif surfaced or check_guidance:
+        status = PARTIAL
+        detail = "%d Gradle-selected XML file(s); %d surfaced to agents" % (len(wired), len(surfaced))
+        if check_guidance:
+            detail += "; a Gradle quality check is documented, but checks run after generation"
+        if missing:
+            detail += "; %d referenced file(s) missing" % len(missing)
+    else:
+        status = ABSENT
+        detail = "%d Gradle-selected XML file(s) enforce rules, but none are surfaced to agents" % len(wired)
+        if missing:
+            detail += "; %d referenced file(s) missing" % len(missing)
+
+    return {
+        "status": status,
+        "detail": detail,
+        "files": files,
+        "evidence_count": len(files),
+        "configured_count": len(wired),
+        "unwired_count": len(unwired),
+        "surfaced_count": len(surfaced),
+        "missing_count": len(missing),
+        "agent_check_guidance": check_guidance,
+    }
+
+
+def _gradle_build_scripts(workspace: str) -> List[str]:
+    scripts: List[str] = []
+    skipped = {".git", ".gradle", ".bearing", "build", "dist", "node_modules", "vendor", ".venv", "venv"}
+    for root, dirnames, filenames in os.walk(workspace):
+        dirnames[:] = sorted(name for name in dirnames if name not in skipped and not name.startswith("."))
+        for filename in ("build.gradle", "build.gradle.kts"):
+            if filename in filenames:
+                scripts.append(os.path.join(root, filename))
+    return sorted(scripts)
+
+
+def _quality_xml_candidates(workspace: str) -> List[Tuple[str, str]]:
+    candidates: List[Tuple[str, str]] = []
+    skipped = {".git", ".gradle", ".bearing", "build", "dist", "node_modules", "vendor", ".venv", "venv"}
+    for root, dirnames, filenames in os.walk(workspace):
+        dirnames[:] = sorted(name for name in dirnames if name not in skipped and not name.startswith("."))
+        for filename in sorted(filenames):
+            lower = filename.lower()
+            if not lower.endswith(".xml") or ("pmd" not in lower and "checkstyle" not in lower):
+                continue
+            tool = "checkstyle" if "checkstyle" in lower else "pmd"
+            candidates.append((os.path.join(root, filename), tool))
+    return candidates
+
+
+def _add_quality_file(
+    files: List[Dict[str, Any]],
+    seen: set,
+    workspace: str,
+    base: str,
+    literal: str,
+    tool: str,
+    build_script: str,
+    baseline_text: str,
+    wired: bool,
+) -> None:
+    if "$" in literal or "{" in literal:
+        return
+    absolute = os.path.abspath(os.path.join(base, literal))
+    try:
+        inside = os.path.commonpath((os.path.abspath(workspace), absolute)) == os.path.abspath(workspace)
+    except ValueError:
+        inside = False
+    if not inside:
+        return
+    rel = os.path.relpath(absolute, workspace).replace(os.sep, "/")
+    key = (tool, rel)
+    if key in seen:
+        return
+    seen.add(key)
+    exists = os.path.isfile(absolute)
+    rules, parse_error = _parse_quality_rules(absolute, tool) if exists else ([], None)
+    salient = [rule for rule in rules if _is_consequential_rule(rule["name"])]
+    path_named = rel.lower() in baseline_text or os.path.basename(rel).lower() in baseline_text
+    summarized = bool(salient) and all(_rule_is_named(rule, baseline_text) for rule in salient)
+    files.append(
+        {
+            "tool": tool,
+            "path": rel,
+            "build_script": build_script.replace(os.sep, "/"),
+            "wired": wired,
+            "evidence": "gradle-selected" if wired else "file-only",
+            "exists": exists,
+            "parse_error": parse_error,
+            "rule_count": len(rules),
+            "rules": rules,
+            "consequential_rules": [rule["name"] for rule in salient],
+            "surfaced": bool(path_named or summarized),
+            "surfacing": "path" if path_named else ("summary" if summarized else "none"),
+        }
+    )
+
+
+def _parse_quality_rules(path: str, tool: str) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+    try:
+        root = ET.parse(path).getroot()
+    except (ET.ParseError, OSError) as exc:
+        return [], str(exc)
+
+    rules: List[Dict[str, Any]] = []
+    if tool == "pmd":
+        elements = [element for element in root.iter() if _xml_name(element.tag) == "rule"]
+        for element in elements:
+            ref = element.attrib.get("ref", "")
+            name = element.attrib.get("name") or ref.rsplit("/", 1)[-1]
+            if name:
+                rules.append({"name": name, "ref": ref, "properties": _xml_properties(element)})
+    else:
+        ignored = {"Checker", "TreeWalker"}
+        elements = [element for element in root.iter() if _xml_name(element.tag) == "module"]
+        for element in elements:
+            name = element.attrib.get("name", "")
+            if name and name not in ignored:
+                rules.append({"name": name, "ref": "", "properties": _xml_properties(element)})
+    return rules, None
+
+
+def _xml_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1]
+
+
+def _xml_properties(element: ET.Element) -> Dict[str, str]:
+    properties: Dict[str, str] = {}
+    for child in element:
+        if _xml_name(child.tag) != "properties":
+            continue
+        for prop in child:
+            if _xml_name(prop.tag) != "property" or not prop.attrib.get("name"):
+                continue
+            value = prop.attrib.get("value")
+            if value is None:
+                for value_node in prop:
+                    if _xml_name(value_node.tag) == "value":
+                        value = "".join(value_node.itertext()).strip()
+                        break
+            properties[prop.attrib["name"]] = value or ""
+    # Checkstyle places property elements directly under modules.
+    for child in element:
+        if _xml_name(child.tag) == "property" and child.attrib.get("name"):
+            properties[child.attrib["name"]] = child.attrib.get("value", "")
+    return properties
+
+
+def _baseline_text(workspace: str, baselines: Sequence[Dict[str, Any]]) -> str:
+    chunks: List[str] = []
+    for baseline in baselines:
+        for rel in baseline.get("paths") or []:
+            chunks.append(read_text(os.path.join(workspace, rel)) or "")
+    return "\n".join(chunks).replace("\\", "/").lower()
+
+
+def _is_consequential_rule(name: str) -> bool:
+    compact = re.sub(r"[^a-z0-9]", "", name.lower())
+    return any(keyword in compact for keyword in _QUALITY_RULE_KEYWORDS)
+
+
+def _rule_is_named(rule: Dict[str, Any], baseline_text: str) -> bool:
+    name = str(rule["name"])
+    phrase = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", name).lower()
+    compact = re.sub(r"[^a-z0-9]", "", name.lower())
+    baseline_compact = re.sub(r"[^a-z0-9]", "", baseline_text)
+    if phrase not in baseline_text and compact not in baseline_compact:
+        return False
+    values = [value for value in (rule.get("properties") or {}).values() if value]
+    return not values or any(str(value).lower() in baseline_text for value in values)
 
 
 def _cursor_rule_files(workspace: str) -> List[str]:
@@ -569,6 +969,7 @@ def _findings(
     overlay: str,
     has_index: bool,
     ci_mentions: bool,
+    build_rules: Dict[str, Any],
 ) -> List[str]:
     fired: List[str] = []
     if record_count <= 0:
@@ -602,4 +1003,10 @@ def _findings(
         fired.append("index-missing")
     if initialized and not ci_mentions:
         fired.append("ci-missing")
+    if build_rules["missing_count"]:
+        fired.append("build-rules-missing")
+    if build_rules["unwired_count"]:
+        fired.append("build-rules-unwired")
+    if build_rules["configured_count"] and build_rules["status"] != PRESENT:
+        fired.append("build-rules-unsurfaced")
     return fired

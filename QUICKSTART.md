@@ -22,6 +22,11 @@ bearing init          # detect the decision-record convention and scaffold state
 bearing doctor        # confirm paths, plugin discovery, and configuration
 ```
 
+Both `bearing assessment` and `bearing init` look for PMD and Checkstyle XML.
+A file on its own is reported as configuration evidence; selection from Gradle
+is the stronger signal that its rules are operative. Consequential customized
+values are surfaced for review, never promoted into decisions automatically.
+
 You can stop here and use BEARING as decisions arise. There is no requirement to
 recover the repository's history before the system becomes useful.
 

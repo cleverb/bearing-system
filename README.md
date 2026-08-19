@@ -57,7 +57,17 @@ bearing init          # detects your decision-record convention, writes .bearing
 bearing doctor        # verifies everything resolves before you rely on it
 ```
 
+Assessment and init also report PMD and Checkstyle XML as build-quality
+evidence. File presence is a clue; Gradle selection is the stronger indication
+that a ruleset is active. Customized thresholds are surfaced for human review,
+not treated as decisions automatically.
+
 `bearing init` never guesses where your decisions live. If the repo already uses `docs/adr/`, `docs/ADRs/`, or anything else, it detects and asks — see [the legacy convention case](docs/specs/bearing-distribution-spec.md#33-the-legacy-convention-case).
+
+Within the configured corpus, records may live at the root or in category
+subdirectories such as `auth/`, `backend/`, and `frontend/`. BEARING recognizes
+both `0004-title.md` and `ADR-0004-title.md`; IDs remain unique across the whole
+tree.
 
 Then use the optional onboarding guide—or simply try BEARING during ordinary work—to gather enough evidence to decide whether it is useful. [`QUICKSTART.md`](QUICKSTART.md) shows the available paths.
 

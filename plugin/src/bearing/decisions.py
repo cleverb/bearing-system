@@ -10,6 +10,10 @@ demanding a bulk rewrite of an existing corpus before BEARING does anything
 useful is the same adoption friction the retrospective path exists to avoid. So
 bullets are read as a fallback, and `bearing lint` reports what is missing for a
 complete index entry rather than refusing to work.
+
+Records may be organized in category subdirectories beneath the configured
+corpus. Categories do not create namespaces: ADR IDs remain unique across the
+whole tree. Both `NNNN-title.md` and `ADR-NNNN-title.md` are numbered records.
 """
 
 from __future__ import annotations
@@ -18,7 +22,7 @@ import os
 import re
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
-from .paths import Layout
+from .paths import Layout, decision_record_number, iter_decision_record_paths
 from .util import parse_frontmatter, read_jsonl, read_text
 
 ACCEPTED = "Accepted"
@@ -48,7 +52,6 @@ CANDIDATE_STATES = (
 # re-surfacing it would spend review budget on a question already answered.
 _NOT_SURFACED = frozenset({"Rejected", "Promoted", "Stale", "Insufficient Evidence"})
 
-_RECORD_RE = re.compile(r"^(\d{4,})-(.+)\.md$")
 _BULLET_RE = re.compile(r"^\s*[*\-]\s*\*\*(?P<key>[A-Za-z][A-Za-z \-]*)\:?\*\*\:?\s*(?P<value>.*)$")
 _TITLE_RE = re.compile(r"^#\s+(.*)$", re.MULTILINE)
 _HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
@@ -88,8 +91,7 @@ class DecisionRecord:
         self.had_frontmatter = bool(front)
         bullets = _bullet_metadata(body)
 
-        match = _RECORD_RE.match(self.filename)
-        self.number = int(match.group(1)) if match else None
+        self.number = decision_record_number(self.filename)
 
         self.id = str(front.get("id") or bullets.get("id") or self._derived_id())
         self.title = self._title(body)
@@ -183,15 +185,11 @@ def load_records(layout: Layout) -> List[DecisionRecord]:
     if not os.path.isdir(directory):
         return []
     records: List[DecisionRecord] = []
-    for filename in sorted(os.listdir(directory)):
-        if not filename.endswith(".md") or filename.upper().startswith("README"):
-            continue
+    for path in iter_decision_record_paths(directory, layout.shadow_name):
         records.append(
-            DecisionRecord(
-                os.path.join(directory, filename), layout.workspace, layout.decisions_rel
-            )
+            DecisionRecord(path, layout.workspace, layout.decisions_rel)
         )
-    records.sort(key=lambda record: (record.numeric_key, record.filename))
+    records.sort(key=lambda record: (record.numeric_key, record.rel))
     return records
 
 

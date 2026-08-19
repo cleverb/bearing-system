@@ -195,6 +195,42 @@ class ValidationTest(BearingTestCase):
 
 
 class InitTest(BearingTestCase):
+    def test_init_reports_gradle_pmd_rules_without_creating_a_decision(self):
+        with TempWorkspace() as workspace:
+            workspace.write(
+                "build.gradle",
+                "pmd { ruleSets = []; "
+                "ruleSetFiles = files('./config/pmdrules.xml') }\n",
+            )
+            workspace.write(
+                "config/pmdrules.xml",
+                """<ruleset xmlns="http://pmd.sourceforge.net/ruleset/2.0.0" name="Rules">
+<rule ref="category/java/design.xml/CyclomaticComplexity">
+<properties><property name="methodReportLevel" value="17"/></properties>
+</rule></ruleset>""",
+            )
+
+            result = run_cli(
+                ["init", "--yes", "--no-render"], workspace=workspace.path
+            )
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("Build quality rule evidence discovered", result.stdout)
+            self.assertIn("config/pmdrules.xml", result.stdout)
+            self.assertIn("CyclomaticComplexity", result.stdout)
+            self.assertIn("methodReportLevel=17", result.stdout)
+            self.assertIn("stronger decision-recovery signal", result.stdout)
+            self.assertFalse(
+                any(
+                    name[:4].isdigit() and name.endswith(".md")
+                    for _, _, names in os.walk(
+                        os.path.join(workspace.path, "docs", "decisions")
+                    )
+                    for name in names
+                ),
+                "init must not turn a configured threshold into an inferred decision",
+            )
+
     def test_init_adopts_an_existing_legacy_convention(self):
         with TempWorkspace() as workspace:
             workspace.write("docs/adr/0001-something.md", "# ADR-0001: Something\n")

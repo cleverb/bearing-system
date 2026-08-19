@@ -144,11 +144,13 @@ The recommendation, and the pattern this document follows throughout:
 docs/
 └── decisions/
     ├── 0001-record-architecture-decisions.md
-    ├── 0002-use-typescript-for-all-new-features.md
-    └── 0003-component-tokenization-strategy.md
+    ├── backend/
+    │   └── ADR-0002-use-typescript-for-all-new-features.md
+    └── frontend/
+        └── ADR-0003-component-tokenization-strategy.md
 ```
 
-Numbered, zero-padded, sequential filenames are the one part of this convention with no real disagreement across sources — every tool and every style guide surveyed uses them, because sequential numbering is what makes chronological order legible at a glance without opening a file. Keep that part regardless of which directory name is chosen.
+Numbered, zero-padded, sequential filenames are the one part of this convention with no real disagreement across sources — every tool and every style guide surveyed uses them, because sequential numbering is what makes chronological order legible at a glance without opening a file. BEARING accepts both `0003-title.md` and `ADR-0003-title.md`. Records may be placed directly in the configured directory or grouped recursively into descriptive category directories. Those directories are organization, not namespaces: `ADR-0003` identifies one record across the entire corpus, and duplicates are structural errors.
 
 This is also a direct application of the Projection principle from Part IV: don't invent a bespoke convention when an emerging one already carries real-world momentum and a documented reason for existing. Settle into `docs/decisions/` for the same reason this document settles into deterministic renderers over portable file formats — it's the option the ecosystem is actively converging toward, not the option that happens to be first alphabetically or most familiar from five years ago.
 
@@ -473,6 +475,26 @@ A useful concrete rule for `AGENTS.md`: *"If you encounter a `@deprecated` tag w
 ### Worked example: fixing the cyclomatic-complexity gap
 
 Returning to Part I's failure, here is what closing it looks like using this framework end-to-end.
+
+**0. Discover the hidden Contract.** `bearing assessment` statically inspects
+PMD- and Checkstyle-named XML as configuration evidence, then inspects Gradle
+`build.gradle` / `build.gradle.kts` files for the stronger signal of custom PMD
+`ruleSetFiles`/`ruleSetConfig` and Checkstyle `configFile` sources (including
+Checkstyle's conventional location). It parses local XML without executing the
+build and reports whether agent instruction files name the source or summarize
+consequential rules and thresholds. Merely documenting `./gradlew check` is
+reported as partial: it helps verification after generation, but it does not
+make the ceiling visible before code is written.
+
+The evidence has an order: a ruleset file may be stale or unused; a Gradle
+reference shows that the build selected it for enforcement. That makes the
+reference a stronger recovery lead, but still not an accepted decision.
+
+`bearing init` repeats these findings as a bootstrap advisory. A customized
+threshold is evidence worth reviewing for decision ancestry, not evidence that
+a decision necessarily exists: init does not edit agent instructions or create
+a decision record. A maintainer can surface the rule directly, run recovery as
+a separate workflow, or decide that the build configuration needs no ADR.
 
 **1. Contract.** The complexity ceiling is written down as an explicit Contract, not implied by a linter config: *"Cyclomatic complexity per method MUST NOT exceed 10 without an accompanying `@see ADR-XXX` justification."* This lives somewhere retrievable — ideally summarized directly in `AGENTS.md` under a `Code Quality Contracts` heading, with a link to the full policy.
 

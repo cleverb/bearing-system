@@ -2,7 +2,7 @@
 
 This directory holds machine-inferred candidate decisions produced by `decision-recovery` (batch archaeology over commits, PRs, and tickets) and `decision-interview` (live elicitation). Both Skills write into the same two files here.
 
-**Nothing here is a decision.** It's evidence *about* a possible decision, with its confidence, provenance, and uncertainty preserved. A candidate becomes real only when a human promotes it — at which point it becomes a numbered `.md` file one directory up, in `docs/decisions/`, with a real `@see` annotation in the code it governs.
+**Nothing here is a decision.** It's evidence *about* a possible decision, with its confidence, provenance, and uncertainty preserved. A candidate becomes real only when a human promotes it — at which point it becomes a numbered `.md` file somewhere in the authored `docs/decisions/` tree, with a real `@see` annotation in the code it governs.
 
 No `@see` annotation should ever point into this folder. That's enforced by lint, not just stated here — see the Enforcement section of `/BEARING.md`.
 

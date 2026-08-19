@@ -69,6 +69,12 @@ If the repository already uses `docs/adr/`, `docs/ADRs/`, or another known conve
 
 Where the chosen path is not `docs/decisions/`, `bearing init --record-deviation` writes a short decision record explaining the location, so the next person who looks in the recommended place finds an explanation rather than an empty directory.
 
+The configured path is the root of a recursive corpus, not a requirement that
+every record be a direct child. Category directories are supported, and both
+`NNNN-title.md` and `ADR-NNNN-title.md` are recognized. Categories do not create
+namespaces: duplicate ADR IDs anywhere below the corpus root are lint errors.
+The configured shadow subtree is always excluded from authored-record traversal.
+
 ---
 
 ## 4. Projection
@@ -105,6 +111,45 @@ bearing transcripts       # print the transcript directory
 ```
 
 An optional evaluation-criteria template is seeded by `bearing init` into `.bearing/ledger/pass-fail-criteria.md`. There is no `--pass-fail` flag and the file is not required for ordinary use.
+
+### Assessment of build quality evidence
+
+Assessment recognizes PMD- or Checkstyle-named XML files as configuration
+evidence, then distinguishes the stronger signal of literal Gradle references to PMD `ruleSetFiles` and
+`ruleSetConfig`, Checkstyle `configFile`/`config`, and the conventional
+`config/checkstyle/checkstyle.xml` location when the Checkstyle plugin is
+applied. It parses local XML with the Python standard library and never executes
+Gradle.
+
+The result distinguishes three states:
+
+- **present** — configured XML paths are named in an agent baseline, or its
+  consequential rules and configured values are summarized there;
+- **partial** — some sources are surfaced, or only a Gradle verification command
+  is documented; and
+- **absent** — configured rules exist but are invisible to agents before
+  generation, or no custom PMD/Checkstyle XML was discovered.
+
+An XML file by itself is evidence that a ruleset may matter. Selection from a
+Gradle build is stronger evidence that the repository deliberately makes it
+operative. Neither observation establishes organizational authority or proves
+that an architectural decision was made.
+
+This is an informational discovery aid, not a claim that every PMD or Checkstyle
+rule deserves an ADR. Dynamic Gradle expressions are not guessed, and
+assessment never runs or gates on the repository's build.
+
+`bearing init` reports this same build-quality subset after scaffolding. It does
+not copy the rules into generated guidance or create a decision record. When a
+consequential rule has a customized value, init describes it as an opportunity
+to review decision ancestry: a maintainer may surface the operational rule,
+recover a candidate separately, or decide that no architectural record is
+warranted.
+
+When configured build rules are not fully surfaced, assessment does not award
+the top `review-aware` readiness band even if the decision corpus, Anchors, and
+review templates are otherwise present. The result remains informational and
+still exits zero.
 
 ---
 

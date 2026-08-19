@@ -17,6 +17,7 @@ using it.
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from typing import Dict, List, Optional, Tuple
 
@@ -45,6 +46,46 @@ KNOWN_DECISION_DIRS: Tuple[str, ...] = (
 DISCOURAGED_DECISION_DIRS = ("docs/adrs", "docs/ADRs", "adrs")
 
 PLUGIN_SKILL_NAMES = ("decision-recovery", "decision-interview", "decision-onboarding")
+
+_DECISION_RECORD_FILENAME_RE = re.compile(
+    r"^(?:ADR-)?(?P<number>\d{4,})-(?P<slug>.+)\.md$", re.IGNORECASE
+)
+
+
+def decision_record_number(filename: str) -> Optional[int]:
+    """Return the numeric ADR key for either supported filename convention."""
+    match = _DECISION_RECORD_FILENAME_RE.match(filename)
+    return int(match.group("number")) if match else None
+
+
+def iter_decision_record_paths(
+    directory: str, shadow_name: str = "shadow", numbered_only: bool = False
+) -> List[str]:
+    """Recursively list authored markdown, excluding the reserved shadow graph.
+
+    Category directories are organizational only. IDs remain repository-wide.
+    Hidden directories are ignored so tool state nested under a corpus is never
+    mistaken for authored knowledge.
+    """
+    if not os.path.isdir(directory):
+        return []
+    paths: List[str] = []
+    corpus_root = os.path.abspath(directory)
+    for root, dirnames, filenames in os.walk(directory):
+        at_corpus_root = os.path.abspath(root) == corpus_root
+        dirnames[:] = sorted(
+            name
+            for name in dirnames
+            if not name.startswith(".") and not (at_corpus_root and name == shadow_name)
+        )
+        for filename in sorted(filenames):
+            is_markdown = filename.lower().endswith(".md")
+            is_readme = filename.upper().startswith("README")
+            if is_markdown and not is_readme and (
+                not numbered_only or decision_record_number(filename) is not None
+            ):
+                paths.append(os.path.join(root, filename))
+    return paths
 
 
 def plugin_root() -> str:
@@ -236,8 +277,8 @@ def detect_decision_dirs(workspace: str) -> List[Dict[str, object]]:
 
     Returns one entry per candidate directory with the evidence behind it, so
     `init` can present a choice rather than guess. Two signals are collected:
-    a known conventional name, and the presence of `NNNN-*.md` files, which is
-    the one part of ADR convention with no disagreement across tools.
+    a known conventional name, and the recursive presence of `NNNN-*.md` or
+    `ADR-NNNN-*.md` files.
     """
     found: List[Dict[str, object]] = []
     seen = set()
@@ -276,25 +317,20 @@ def detect_decision_dirs(workspace: str) -> List[Dict[str, object]]:
             child_abs = os.path.join(base_abs, child)
             if not os.path.isdir(child_abs) or child.startswith("."):
                 continue
+            relpath = child if base == "." else "%s/%s" % (base, child)
+            # Do not report an ancestor such as `docs/` as a second corpus when
+            # a known convention such as `docs/decisions/` already explains the
+            # recursively discovered records.
+            if any(str(entry["path"]).startswith(relpath.rstrip("/") + "/") for entry in found):
+                continue
             if _count_numbered(child_abs) > 0:
-                relpath = child if base == "." else "%s/%s" % (base, child)
-                record(relpath, "contains NNNN-*.md records")
+                record(relpath, "contains numbered decision records")
 
     return found
 
 
 def _count_numbered(directory: str) -> int:
-    if not os.path.isdir(directory):
-        return 0
-    count = 0
-    try:
-        entries = os.listdir(directory)
-    except OSError:
-        return 0
-    for name in entries:
-        if len(name) > 5 and name[:4].isdigit() and name[4] == "-" and name.endswith(".md"):
-            count += 1
-    return count
+    return len(iter_decision_record_paths(directory, numbered_only=True))
 
 
 def resolve_skill_source(workspace: str) -> Dict[str, object]:

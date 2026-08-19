@@ -2,7 +2,7 @@
 
 Machine-inferred candidate decisions, produced by `decision-recovery` and `decision-interview`. A candidate here is a claim about *evidence*, not a decision.
 
-The distinction is the whole reason this directory exists rather than the candidates being written one level up. A recovered candidate reflects what the historical record suggests. A decision reflects what the organization decided. Those are different things, and conflating them would let inference acquire authority nobody granted it.
+The distinction is the whole reason this reserved subtree exists rather than candidates being written among authored records. A recovered candidate reflects what the historical record suggests. A decision reflects what the organization decided. Those are different things, and conflating them would let inference acquire authority nobody granted it.
 
 ## Rules
 

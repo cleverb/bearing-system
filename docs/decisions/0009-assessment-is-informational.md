@@ -37,7 +37,15 @@ Chosen option: **2**. `bearing assessment` prints a deterministic scorecard (hum
 * CI must not treat a non-zero assessment exit as a merge blocker — there is no such exit.
 * Adding assessment to `enforcement.block_on` is forbidden; that key remains `structural` and `known_contract` only.
 * Recommendations are a fixed table from finding ids. The command does not invent missing ADRs.
+* PMD and Checkstyle XML is reported as build-quality evidence. Assessment distinguishes file presence from Gradle selection, and an XML path or consequential threshold surfaced to agents from a Gradle check command that only detects violations after generation. Unsurfaced Gradle-selected rules cap readiness below `review-aware` without changing the command's zero exit status.
+* `bearing init` repeats the build-quality subset as a bootstrap advisory. It may identify customized values as decision-recovery review opportunities, but it neither edits agent guidance nor creates a decision record from configuration.
+* A discovered XML file is configuration evidence. A Gradle reference is the stronger signal that the repository actively selected those rules; neither is treated as proof of an accepted decision.
 
 ## Deletion test
 
 If assessment may exit non-zero, someone will put it in required CI and an empty eval or a missing `AGENTS.md` will stall every pull request on a description. If it requires init, the before-state the command exists to measure cannot be measured.
+
+## Implementation History
+
+* **2026-08-18:** Added read-only Gradle PMD and Checkstyle Contract discovery, XML rule summaries, and agent-surfacing recommendations.
+* **2026-08-18:** Added the same read-only findings to `bearing init`, with explicit language separating configuration evidence from decision authority.

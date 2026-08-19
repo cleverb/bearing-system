@@ -123,6 +123,17 @@ def cmd_init(args: argparse.Namespace) -> int:
         args.emit_plugin_paths = False
         cmd_render(args)
 
+    # Bootstrap is a useful moment to disclose machine-enforced repository
+    # rules. Discovery is not authority, so this reports findings without
+    # editing agent guidance or manufacturing a decision from configuration.
+    from .assessment import assess, render_build_quality_advisory
+
+    refreshed = resolve(workspace=workspace)
+    build_quality_advisory = render_build_quality_advisory(assess(refreshed))
+    if build_quality_advisory:
+        print()
+        print(build_quality_advisory, end="")
+
     print()
     print(paint("Next: `bearing doctor` to verify everything resolves.", "dim"))
     return EXIT_OK

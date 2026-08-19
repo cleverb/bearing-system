@@ -55,6 +55,21 @@ def run(config: ResolvedConfig) -> List[Finding]:
     records = load_records(layout)
     by_id = {record.id: record for record in records}
 
+    by_record_id: Dict[str, List] = {}
+    for record in records:
+        by_record_id.setdefault(record.id, []).append(record)
+    for record_id, duplicates in sorted(by_record_id.items()):
+        if len(duplicates) > 1:
+            findings.append(
+                Finding(
+                    "error",
+                    "duplicate-record-id",
+                    "%s is defined by multiple records: %s. Category directories do not "
+                    "create separate ADR namespaces."
+                    % (record_id, ", ".join(record.rel for record in duplicates)),
+                )
+            )
+
     scope = config.get("scope") or {}
     anchors, orphan_deprecations, shadow_anchors = scan_anchors(
         layout, scope.get("include") or None, scope.get("exclude") or None

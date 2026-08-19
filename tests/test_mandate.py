@@ -203,6 +203,55 @@ class ShadowGraphTest(BearingTestCase):
 
 
 class StructuralEnforcementTest(BearingTestCase):
+    def test_nested_records_support_both_filename_conventions(self):
+        with TempWorkspace() as workspace:
+            workspace.init()
+            workspace.write(
+                "docs/decisions/auth/ADR-0002-auth.md", _record(2, "Auth")
+            )
+            workspace.write(
+                "docs/decisions/frontend/0003-navigation.md", _record(3, "Navigation")
+            )
+            workspace.write(
+                "docs/decisions/shadow/ADR-0099-not-authoritative.md",
+                _record(99, "Not authoritative"),
+            )
+            workspace.write(
+                "src/app.py",
+                fixture(
+                    "# @see ADR-0002  bearing:ignore-anchor\n"
+                    "# @see ADR-0003  bearing:ignore-anchor\n"
+                ),
+            )
+            indexed = run_cli(["index", "--json"], workspace=workspace.path)
+            self.assertEqual(indexed.returncode, 0, indexed.stdout + indexed.stderr)
+            entries = {entry["id"]: entry for entry in json.loads(indexed.stdout)["entries"]}
+            self.assertEqual(
+                entries["ADR-0002"]["source"],
+                "docs/decisions/auth/ADR-0002-auth.md",
+            )
+            self.assertEqual(
+                entries["ADR-0003"]["source"],
+                "docs/decisions/frontend/0003-navigation.md",
+            )
+            self.assertNotIn("ADR-0099", entries)
+            run_cli(["index"], workspace=workspace.path)
+            linted = run_cli(["lint"], workspace=workspace.path)
+            self.assertNotIn("anchor-unresolved", linted.stdout)
+
+    def test_category_directories_share_one_adr_id_namespace(self):
+        with TempWorkspace() as workspace:
+            workspace.init()
+            workspace.write("docs/decisions/auth/ADR-0002-auth.md", _record(2, "Auth"))
+            workspace.write(
+                "docs/decisions/backend/ADR-0002-backend.md", _record(2, "Backend")
+            )
+            run_cli(["index"], workspace=workspace.path)
+            result = run_cli(["lint"], workspace=workspace.path)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("duplicate-record-id", result.stdout)
+            self.assertIn("do not create separate ADR namespaces", result.stdout)
+
     def test_an_unresolved_anchor_is_an_error(self):
         with TempWorkspace() as workspace:
             workspace.init()
