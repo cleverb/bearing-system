@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Decision Recovery Evidence",
+  "type": "object",
+  "required": ["evidence_source", "evidence_excerpt", "evidence_reliability"],
+  "properties": {
+    "evidence_source": {
+      "type": "string",
+      "enum": ["commit_message", "pr_description", "code_comment", "ticket", "live_interview"]
+    },
+    "evidence_excerpt": { "type": "string" },
+    "evidence_reliability": {
+      "type": "string",
+      "enum": ["HIGH", "MEDIUM", "LOW"],
+      "description": "How directly does this artifact support the inferred proposition?"
+    },
+    "organizational_authority": {
+      "type": "string",
+      "enum": ["HIGH", "MEDIUM", "LOW", "UNKNOWN"],
+      "description": "Did whoever produced/approved this have standing to establish the decision? Never assumed HIGH by default."
+    },
+    "corroboration": {
+      "type": "string",
+      "enum": ["HIGH", "MEDIUM", "LOW"],
+      "description": "How many independent sources support it?"
+    },
+    "specificity": {
+      "type": "string",
+      "enum": ["HIGH", "MEDIUM", "LOW"]
+    },
+    "temporal_relevance": {
+      "type": "string",
+      "enum": ["CURRENT", "HISTORICAL", "UNKNOWN"]
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "_generated": true,
+  "_note": "Compiled from docs/decisions/*.md front matter. Do not hand-edit — regenerate instead. See docs/decisions/README.md.",
+  "entries": [
+    {
+      "id": "ADR-0001",
+      "trigger": "adopting or modifying the decision-recording process itself",
+      "eocr_function": "Contract",
+      "lifecycle_state": "Accepted",
+      "scope": "docs/decisions/**",
+      "source": "docs/decisions/0001-record-architecture-decisions.md"
+    }
+  ]
+}
