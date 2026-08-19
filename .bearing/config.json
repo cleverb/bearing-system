@@ -1,0 +1,82 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cleverb/bearing-system/main/schemas/config-1.json",
+  "cost": {
+    "budget_usd_per_run": 25.0
+  },
+  "decisions": {
+    "index_file": "index.json",
+    "path": "docs/decisions",
+    "shadow_dir": "shadow",
+    "transcripts_dir": "transcripts"
+  },
+  "enforcement": {
+    "block_on": [
+      "structural",
+      "known_contract"
+    ]
+  },
+  "interview": {
+    "transcripts": {
+      "retention": "committed"
+    }
+  },
+  "profile": "pilot",
+  "projections": {
+    "contracts": {
+      "targets": [
+        "agents-md"
+      ]
+    },
+    "rules": {
+      "targets": [
+        "cursor",
+        "agents-md"
+      ]
+    },
+    "subagents": {
+      "targets": [
+        "cursor",
+        "claude",
+        "codex"
+      ]
+    }
+  },
+  "review": {
+    "budget_minutes_per_session": 90,
+    "seconds_per_candidate_estimate": 85,
+    "wave_size": 25
+  },
+  "scope": {
+    "exclude": [
+      "**/node_modules/**",
+      "**/vendor/**",
+      "**/dist/**",
+      "**/build/**"
+    ],
+    "include": [
+      "docs/decisions/**",
+      ".github/**",
+      ".cursor/rules/**",
+      "AGENTS.md",
+      "CLAUDE.md",
+      "CONTRIBUTING.md",
+      "plugin/src/bearing/*.py",
+      "plugin/hooks/**",
+      "scripts/conformance/**"
+    ]
+  },
+  "skills": {
+    "source": "plugin",
+    "vendored_version": null
+  },
+  "verify": {
+    "anchor_coverage_min": 0.6,
+    "cost_per_promoted_trailing_window": 4,
+    "escalation_recall_min": 0.9,
+    "false_escalation_rate_max": 0.15,
+    "index_token_budget": 4000,
+    "negative_set_hallucination_rate_max": 0.02,
+    "proposed_stale_days": 90
+  },
+  "version": 1
+}

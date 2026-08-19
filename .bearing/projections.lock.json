@@ -1,0 +1,148 @@
+{
+  "artifacts": [
+    {
+      "kind": "subagents",
+      "path": ".claude/agents/decision-archaeologist.md",
+      "scope": "repo",
+      "sha256": "9c86fbc87d1eec1a2556d7e29957035f7c72fe3191500938b407701f3436ef23",
+      "source": "plugin/skills/decision-recovery/subagents/decision-archaeologist.md",
+      "target": "claude"
+    },
+    {
+      "kind": "subagents",
+      "path": ".claude/agents/decision-interviewer.md",
+      "scope": "repo",
+      "sha256": "5ead58a9a4be31902ca7a33970371e2cbc097d95b8f9d9023b747adba598a385",
+      "source": "plugin/skills/decision-interview/subagents/decision-interviewer.md",
+      "target": "claude"
+    },
+    {
+      "kind": "subagents",
+      "path": ".claude/agents/decision-recovery-reviewer.md",
+      "scope": "repo",
+      "sha256": "e1aac0b96ae0d0d4bab461a9c3c688470a4a99fd2554d79bb8ff4ca04291b570",
+      "source": "plugin/skills/decision-recovery/subagents/decision-recovery-reviewer.md",
+      "target": "claude"
+    },
+    {
+      "kind": "subagents",
+      "path": ".claude/agents/onboarding-coordinator.md",
+      "scope": "repo",
+      "sha256": "0005401bc73e7f115c6c340f8e73b35ac7bfe5daf5ac1ab28305ba6668f49aae",
+      "source": "plugin/skills/decision-onboarding/subagents/onboarding-coordinator.md",
+      "target": "claude"
+    },
+    {
+      "kind": "subagents",
+      "path": ".codex/agents/decision-archaeologist.toml",
+      "scope": "repo",
+      "sha256": "d02d4684419f01584948ebae629efca4a8071b99c6ab36a0203df0c95ebbf57b",
+      "source": "plugin/skills/decision-recovery/subagents/decision-archaeologist.md",
+      "target": "codex"
+    },
+    {
+      "kind": "subagents",
+      "path": ".codex/agents/decision-interviewer.toml",
+      "scope": "repo",
+      "sha256": "0c38c092893cc8b9b2788c57cb231d8c34aac4c3f88a1eaab54039ffc8f7efbe",
+      "source": "plugin/skills/decision-interview/subagents/decision-interviewer.md",
+      "target": "codex"
+    },
+    {
+      "kind": "subagents",
+      "path": ".codex/agents/decision-recovery-reviewer.toml",
+      "scope": "repo",
+      "sha256": "d939a4d9bcac209da6572af79f51bb2144c45b83d9ca2a9811f46258124ef584",
+      "source": "plugin/skills/decision-recovery/subagents/decision-recovery-reviewer.md",
+      "target": "codex"
+    },
+    {
+      "kind": "subagents",
+      "path": ".codex/agents/onboarding-coordinator.toml",
+      "scope": "repo",
+      "sha256": "5209740b652076ecc5f0597a34ef5d88c08d0c9c5bdbf9ad23c8be19acaa74f3",
+      "source": "plugin/skills/decision-onboarding/subagents/onboarding-coordinator.md",
+      "target": "codex"
+    },
+    {
+      "kind": "subagents",
+      "path": ".cursor/agents/decision-archaeologist.md",
+      "scope": "repo",
+      "sha256": "23a17ef5486e4f68dbe26521e34e60733766a67108df7ca4fcf262277080e323",
+      "source": "plugin/skills/decision-recovery/subagents/decision-archaeologist.md",
+      "target": "cursor"
+    },
+    {
+      "kind": "subagents",
+      "path": ".cursor/agents/decision-interviewer.md",
+      "scope": "repo",
+      "sha256": "5ead58a9a4be31902ca7a33970371e2cbc097d95b8f9d9023b747adba598a385",
+      "source": "plugin/skills/decision-interview/subagents/decision-interviewer.md",
+      "target": "cursor"
+    },
+    {
+      "kind": "subagents",
+      "path": ".cursor/agents/decision-recovery-reviewer.md",
+      "scope": "repo",
+      "sha256": "e1aac0b96ae0d0d4bab461a9c3c688470a4a99fd2554d79bb8ff4ca04291b570",
+      "source": "plugin/skills/decision-recovery/subagents/decision-recovery-reviewer.md",
+      "target": "cursor"
+    },
+    {
+      "kind": "subagents",
+      "path": ".cursor/agents/onboarding-coordinator.md",
+      "scope": "repo",
+      "sha256": "0005401bc73e7f115c6c340f8e73b35ac7bfe5daf5ac1ab28305ba6668f49aae",
+      "source": "plugin/skills/decision-onboarding/subagents/onboarding-coordinator.md",
+      "target": "cursor"
+    },
+    {
+      "kind": "rules",
+      "path": ".cursor/rules/bearing.mdc",
+      "scope": "repo",
+      "sha256": "c61a5a6b53662e0529271bbbbd0155e663d54666fe0c6fdbc35f0e0d4ac840a1",
+      "source": "plugin/src/bearing/data/templates/agents-block.md",
+      "target": "cursor"
+    }
+  ],
+  "bearing_version": "0.2.0",
+  "renderer_version": 3,
+  "skipped": [
+    {
+      "kind": "contracts",
+      "reason": "compiled into the AGENTS.md constitution block by `bearing render`, not written as a separate file",
+      "scope": "repo",
+      "target": "agents-md"
+    },
+    {
+      "kind": "contracts",
+      "reason": "not in projections.contracts.targets",
+      "scope": "repo",
+      "target": "ci"
+    },
+    {
+      "kind": "contracts",
+      "reason": "not in projections.contracts.targets",
+      "scope": "repo",
+      "target": "lint"
+    },
+    {
+      "kind": "rules",
+      "reason": "managed as a delimited block inside a hand-maintained file by `bearing render`, not written as a whole generated file",
+      "scope": "repo",
+      "target": "agents-md"
+    },
+    {
+      "kind": "rules",
+      "reason": "not in projections.rules.targets",
+      "scope": "repo",
+      "target": "claude"
+    },
+    {
+      "kind": "rules",
+      "reason": "not in projections.rules.targets",
+      "scope": "repo",
+      "target": "copilot"
+    }
+  ]
+}

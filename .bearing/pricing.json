@@ -1,0 +1,4 @@
+{
+  "$comment": "This repository's price book. Merged OVER the packaged defaults per model, so correcting one price does not require restating the whole book. Every entry must carry as_of and source: a price with no date is a number nobody can audit, and BEARING stamps the book version into every cost figure it reports. Add a `version` here once this file has entries of its own.",
+  "models": {}
+}

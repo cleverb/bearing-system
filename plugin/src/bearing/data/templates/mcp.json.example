@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "BEARING": {
+      "command": "bearing-mcp",
+      "args": ["-C", "${workspaceFolder}"]
+    }
+  }
+}

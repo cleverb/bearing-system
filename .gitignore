@@ -1,36 +1,35 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# --- BEARING run state: never committed ---
+# Per-run logs and partial results. Reproducible from the ledger; noisy in diffs.
+.bearing/runs/
+# Corpus fingerprints and idempotency keys. Derived cache, rebuildable.
+.bearing/cache/
+# Personal per-repo overrides (operator facts, not repo facts).
+.bearing/config.local.json
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
+# --- BEARING transcripts under "local" retention ---
+# Only takes effect when interview.transcripts.retention is "local".
+# Under the default "committed" retention this directory is tracked.
+docs/decisions/shadow/transcripts/local/
 
-# testing
-/coverage
+# --- Generated marketplace bundles for local testing tiers 1-2 ---
+/dist/
 
-# next.js
-/.next/
-/out/
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+# Local symlink some checkouts accumulate; marketplace source is `./plugin`, not this path.
+plugin/plugin
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
 
-# production
-/build
-
-# misc
+# --- OS / editor ---
 .DS_Store
 *.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# local env files
-.env*.local
-.env
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+*.swp

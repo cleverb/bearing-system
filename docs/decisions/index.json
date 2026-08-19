@@ -1,0 +1,102 @@
+{
+  "_generated": true,
+  "_note": "Compiled from decision-record front matter by `bearing index`. Do not hand-edit -- regenerate instead.",
+  "entries": [
+    {
+      "eocr_function": "Contract",
+      "id": "ADR-0001",
+      "lifecycle_state": "Accepted",
+      "scope": "docs/decisions/**, plugin/src/bearing/decisions.py",
+      "source": "docs/decisions/0001-record-architecture-decisions.md",
+      "trigger": "adopting or modifying the decision-recording process itself"
+    },
+    {
+      "eocr_function": "Contract",
+      "id": "ADR-0002",
+      "lifecycle_state": "Accepted",
+      "scope": "plugin/src/bearing/*.py",
+      "source": "docs/decisions/0002-plugin-tree-is-read-only-at-runtime.md",
+      "trigger": "writing run state, ledgers, transcripts, or skill output"
+    },
+    {
+      "eocr_function": "Contract",
+      "id": "ADR-0003",
+      "lifecycle_state": "Accepted",
+      "scope": "plugin/src/bearing/render.py, plugin/src/bearing/agentsmd.py, plugin/src/bearing/manifests.py, plugin/src/bearing/artifacts.py, plugin/src/bearing/decisions.py",
+      "source": "docs/decisions/0003-project-canonical-sources-into-runtime-adapters.md",
+      "trigger": "adding a runtime adapter, renderer, or generated agent/rule file"
+    },
+    {
+      "eocr_function": "Contract",
+      "id": "ADR-0004",
+      "lifecycle_state": "Accepted",
+      "scope": "plugin/src/bearing/config.py, plugin/src/bearing/verify.py, plugin/src/bearing/lint.py",
+      "source": "docs/decisions/0004-inference-never-blocks-a-merge.md",
+      "trigger": "adding a CI job, linter, or config key that could block a merge"
+    },
+    {
+      "eocr_function": "Contract",
+      "id": "ADR-0005",
+      "lifecycle_state": "Accepted",
+      "scope": "plugin/src/bearing/*.py",
+      "source": "docs/decisions/0005-standard-library-only-python-39.md",
+      "trigger": "adding a Python dependency, raising the minimum interpreter, or replacing the in-tree JSON Schema validator"
+    },
+    {
+      "eocr_function": "Contract",
+      "id": "ADR-0006",
+      "lifecycle_state": "Accepted",
+      "scope": "plugin/src/bearing/render.py",
+      "source": "docs/decisions/0006-skill-md-is-not-projected.md",
+      "trigger": "adding a SKILL.md renderer or a projection whose targets all share one format"
+    },
+    {
+      "eocr_function": "Contract",
+      "id": "ADR-0007",
+      "lifecycle_state": "Accepted",
+      "scope": "plugin/src/bearing/config.py",
+      "source": "docs/decisions/0007-repo-facts-versus-operator-facts.md",
+      "trigger": "adding a config key or changing which layer wins for an existing key"
+    },
+    {
+      "eocr_function": "Contract",
+      "id": "ADR-0008",
+      "lifecycle_state": "Accepted",
+      "scope": "plugin/src/bearing/cli.py, plugin/src/bearing/profiles.py",
+      "source": "docs/decisions/0008-recovery-is-agent-executed.md",
+      "trigger": "implementing or invoking decision-recovery extraction"
+    },
+    {
+      "eocr_function": "Contract",
+      "id": "ADR-0009",
+      "lifecycle_state": "Accepted",
+      "scope": "plugin/src/bearing/assessment.py, plugin/src/bearing/cli.py",
+      "source": "docs/decisions/0009-assessment-is-informational.md",
+      "trigger": "changing what assessment scores, making it fail a process, or requiring init before it can run"
+    },
+    {
+      "eocr_function": "Contract",
+      "id": "ADR-0010",
+      "lifecycle_state": "Accepted",
+      "scope": "plugin/src/bearing/workspace.py, plugin/src/bearing/decisions.py, plugin/src/bearing/lint.py, plugin/src/bearing/verify.py, plugin/hooks/**",
+      "source": "docs/decisions/0010-discovery-completes-at-injection.md",
+      "trigger": "resolving authoritative decisions for a task, file, or runtime action"
+    },
+    {
+      "eocr_function": "Contract",
+      "id": "ADR-0011",
+      "lifecycle_state": "Accepted",
+      "scope": "plugin/src/bearing/compatibility.py, plugin/src/bearing/doctor.py, plugin/src/bearing/manifests.py, scripts/conformance/**",
+      "source": "docs/decisions/0011-runtime-conformance-qualifies-support.md",
+      "trigger": "claiming that a runtime client is supported by a BEARING release"
+    },
+    {
+      "eocr_function": "Contract",
+      "id": "ADR-0012",
+      "lifecycle_state": "Proposed",
+      "scope": "plugin/bin/**, plugin/hooks/**, plugin/src/bearing/enable.py, plugin/src/bearing/paths.py, plugin/src/bearing/doctor.py, plugin/src/bearing/cli.py",
+      "source": "docs/decisions/0012-plugin-install-is-user-distribution.md",
+      "trigger": "changing how the CLI is distributed or discovered after a marketplace plugin install"
+    }
+  ]
+}

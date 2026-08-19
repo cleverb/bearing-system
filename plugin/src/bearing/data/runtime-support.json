@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "bearing_compatibility_api": 1,
+  "runtimes": {
+    "claude": {
+      "supported": true,
+      "renderer_version": 1,
+      "discovery_mode": "session-advisory",
+      "qualified_discovery_mode": "mechanical",
+      "executable": "claude",
+      "artifacts": [
+        "plugin/.claude-plugin/plugin.json",
+        "plugin/hooks/hooks.json",
+        "plugin/hooks/context_injection.py",
+        "plugin/src/bearing/render.py",
+        "plugin/src/bearing/decisions.py",
+        "plugin/src/bearing/workspace.py"
+      ]
+    },
+    "codex": {
+      "supported": true,
+      "renderer_version": 1,
+      "discovery_mode": "session-advisory",
+      "executable": "codex",
+      "artifacts": [
+        "plugin/.codex-plugin/plugin.json",
+        "plugin/src/bearing/render.py"
+      ]
+    },
+    "cursor": {
+      "supported": true,
+      "renderer_version": 1,
+      "discovery_mode": "session-advisory",
+      "executable": "cursor-agent",
+      "artifacts": [
+        "plugin/.cursor-plugin/plugin.json",
+        "plugin/hooks/cursor.json",
+        "plugin/hooks/render_ephemeral.py",
+        "plugin/src/bearing/render.py"
+      ]
+    }
+  }
+}

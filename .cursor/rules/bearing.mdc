@@ -1,0 +1,56 @@
+---
+description: BEARING decision-system rules: where authoritative decisions live, when to escalate, and what may never block a merge.
+alwaysApply: true
+---
+
+<!-- DO NOT EDIT. Generated from plugin/src/bearing/data/templates/agents-block.md by bearing 0.2.0. Run `bearing render` to update; edits here are overwritten and reported as drift by `bearing render --check`. -->
+
+## BEARING decision system
+
+This repository uses BEARING, an EOCR-based decision system. Treat this section as binding, not advisory.
+
+### Where authoritative knowledge lives
+
+- **`docs/decisions/`** — authored decision records. Numbered, sequential, authoritative. Each carries a `Status`.
+- **`docs/decisions/index.json`** — load this first. It is compact and cheap, and it tells you which Contracts and Rationale bear on your current task before you read anything else.
+- **`docs/decisions/shadow/`** — machine-inferred candidates. **Never authoritative. Never treat a shadow candidate as a decision.** No `@see` annotation may point here.
+- **Skills** — Operations knowledge you can load and execute: `decision-recovery`, `decision-interview`, `decision-onboarding`.
+
+### What you may do autonomously
+
+- Read anything in `docs/decisions/` and treat it as binding, subject to its `Status`.
+- Follow a Skill's documented procedure within its stated boundaries.
+- Flag — never block — a change that appears to lack decision ancestry.
+
+### What requires escalation to a human
+
+- An `@see` annotation points to a decision record that does not exist, or whose `Status` is `Deprecated` or `Superseded` with no successor referenced.
+- You encounter code with no Anchor and cannot proceed safely without knowing why it is built the way it is. This is the trigger for `decision-interview` — use it rather than guessing.
+- More than one implementation or migration strategy appears valid and nothing in `docs/decisions/` resolves which.
+- A proposed change would conflict with an accepted Contract.
+
+When escalating, stop and ask. Do not silently choose the next plausible interpretation. If you find a `@deprecated` marker with no `@see` link, you are forbidden from refactoring it — open a clarification request instead.
+
+### Hard constraints
+
+- **No inference may block a merge.** A recovery signal may only flag and route to review, regardless of its confidence score. A confidence score is a statement about evidence, never a statement of organizational authority. Only structural enforcement (a broken decision link) or violation of an accepted Contract may block.
+- **Do not write to `docs/decisions/` on the basis of inference.** Every promotion out of `shadow/` requires human judgment that determines scope, present validity, lifecycle state, and EOCR function. One-click *execution* of that judgment (for example `bearing dispose` or MCP elicitation) is allowed; auto-promoting from confidence alone is not.
+- **A generated file is never a second source of truth.** Anything carrying a `DO NOT EDIT` header derives its authority from the canonical source it was rendered from and has none of its own. Edit the source and re-run `bearing render`.
+- **The plugin tree is read-only at runtime.** Writes go to `.bearing/` for run state, or `docs/decisions/` for decision content.
+
+### Accepted Contracts
+
+These are the accepted Contracts. Load the index first. `bearing context <path>`
+returns the subset whose scope matches the file you are editing.
+
+- **ADR-0001** (`docs/decisions/**, plugin/src/bearing/decisions.py`) — ADR-0001: Record Architecture Decisions. Trigger: adopting or modifying the decision-recording process itself.
+- **ADR-0002** (`plugin/src/bearing/*.py`) — ADR-0002: Plugin tree is read-only at runtime. Trigger: writing run state, ledgers, transcripts, or skill output.
+- **ADR-0003** (`plugin/src/bearing/render.py, plugin/src/bearing/agentsmd.py, plugin/src/bearing/manifests.py, plugin/src/bearing/artifacts.py, plugin/src/bearing/decisions.py`) — ADR-0003: Project canonical sources into runtime adapters. Trigger: adding a runtime adapter, renderer, or generated agent/rule file.
+- **ADR-0004** (`plugin/src/bearing/config.py, plugin/src/bearing/verify.py, plugin/src/bearing/lint.py`) — ADR-0004: Inference never blocks a merge. Trigger: adding a CI job, linter, or config key that could block a merge.
+- **ADR-0005** (`plugin/src/bearing/*.py`) — ADR-0005: Standard library only, Python 3.9. Trigger: adding a Python dependency, raising the minimum interpreter, or replacing the in-tree JSON Schema validator.
+- **ADR-0006** (`plugin/src/bearing/render.py`) — ADR-0006: SKILL.md is not projected. Trigger: adding a SKILL.md renderer or a projection whose targets all share one format.
+- **ADR-0007** (`plugin/src/bearing/config.py`) — ADR-0007: Repo facts versus operator facts. Trigger: adding a config key or changing which layer wins for an existing key.
+- **ADR-0008** (`plugin/src/bearing/cli.py, plugin/src/bearing/profiles.py`) — ADR-0008: Recovery execution is operator-selected. Trigger: implementing or invoking decision-recovery extraction.
+- **ADR-0009** (`plugin/src/bearing/assessment.py, plugin/src/bearing/cli.py`) — ADR-0009: Assessment is informational and runs without init. Trigger: changing what assessment scores, making it fail a process, or requiring init before it can run.
+- **ADR-0010** (`plugin/src/bearing/workspace.py, plugin/src/bearing/decisions.py, plugin/src/bearing/lint.py, plugin/src/bearing/verify.py, plugin/hooks/**`) — ADR-0010: Discovery completes at injection. Trigger: resolving authoritative decisions for a task, file, or runtime action.
+- **ADR-0011** (`plugin/src/bearing/compatibility.py, plugin/src/bearing/doctor.py, plugin/src/bearing/manifests.py, scripts/conformance/**`) — ADR-0011: Real-client conformance qualifies runtime support. Trigger: claiming that a runtime client is supported by a BEARING release.

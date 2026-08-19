@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+"""Launch `bearing-mcp` from the marketplace plugin tree without PATH."""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+
+
+def _plugin_root() -> str:
+    cursor = os.path.dirname(os.path.abspath(__file__))
+    while True:
+        manifest_path = os.path.join(cursor, "plugin.json")
+        if os.path.isfile(manifest_path):
+            with open(manifest_path, encoding="utf-8") as handle:
+                if json.load(handle).get("name") == "bearing":
+                    return cursor
+        parent = os.path.dirname(cursor)
+        if parent == cursor:
+            raise SystemExit("bearing-mcp: cannot locate plugin.json above %s" % cursor)
+        cursor = parent
+
+
+def _exec_python(argv: list, env: dict) -> None:
+    """See plugin/bin/bearing — Windows cannot use a stripped execve environment."""
+    python = argv[0]
+    if os.name == "nt":
+        merged = os.environ.copy()
+        merged.update(env)
+        raise SystemExit(subprocess.call(argv, env=merged))
+    os.execve(python, argv, env)
+
+
+def main() -> None:
+    root = _plugin_root()
+    src = os.path.join(root, "src")
+    env = os.environ.copy()
+    prefix = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = src + (os.pathsep + prefix if prefix else "")
+    _exec_python(
+        [sys.executable, "-m", "bearing.mcp_server"] + sys.argv[1:],
+        env,
+    )
+
+
+if __name__ == "__main__":
+    main()

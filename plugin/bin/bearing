@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+"""Launch `bearing` from the marketplace plugin tree without PATH.
+
+Walks up from this file to `plugin.json` (Agent Plugins layout: `bin/` sits
+beside `plugin.json`). Invoked as `python3 bin/bearing` so marketplace copy
+does not depend on the executable bit.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+
+
+def _plugin_root() -> str:
+    cursor = os.path.dirname(os.path.abspath(__file__))
+    while True:
+        manifest_path = os.path.join(cursor, "plugin.json")
+        if os.path.isfile(manifest_path):
+            with open(manifest_path, encoding="utf-8") as handle:
+                if json.load(handle).get("name") == "bearing":
+                    return cursor
+        parent = os.path.dirname(cursor)
+        if parent == cursor:
+            raise SystemExit("bearing: cannot locate plugin.json above %s" % cursor)
+        cursor = parent
+
+
+def _exec_python(argv: list, env: dict) -> None:
+    """Replace this process with `argv` under `env`.
+
+    `os.execve` is the Unix path. On Windows it still needs keys such as
+    `SYSTEMROOT` in `env`, and a test or hook that passes a minimal environment
+    will otherwise fail CreateProcess. Merge with the current environment and
+    use `subprocess.call`, which is the portable process-replace equivalent.
+    """
+    python = argv[0]
+    if os.name == "nt":
+        merged = os.environ.copy()
+        merged.update(env)
+        raise SystemExit(subprocess.call(argv, env=merged))
+    os.execve(python, argv, env)
+
+
+def main() -> None:
+    root = _plugin_root()
+    src = os.path.join(root, "src")
+    env = os.environ.copy()
+    prefix = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = src + (os.pathsep + prefix if prefix else "")
+    _exec_python([sys.executable, "-m", "bearing"] + sys.argv[1:], env)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bearing-system"
+version = "0.2.0"
+description = "BEARING: an EOCR-based decision system for human-agent engineering"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+keywords = ["adr", "decisions", "architecture", "agents", "skills", "eocr"]
+# Intentionally empty. The CLI must run in whatever environment a target
+# repository already has; a bootstrap that requires a dependency install is a
+# bootstrap that does not get run.
+dependencies = []
+
+[project.scripts]
+bearing = "bearing.cli:main"
+bearing-mcp = "bearing.mcp_server:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+bearing = ["data/*.json", "data/templates/*"]
+# plugin.json, runtime-compatibility.json, and skills/ live beside src/bearing
+# (marketplace layout). setup.py copies them into the installed package.

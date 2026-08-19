@@ -1,0 +1,42 @@
+{
+  "metadata": {
+    "description": "The BEARING decision system.",
+    "version": "0.2.0"
+  },
+  "name": "bearing",
+  "owner": {
+    "name": "BEARING maintainers"
+  },
+  "plugins": [
+    {
+      "author": {
+        "name": "BEARING maintainers"
+      },
+      "category": "engineering-governance",
+      "description": "BEARING: an EOCR-based decision system — recover, elicit, anchor, and enforce the decisions governing a codebase, so architectural intent is discoverable at generation time rather than only enforceable at commit time.",
+      "displayName": "BEARING",
+      "homepage": "https://github.com/cleverb/bearing-system",
+      "keywords": [
+        "adr",
+        "architecture-decision-records",
+        "decisions",
+        "eocr",
+        "governance",
+        "legacy-code",
+        "code-archaeology"
+      ],
+      "license": "MIT",
+      "mcpServers": "./mcp.json",
+      "name": "bearing",
+      "repository": "https://github.com/cleverb/bearing-system",
+      "source": "./plugin",
+      "tags": [
+        "adr",
+        "decisions",
+        "architecture",
+        "legacy"
+      ],
+      "version": "0.2.0"
+    }
+  ]
+}
