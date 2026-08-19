@@ -21,6 +21,7 @@ You're going to bootstrap BEARING and then run `bearing onboard`, which gates th
 ## Run it
 
 ```
+bearing assessment    # optional: score current decision readiness (works without init; always exits 0)
 bearing init          # detect the decisions directory, scaffold .bearing/ and docs/decisions/
 bearing doctor        # confirm the plugin, CLI, and config resolve
 bearing onboard       # Step 0a preflight, then load the decision-onboarding Skill

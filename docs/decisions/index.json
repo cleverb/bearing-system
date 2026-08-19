@@ -65,6 +65,14 @@
       "scope": "plugin/src/bearing/cli.py",
       "source": "docs/decisions/0008-recovery-is-agent-executed.md",
       "trigger": "implementing or invoking decision-recovery extraction"
+    },
+    {
+      "eocr_function": "Contract",
+      "id": "ADR-0009",
+      "lifecycle_state": "Accepted",
+      "scope": "plugin/src/bearing/assessment.py, plugin/src/bearing/cli.py",
+      "source": "docs/decisions/0009-assessment-is-informational.md",
+      "trigger": "changing what assessment scores, making it fail a process, or requiring init before it can run"
     }
   ]
 }

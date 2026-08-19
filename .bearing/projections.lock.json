@@ -100,7 +100,7 @@
       "kind": "rules",
       "path": ".cursor/rules/bearing.mdc",
       "scope": "repo",
-      "sha256": "fc9306ffc6ec181a94534627eef76440fd770639106a811c4e2fb3772680bdb1",
+      "sha256": "767c6299b2b87c688758bb277ed222be893f29be6c26ccc63b69336c0e81590a",
       "source": "plugin/src/bearing/data/templates/agents-block.md",
       "target": "cursor"
     }

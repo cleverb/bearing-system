@@ -52,6 +52,7 @@ Requires Python 3.9 or newer and no third-party packages. Plugin install alone i
 
 ```bash
 cd /path/to/your/repo
+bearing assessment    # scorecard of agentic decision readiness; works before init; always exits 0
 bearing init          # detects your decision-record convention, writes .bearing/config.json
 bearing doctor        # verifies everything resolves before you rely on it
 ```

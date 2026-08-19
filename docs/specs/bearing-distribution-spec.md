@@ -11,7 +11,7 @@ Install is not a step in recovery, interview, or onboarding. Conflating those la
 | Layer | Owns | Answers |
 | --- | --- | --- |
 | Distribution | Marketplace, `plugin/plugin.json`, per-client manifests, the `bearing` CLI | How does the machinery get onto this machine? |
-| Bootstrap | `bearing init`, `bearing doctor` | How does *this* repository start using it? |
+| Bootstrap | `bearing init`, `bearing doctor`, `bearing assessment` | How does *this* repository start using it? |
 | Operation | The Skills — recovery, interview, onboarding | How is the work performed? |
 
 **Plugin install and CLI install are both required** for the full product. A marketplace install of the plugin delivers Skills, subagent definitions, and the `workspaceOpen` hook. The hook invokes `python3` against a wrapper in the plugin tree so it does not depend on `bearing` being on `PATH`. Interactive commands (`init`, `lint`, `verify`, `onboard`, `context`) still need the CLI, via `pipx install ./plugin` or `PYTHONPATH=plugin/src python3 -m bearing` from a checkout.
@@ -85,6 +85,7 @@ Default subagent scope is `repo` (adapters committed with the clone). Operators 
 
 ```bash
 bearing init              # detect convention, scaffold, optional first render
+bearing assessment        # agentic decision-readiness scorecard; works before init; always exits 0
 bearing doctor            # what resolves, from where, and what is broken
 bearing preflight         # doctor plus a clean working tree (onboarding Step 0a)
 bearing render            # generate adapters; --check for drift

@@ -3,6 +3,7 @@
 @see ADR-0008 — judgment belongs to Skills; this file is mechanical. Recovery
 has no extractor binary.
 @see ADR-0005 — standard library argparse, no third-party CLI framework.
+@see ADR-0009 — assessment is informational; this file must not fail the process.
 
 Everything here is deterministic and side-effect-explicit. That is a deliberate
 division of labour: the *judgment* in this system belongs to Skills and to humans,
@@ -167,6 +168,22 @@ def cmd_preflight(args: argparse.Namespace) -> int:
             )
         )
     return code
+
+
+def cmd_assessment(args: argparse.Namespace) -> int:
+    """Scorecard. Always exits 0 — unreadiness is not a merge gate.
+
+    @see ADR-0009
+    """
+    from .assessment import assess, render_text
+
+    config = resolve(workspace=getattr(args, "workspace", None))
+    result = assess(config)
+    if args.json:
+        print(dump_json(result), end="")
+    else:
+        print(render_text(result), end="")
+    return EXIT_OK
 
 
 # ---------------------------------------------------------------------------
@@ -836,6 +853,13 @@ def build_parser() -> argparse.ArgumentParser:
     doctor = add("doctor", "Report what resolves, from where, and what is broken.", cmd_doctor)
     doctor.add_argument("--strict", action="store_true", help="also require a clean working tree")
     doctor.add_argument("--json", action="store_true")
+
+    assessment = add(
+        "assessment",
+        "Score agentic decision readiness (informational; always exits 0).",
+        cmd_assessment,
+    )
+    assessment.add_argument("--json", action="store_true")
 
     add("preflight", "Onboarding Step 0a: verify preconditions before any pipeline step.", cmd_preflight)
 
