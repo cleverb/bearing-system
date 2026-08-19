@@ -1,0 +1,35 @@
+{
+  "bearing_compatibility_api": 1,
+  "config_schema_version": 1,
+  "renderer_version": 3,
+  "runtimes": [
+    {
+      "config_schema_version": 1,
+      "discovery_mode": "session-advisory",
+      "evidence": null,
+      "fingerprint": "74463bef2bcefdb341d7e63cf2115b4e83d303f575201c556138fdbbce29e682",
+      "renderer_version": 1,
+      "runtime": "claude",
+      "supported": true
+    },
+    {
+      "config_schema_version": 1,
+      "discovery_mode": "session-advisory",
+      "evidence": null,
+      "fingerprint": "d1fd60466ff8d400c7ecc69aaa3a81ffd3ad73e40095788dde31658b120bb360",
+      "renderer_version": 1,
+      "runtime": "codex",
+      "supported": true
+    },
+    {
+      "config_schema_version": 1,
+      "discovery_mode": "session-advisory",
+      "evidence": null,
+      "fingerprint": "0286dae6792ba3dbf6c14eeaedb1aa4744de2dc512cb5c46a11786834b6f237c",
+      "renderer_version": 1,
+      "runtime": "cursor",
+      "supported": true
+    }
+  ],
+  "schema_version": 1
+}

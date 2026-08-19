@@ -1,0 +1,51 @@
+{
+  "$comment": "Packaged default price book. Merged UNDER .bearing/pricing.json, so a repository can correct or extend it without editing the plugin. Every entry carries as_of and source because a price quoted without a date is a number nobody can audit. These are published list prices in USD per million tokens and ignore prompt caching, batch discounts, and negotiated rates -- see the caveat block emitted with every cost report.",
+  "version": "2026-08-01",
+  "currency": "USD",
+  "unit": "per_million_tokens",
+  "models": {
+    "claude-haiku-4.5": {
+      "tier": "cheap",
+      "input": 1.0,
+      "output": 5.0,
+      "as_of": "2026-08-01",
+      "source": "https://www.anthropic.com/pricing"
+    },
+    "claude-sonnet-4.5": {
+      "tier": "mid",
+      "input": 3.0,
+      "output": 15.0,
+      "as_of": "2026-08-01",
+      "source": "https://www.anthropic.com/pricing"
+    },
+    "claude-opus-4.5": {
+      "tier": "frontier",
+      "input": 5.0,
+      "output": 25.0,
+      "as_of": "2026-08-01",
+      "source": "https://www.anthropic.com/pricing"
+    },
+    "gpt-5-mini": {
+      "tier": "cheap",
+      "input": 0.25,
+      "output": 2.0,
+      "as_of": "2026-08-01",
+      "source": "https://openai.com/api/pricing/"
+    },
+    "gpt-5": {
+      "tier": "mid",
+      "input": 1.25,
+      "output": 10.0,
+      "as_of": "2026-08-01",
+      "source": "https://openai.com/api/pricing/"
+    },
+    "inherit": {
+      "tier": "frontier",
+      "input": null,
+      "output": null,
+      "as_of": "2026-08-01",
+      "source": "no price: the host agent's own model is used, and its cost is accounted for by whoever operates the host",
+      "unpriced_reason": "resolved at runtime by the host agent"
+    }
+  }
+}

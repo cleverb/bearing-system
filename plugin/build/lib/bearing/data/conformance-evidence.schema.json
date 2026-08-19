@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "runtime",
+    "runtime_version_min",
+    "runtime_version_max",
+    "platform",
+    "tested_at",
+    "bearing_compatibility_api",
+    "renderer_version",
+    "config_schema_version",
+    "fingerprint",
+    "artifacts",
+    "checks",
+    "result"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "runtime": { "enum": ["cursor", "claude", "codex"] },
+    "runtime_version_min": { "type": "string", "minLength": 1 },
+    "runtime_version_max": { "type": "string", "minLength": 1 },
+    "platform": { "type": "string", "minLength": 1 },
+    "tested_at": { "type": "string", "minLength": 10 },
+    "bearing_compatibility_api": { "type": "integer", "minimum": 1 },
+    "renderer_version": { "type": "integer", "minimum": 1 },
+    "config_schema_version": { "type": "integer", "minimum": 1 },
+    "fingerprint": { "type": "string", "minLength": 64 },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "sha256": { "type": "string", "minLength": 7 }
+        }
+      }
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["install", "skill_discovery", "agent_acceptance", "hook_execution", "readonly_boundary", "uninstall_preservation"],
+      "properties": {
+        "install": { "type": "boolean" },
+        "skill_discovery": { "type": "boolean" },
+        "agent_acceptance": { "type": "boolean" },
+        "hook_execution": { "type": "boolean" },
+        "readonly_boundary": { "type": "boolean" },
+        "uninstall_preservation": { "type": "boolean" }
+      }
+    },
+    "result": { "enum": ["pass", "fail"] },
+    "notes": { "type": "string" }
+  }
+}

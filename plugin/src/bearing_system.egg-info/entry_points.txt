@@ -1,0 +1,3 @@
+[console_scripts]
+bearing = bearing.cli:main
+bearing-mcp = bearing.mcp_server:main
