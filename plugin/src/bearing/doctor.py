@@ -34,6 +34,7 @@ from .paths import (
     detect_decision_dirs,
     git_output,
     is_git_repo,
+    operator_bin_dir,
     plugin_root,
     resolve_skill_source,
 )
@@ -76,15 +77,33 @@ def _minimum_python() -> Check:
     return Check(OK, "Python 3.9 or newer", "found %s" % version)
 
 
+_ENABLE_REMEDY = (
+    "Run `python3 plugin/enable.py --discover` from a bearing-system clone "
+    "(no PATH or pipx required), or `bearing enable --discover` once `bearing` is on PATH."
+)
+
+
 def _plugin_check() -> Check:
     root = plugin_root()
     if not os.path.isfile(os.path.join(root, "plugin.json")):
+        from .enable import load_install_pointer
+
+        pointer = load_install_pointer()
+        remedy = (
+            "Install the BEARING plugin in your agent runtime, then %s"
+            % _ENABLE_REMEDY
+        )
+        if pointer:
+            remedy = (
+                "install.json points at %s but plugin.json is missing there. "
+                "Reinstall the plugin, then %s"
+                % (pointer.get("plugin_root"), _ENABLE_REMEDY)
+            )
         return Check(
             FAIL,
             "plugin resolves",
-            "no plugin.json found above %s" % root,
-            "Install the BEARING plugin, or run the CLI from a checkout that contains "
-            "plugin/plugin.json.",
+            "no plugin.json found at %s" % root,
+            remedy,
         )
     missing = [
         name
@@ -96,9 +115,101 @@ def _plugin_check() -> Check:
             FAIL,
             "plugin resolves",
             "missing skill(s): %s" % ", ".join(missing),
-            "The plugin install looks incomplete. Reinstall it from the marketplace.",
+            "The plugin install looks incomplete. Reinstall from the marketplace, then %s"
+            % _ENABLE_REMEDY,
         )
     return Check(OK, "plugin resolves", root)
+
+
+def _cli_enable_checks() -> List[Check]:
+    """Report operator-scope PATH shims (ADR-0012). Advisory only."""
+    from .enable import is_legacy_package_install, is_operator_shim, load_install_pointer
+
+    checks: List[Check] = []
+    pointer = load_install_pointer()
+    shim_dir = operator_bin_dir()
+    shim = os.path.join(shim_dir, "bearing")
+
+    if not pointer:
+        checks.append(
+            Check(
+                WARN,
+                "CLI enablement",
+                "no ~/.bearing/install.json",
+                _ENABLE_REMEDY,
+                gating=False,
+            )
+        )
+        return checks
+
+    checks.append(
+        Check(
+            OK,
+            "CLI enablement",
+            "plugin %s via %s" % (pointer.get("version") or "unknown", pointer.get("plugin_root")),
+            gating=False,
+        )
+    )
+
+    if not os.path.isfile(shim):
+        checks.append(
+            Check(
+                WARN,
+                "CLI shim",
+                "missing %s" % shim,
+                _ENABLE_REMEDY,
+                gating=False,
+            )
+        )
+    else:
+        checks.append(Check(OK, "CLI shim", shim, gating=False))
+
+    on_path = shutil.which("bearing")
+    if not on_path:
+        checks.append(
+            Check(
+                WARN,
+                "bearing on PATH",
+                "not found",
+                'export PATH="%s:$PATH"' % shim_dir,
+                gating=False,
+            )
+        )
+    else:
+        try:
+            same = os.path.samefile(on_path, shim)
+        except OSError:
+            same = os.path.realpath(on_path) == os.path.realpath(shim)
+        if same or is_operator_shim(on_path):
+            detail = on_path
+            if not same and is_operator_shim(on_path):
+                detail = "%s (mirrored operator shim)" % on_path
+            checks.append(Check(OK, "bearing on PATH", detail, gating=False))
+        elif is_legacy_package_install(on_path):
+            checks.append(
+                Check(
+                    WARN,
+                    "bearing on PATH",
+                    on_path,
+                    "pipx/uv wheel install; %s to retarget the operator shim at %s"
+                    % (_ENABLE_REMEDY, shim),
+                    gating=False,
+                )
+            )
+        elif os.path.isfile(shim):
+            checks.append(
+                Check(
+                    WARN,
+                    "bearing on PATH",
+                    on_path,
+                    "unexpected `bearing` on PATH; prefer the operator shim at %s" % shim,
+                    gating=False,
+                )
+            )
+        else:
+            checks.append(Check(OK, "bearing on PATH", on_path, gating=False))
+
+    return checks
 
 
 def _skill_source_check(config: ResolvedConfig) -> List[Check]:
@@ -542,6 +653,7 @@ def _runtime_compatibility_checks(config: ResolvedConfig) -> List[Check]:
 
 def run_checks(config: ResolvedConfig, require_clean_tree: bool = False) -> List[Check]:
     checks: List[Check] = [_minimum_python(), _plugin_check(), _plugin_readonly_check()]
+    checks.extend(_cli_enable_checks())
     checks.extend(_config_checks(config))
     checks.extend(_skill_source_check(config))
     checks.extend(_git_checks(config, require_clean_tree))

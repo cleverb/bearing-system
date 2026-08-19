@@ -8,7 +8,8 @@ The distinction is the whole reason this reserved subtree exists rather than can
 
 - **No `@see` annotation may point here.** Checked by `bearing lint`, not merely requested.
 - **No inference in this directory may block a merge**, at any confidence level. A confidence score describes evidence quality; it says nothing about organizational authority. Only structural enforcement or an accepted Contract may block.
-- **Promotion out of here is always a human decision**, and that decision determines scope, current validity, and lifecycle state. It is not a check that the summary read correctly.
+- **Promotion out of here is always a human decision**, and that decision determines scope, present validity, lifecycle state, and EOCR function. It is not a check that the summary read correctly.
+- **One-click execution of that judgment is allowed** (`bearing review` / `bearing dispose` / MCP `review_candidate`). **Ceremonial confidence-approve is not.** Promote requires the human fields; scaffolding the ADR afterward is mechanical.
 
 ## Files
 
@@ -24,6 +25,6 @@ A rejected candidate that vanishes gets rediscovered by the next recovery pass a
 
 ## Lifecycle states
 
-`Detected` → `Reviewable` → `Promoted` | `Rejected` | `Stale`
+`Detected` → `Corroborated` → `Reviewable` → `Promoted` | `Rejected` | `Insufficient Evidence` | `Stale`
 
-Only `Reviewable` candidates reach a human, and only those meeting the surfacing bar: MEDIUM confidence or higher, plus two deliberate exceptions — a candidate that contradicts an accepted record, and one on a subject already flagged load-bearing. Both are worth a human's attention even on weak evidence, because a contradiction with authored knowledge is informative regardless of how confident the inference is.
+Only surfaced candidates reach a human (MEDIUM confidence or higher, plus two deliberate exceptions — a candidate that contradicts an accepted record, and one on a subject already flagged load-bearing). Clear them with reject, revise, split, defer, or promote — never by auto-promoting from confidence alone.

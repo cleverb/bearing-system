@@ -88,14 +88,9 @@ def iter_decision_record_paths(
     return paths
 
 
-def plugin_root() -> str:
-    """The installed plugin root: the directory containing `plugin.json`.
-
-    Walks up from this module rather than trusting an environment variable so it
-    stays correct whether BEARING was pip-installed, run from a checkout, or
-    loaded from a plugin cache directory.
-    """
-    here = os.path.dirname(os.path.abspath(__file__))
+def _plugin_root_from_walk(start: Optional[str] = None) -> Optional[str]:
+    """Walk up from `start` (default: this package) looking for plugin.json."""
+    here = start or os.path.dirname(os.path.abspath(__file__))
     cursor = here
     while True:
         manifest_path = os.path.join(cursor, "plugin.json")
@@ -105,10 +100,32 @@ def plugin_root() -> str:
                 return cursor
         parent = os.path.dirname(cursor)
         if parent == cursor:
-            # Installed as a bare package with no plugin manifest alongside it.
-            # Fall back to the package directory so templates still resolve.
-            return here
+            return None
         cursor = parent
+
+
+def plugin_root() -> str:
+    """The installed plugin root: the directory containing `plugin.json`.
+
+    Resolution order:
+
+    1. Walk up from this package (checkout, marketplace cache, or pipx wheel with
+       bundled `plugin.json` and `skills/`).
+    2. Operator install pointer at `~/.bearing/install.json` (ADR-0012) when the
+       import package is not inside a full plugin tree.
+    3. Fall back to this package directory so templates still resolve.
+    """
+    walked = _plugin_root_from_walk()
+    if walked is not None:
+        return walked
+
+    from .enable import load_install_pointer
+
+    pointer = load_install_pointer()
+    if pointer:
+        return str(pointer["plugin_root"])
+
+    return os.path.dirname(os.path.abspath(__file__))
 
 
 def data_dir() -> str:
@@ -127,6 +144,10 @@ def user_root() -> str:
     if override:
         return os.path.abspath(os.path.expanduser(override))
     return os.path.join(os.path.expanduser("~"), ".bearing")
+
+
+def operator_bin_dir() -> str:
+    return os.path.join(user_root(), "bin")
 
 
 def find_workspace_root(start: Optional[str] = None) -> str:

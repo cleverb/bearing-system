@@ -66,6 +66,20 @@ def append_jsonl(path: str, row: Any) -> None:
         fh.write(json.dumps(row, sort_keys=True, ensure_ascii=False) + "\n")
 
 
+def write_jsonl(path: str, rows: Iterable[Any]) -> None:
+    """Rewrite a JSONL file atomically enough for disposition updates.
+
+    Candidates are conceptually append-mostly, but lifecycle updates (Promote,
+    Reject, …) must mutate an existing line. Rewriting the whole file keeps the
+    queue consistent without a second store.
+    """
+    ensure_dir(os.path.dirname(path))
+    payload = "".join(
+        json.dumps(row, sort_keys=True, ensure_ascii=False) + "\n" for row in rows
+    )
+    write_text(path, payload)
+
+
 # --------------------------------------------------------------------------
 # Filesystem
 # --------------------------------------------------------------------------

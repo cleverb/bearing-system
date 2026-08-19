@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "BEARING": {
+      "args": [
+        "hooks/run_mcp.py"
+      ],
+      "command": "python3",
+      "cwd": "${PLUGIN_ROOT}"
+    }
+  }
+}

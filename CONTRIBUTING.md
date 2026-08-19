@@ -2,6 +2,8 @@
 
 This repository is both the BEARING plugin and a repository using BEARING. Decision records in `docs/decisions/` are binding, subject to their `Status`. Load `docs/decisions/index.json` (or run `bearing context <path>`) before changing code they govern.
 
+Machine setup for a local checkout — including running proposed CLI and plugin changes — is in [`SETUP.md`](SETUP.md) (the Contributor section). This file is the definition of done once that environment runs.
+
 ## Definition of done
 
 A change is ready for review when:

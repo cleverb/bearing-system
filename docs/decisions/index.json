@@ -89,6 +89,14 @@
       "scope": "plugin/src/bearing/compatibility.py, plugin/src/bearing/doctor.py, plugin/src/bearing/manifests.py, scripts/conformance/**",
       "source": "docs/decisions/0011-runtime-conformance-qualifies-support.md",
       "trigger": "claiming that a runtime client is supported by a BEARING release"
+    },
+    {
+      "eocr_function": "Contract",
+      "id": "ADR-0012",
+      "lifecycle_state": "Proposed",
+      "scope": "plugin/bin/**, plugin/hooks/**, plugin/src/bearing/enable.py, plugin/src/bearing/paths.py, plugin/src/bearing/doctor.py, plugin/src/bearing/cli.py",
+      "source": "docs/decisions/0012-plugin-install-is-user-distribution.md",
+      "trigger": "changing how the CLI is distributed or discovered after a marketplace plugin install"
     }
   ]
 }

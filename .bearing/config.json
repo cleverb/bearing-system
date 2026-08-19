@@ -23,20 +23,17 @@
   "profile": "pilot",
   "projections": {
     "contracts": {
-      "scope": "repo",
       "targets": [
         "agents-md"
       ]
     },
     "rules": {
-      "scope": "repo",
       "targets": [
         "cursor",
         "agents-md"
       ]
     },
     "subagents": {
-      "scope": "repo",
       "targets": [
         "cursor",
         "claude",

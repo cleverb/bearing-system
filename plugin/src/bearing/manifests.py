@@ -37,6 +37,9 @@ from .paths import PLUGIN_SKILL_NAMES
 from .util import BearingError, dump_json, parse_frontmatter, read_json, read_text
 
 MARKETPLACE_NAME = "bearing"
+# Human-facing product title. Cursor `name` must stay lowercase kebab-case;
+# `displayName` is what the marketplace UI shows.
+PRODUCT_DISPLAY_NAME = "BEARING"
 
 # Reserved by Anthropic for official use; a third-party marketplace using one
 # stops loading and reports as an untrusted source.
@@ -182,6 +185,8 @@ def plugin_manifests(plugin_root: str, canonical: Dict[str, Any]) -> List[Artifa
             # name its component path explicitly, keeping the incompatible
             # schemas out of the same file.
             body["hooks"] = "./hooks/cursor.json"
+            # Cursor-only: marketplace title. `name` stays the install id.
+            body["displayName"] = PRODUCT_DISPLAY_NAME
         out.append(
             Artifact(
                 path=os.path.join(plugin_root, directory, "plugin.json"),
@@ -262,10 +267,19 @@ def marketplace_manifests(
             "the repository root. Register it with `/plugin marketplace add <owner>/<repo>`.",
         ),
     ):
+        body = dict(catalog)
+        # Cursor-only marketplace fields (display title + bundled MCP). Keep Claude's
+        # catalog free of unknown keys.
+        if directory == ".cursor-plugin":
+            cursor_entry = dict(entry)
+            cursor_entry["displayName"] = PRODUCT_DISPLAY_NAME
+            cursor_entry["mcpServers"] = "./mcp.json"
+            body = dict(catalog)
+            body["plugins"] = [cursor_entry]
         artifacts.append(
             Artifact(
                 path=os.path.join(workspace, directory, "marketplace.json"),
-                content=dump_json(catalog),
+                content=dump_json(body),
                 source=source,
                 kind="marketplace",
                 target=directory.strip("."),
@@ -351,6 +365,35 @@ def _display_name(skill_name: str) -> str:
     return " ".join(part.capitalize() for part in skill_name.split("-"))
 
 
+def mcp_manifest(plugin_root: str) -> List[Artifact]:
+    """Ship MCP with the plugin so marketplace install surfaces disposition tools.
+
+    Uses `${PLUGIN_ROOT}` (Cursor/Agent Plugins built-in), not `${workspaceFolder}`.
+    The latter only applies to a project's `.cursor/mcp.json` and is the wrong
+    variable for plugin-bundled servers — it is what made MCP feel "broken"
+    after a plugin-only install.
+    """
+    payload = {
+        "mcpServers": {
+            PRODUCT_DISPLAY_NAME: {
+                "command": "python3",
+                "args": ["hooks/run_mcp.py"],
+                "cwd": "${PLUGIN_ROOT}",
+            }
+        }
+    }
+    return [
+        Artifact(
+            path=os.path.join(plugin_root, "mcp.json"),
+            content=dump_json(payload),
+            source="plugin/src/bearing/manifests.py",
+            kind="manifest",
+            target="cursor",
+            scope="package",
+        )
+    ]
+
+
 def hooks_manifests(plugin_root: str) -> List[Artifact]:
     """The `workspaceOpen` hook backing `scope: "ephemeral"` projections.
 
@@ -427,6 +470,7 @@ def all_package_artifacts(
     artifacts.extend(plugin_manifests(plugin_root, canonical))
     artifacts.extend(codex_skill_metadata(plugin_root))
     artifacts.extend(hooks_manifests(plugin_root))
+    artifacts.extend(mcp_manifest(plugin_root))
     schema_source = os.path.join(plugin_root, "src", "bearing", "data", "config.schema.json")
     schema_content = read_text(schema_source)
     if schema_content is None:

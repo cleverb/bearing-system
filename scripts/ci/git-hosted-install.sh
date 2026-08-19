@@ -58,6 +58,8 @@ plugin="$install_root/marketplace/plugin"
 
 for required in \
   "plugin.json" \
+  "bin/bearing" \
+  "bin/bearing-mcp" \
   "src/bearing/cli.py" \
   "src/bearing/data/config.default.json" \
   "src/bearing/data/config.schema.json" \
@@ -147,6 +149,33 @@ test -f "$target/docs/decisions/index.json" \
   || { echo "FAIL: uninstall removed the disclosure index." >&2; exit 1; }
 test ! -e "$target/.cursor/agents/decision-archaeologist.md" \
   || { echo "FAIL: uninstall left a generated adapter behind." >&2; exit 1; }
+
+echo "==> pip/setuptools install (site-packages layout, the pipx path)"
+# InstalledCopyTest copies the plugin tree and puts src/ on PYTHONPATH, which is
+# the marketplace-copy shape. `pipx install ./plugin` only places `bearing` on
+# site-packages; plugin.json and skills/ must be bundled inside that package or
+# `bearing doctor` fails even when the Cursor GUI plugin is installed.
+site="$install_root/pip-site"
+mkdir -p "$site"
+if ! "$PYTHON" -m pip install --no-deps --quiet --target "$site" "$plugin"; then
+  echo "FAIL: pip install of the plugin directory failed." >&2
+  exit 1
+fi
+if [ ! -f "$site/bearing/plugin.json" ]; then
+  echo "FAIL: pip install did not bundle plugin.json inside the bearing package." >&2
+  exit 1
+fi
+if [ ! -f "$site/bearing/skills/decision-recovery/SKILL.md" ]; then
+  echo "FAIL: pip install did not bundle Skills inside the bearing package." >&2
+  exit 1
+fi
+PYTHONPATH="$site" "$PYTHON" -c "
+from bearing.doctor import _plugin_check
+check = _plugin_check()
+if check.status != 'ok':
+    raise SystemExit('plugin check: %s %s' % (check.status, check.detail))
+print('PASS: pip-installed CLI resolves plugin at', check.detail)
+"
 
 echo
 echo "PASS: git-hosted install is clean."

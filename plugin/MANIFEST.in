@@ -1,0 +1,6 @@
+include wheel_bundle.py
+include plugin.json
+include runtime-compatibility.json
+include README.md
+graft skills
+graft bin

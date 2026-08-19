@@ -22,6 +22,7 @@ asserts that everything still resolves.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import re
@@ -59,9 +60,18 @@ _EXPLANATORY_MARKERS = (
 )
 
 
+# Local `pipx install ./plugin` / `python setup.py build` leftovers. They are
+# gitignored and must not be treated as files the plugin needs to ship.
+_SKIP_DIRS = {"__pycache__", ".git", "build", "dist", ".eggs"}
+
+
 def _iter_text_files(root):
     for directory, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in sorted(dirnames) if d not in ("__pycache__", ".git")]
+        dirnames[:] = [
+            d
+            for d in sorted(dirnames)
+            if d not in _SKIP_DIRS and not d.endswith(".egg-info")
+        ]
         for filename in sorted(filenames):
             if os.path.splitext(filename)[1].lower() in _TEXT_EXTENSIONS:
                 yield os.path.join(directory, filename)
@@ -130,7 +140,10 @@ class InstalledCopyTest(BearingTestCase):
         shutil.copytree(
             PLUGIN_ROOT,
             self.plugin_copy,
-            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+            ignore=shutil.ignore_patterns(
+                "__pycache__", "*.pyc", "build", "dist", "*.egg-info"
+            ),
+            ignore_dangling_symlinks=True,
         )
 
     def tearDown(self):
@@ -252,6 +265,131 @@ class InstalledCopyTest(BearingTestCase):
         )
 
 
+class PipInstalledLayoutTest(BearingTestCase):
+    """What `pipx install ./plugin` / `uv tool install ./plugin` produce.
+
+    InstalledCopyTest copies the whole plugin tree and puts `src/` on PYTHONPATH,
+    which is the marketplace-copy shape. A setuptools install only places the
+    `bearing` package on site-packages. `plugin.json` and `skills/` live *beside*
+    `src/bearing` in the checkout, so they are omitted unless the wheel bundler
+    copies them into the package — and `plugin_root()` then cannot see a Cursor
+    GUI install either, because that cache is a third tree.
+
+    This test builds the site-packages layout using the same bundler the wheel
+    uses, then asserts doctor can resolve the plugin without a checkout.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.site = os.path.realpath(tempfile.mkdtemp(prefix="bearing-site-"))
+        self.pkg = os.path.join(self.site, "bearing")
+        shutil.copytree(
+            os.path.join(PLUGIN_ROOT, "src", "bearing"),
+            self.pkg,
+            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+        )
+        loader = importlib.util.spec_from_file_location(
+            "wheel_bundle", os.path.join(PLUGIN_ROOT, "wheel_bundle.py")
+        )
+        module = importlib.util.module_from_spec(loader)
+        loader.loader.exec_module(module)
+        module.bundle_plugin_root(self.pkg)
+
+    def tearDown(self):
+        shutil.rmtree(self.site, ignore_errors=True)
+        super().tearDown()
+
+    def _python(self, script):
+        import subprocess
+
+        env = dict(os.environ)
+        env["PYTHONPATH"] = self.site
+        env["NO_COLOR"] = "1"
+        return subprocess.run(
+            [sys.executable, "-c", script],
+            cwd=self.site,
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+
+    def test_unbundled_package_cannot_resolve_plugin_json(self):
+        """The failure SETUP.md's user path hit before the wheel bundler existed."""
+        bare = os.path.realpath(tempfile.mkdtemp(prefix="bearing-bare-"))
+        empty_home = os.path.join(bare, "home")
+        os.makedirs(empty_home)
+        self.addCleanup(shutil.rmtree, bare, True)
+        shutil.copytree(
+            os.path.join(PLUGIN_ROOT, "src", "bearing"),
+            os.path.join(bare, "bearing"),
+            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+        )
+        import subprocess
+
+        env = dict(os.environ)
+        env["PYTHONPATH"] = bare
+        env["BEARING_HOME"] = empty_home
+        env["NO_COLOR"] = "1"
+        out = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "from bearing.paths import plugin_root; "
+                "from bearing.doctor import _plugin_check; "
+                "check = _plugin_check(); "
+                "print(check.status); print(plugin_root())",
+            ],
+            cwd=bare,
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertEqual(out.returncode, 0, out.stderr)
+        status, root = out.stdout.strip().splitlines()
+        self.assertEqual(status, "fail")
+        self.assertEqual(root, os.path.join(bare, "bearing"))
+
+    def test_plugin_root_resolves_inside_the_installed_package(self):
+        out = self._python("from bearing.paths import plugin_root; print(plugin_root())")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertEqual(out.stdout.strip(), self.pkg)
+
+    def test_doctor_plugin_check_passes(self):
+        out = self._python(
+            "from bearing.doctor import _plugin_check; "
+            "check = _plugin_check(); "
+            "print(check.status); print(check.detail)"
+        )
+        self.assertEqual(out.returncode, 0, out.stderr)
+        status, detail = out.stdout.strip().splitlines()
+        self.assertEqual(status, "ok", out.stdout)
+        self.assertEqual(detail, self.pkg)
+
+    def test_schema_candidate_resolves_from_bundled_skills(self):
+        import subprocess
+
+        env = dict(os.environ)
+        env["PYTHONPATH"] = self.site
+        env["NO_COLOR"] = "1"
+        result = subprocess.run(
+            [sys.executable, "-m", "bearing", "schema", "candidate"],
+            cwd=self.site,
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        path = result.stdout.strip()
+        self.assertTrue(path.startswith(self.pkg + os.sep), path)
+        self.assertTrue(os.path.isfile(path), path)
+
+    def test_setup_py_invokes_the_bundler(self):
+        with open(os.path.join(PLUGIN_ROOT, "setup.py"), "r", encoding="utf-8") as handle:
+            source = handle.read()
+        self.assertIn("from wheel_bundle import bundle_plugin_root", source)
+        self.assertIn("bundle_plugin_root", source)
+
+
 class ManifestConformanceTest(BearingTestCase):
     def test_canonical_manifest_satisfies_the_closed_schema(self):
         from bearing.manifests import load_canonical, validate_canonical
@@ -284,6 +422,7 @@ class ManifestConformanceTest(BearingTestCase):
         with open(os.path.join(PLUGIN_ROOT, ".cursor-plugin", "plugin.json"), "r", encoding="utf-8") as handle:
             cursor_manifest = json.load(handle)
         self.assertEqual(cursor_manifest["hooks"], "./hooks/cursor.json")
+        self.assertEqual(cursor_manifest["displayName"], "BEARING")
         with open(os.path.join(PLUGIN_ROOT, "hooks", "cursor.json"), "r", encoding="utf-8") as handle:
             cursor = json.load(handle)
         with open(os.path.join(PLUGIN_ROOT, "hooks", "hooks.json"), "r", encoding="utf-8") as handle:
@@ -291,6 +430,31 @@ class ManifestConformanceTest(BearingTestCase):
         self.assertIn("workspaceOpen", cursor["hooks"])
         self.assertIn("PreToolUse", claude["hooks"])
         self.assertNotEqual(cursor, claude)
+
+    def test_plugin_ships_mcp_with_plugin_root_not_workspace_folder(self):
+        path = os.path.join(PLUGIN_ROOT, "mcp.json")
+        self.assertTrue(os.path.isfile(path), "plugin/mcp.json must ship with the marketplace plugin")
+        with open(path, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        servers = payload["mcpServers"]
+        self.assertIn("BEARING", servers)
+        server = servers["BEARING"]
+        self.assertEqual(server.get("cwd"), "${PLUGIN_ROOT}")
+        blob = json.dumps(server)
+        self.assertNotIn("${workspaceFolder}", blob)
+        self.assertTrue(os.path.isfile(os.path.join(PLUGIN_ROOT, "hooks", "run_mcp.py")))
+
+    def test_marketplace_entry_advertises_bearing_display_name_and_mcp(self):
+        with open(os.path.join(REPO_ROOT, ".cursor-plugin/marketplace.json"), "r", encoding="utf-8") as handle:
+            cursor = json.load(handle)["plugins"][0]
+        self.assertEqual(cursor["displayName"], "BEARING")
+        self.assertEqual(cursor["mcpServers"], "./mcp.json")
+        self.assertTrue(cursor["description"].startswith("BEARING"))
+        with open(os.path.join(REPO_ROOT, ".claude-plugin/marketplace.json"), "r", encoding="utf-8") as handle:
+            claude = json.load(handle)["plugins"][0]
+        self.assertNotIn("displayName", claude)
+        self.assertNotIn("mcpServers", claude)
+        self.assertTrue(claude["description"].startswith("BEARING"))
 
     def test_marketplace_source_points_at_the_plugin_directory(self):
         for relative in (".cursor-plugin/marketplace.json", ".claude-plugin/marketplace.json"):
@@ -377,7 +541,10 @@ class GitHostedInstallTest(BearingTestCase):
         shutil.copytree(
             PLUGIN_ROOT,
             os.path.join(origin, "plugin"),
-            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+            ignore=shutil.ignore_patterns(
+                "__pycache__", "*.pyc", "build", "dist", "*.egg-info"
+            ),
+            ignore_dangling_symlinks=True,
         )
         shutil.copy2(os.path.join(REPO_ROOT, ".gitignore"), os.path.join(origin, ".gitignore"))
         for command in (

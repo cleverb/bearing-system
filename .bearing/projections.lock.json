@@ -20,7 +20,7 @@
       "kind": "subagents",
       "path": ".claude/agents/decision-recovery-reviewer.md",
       "scope": "repo",
-      "sha256": "d61330cd07242a64c30dc34882942a369ffb44f87d6474d31208e4fe05f63e69",
+      "sha256": "e1aac0b96ae0d0d4bab461a9c3c688470a4a99fd2554d79bb8ff4ca04291b570",
       "source": "plugin/skills/decision-recovery/subagents/decision-recovery-reviewer.md",
       "target": "claude"
     },
@@ -52,7 +52,7 @@
       "kind": "subagents",
       "path": ".codex/agents/decision-recovery-reviewer.toml",
       "scope": "repo",
-      "sha256": "2607075114c8ee129e2a13d6b36257cbaf79b78fbbee5141e1e24e0b5ec56ffe",
+      "sha256": "d939a4d9bcac209da6572af79f51bb2144c45b83d9ca2a9811f46258124ef584",
       "source": "plugin/skills/decision-recovery/subagents/decision-recovery-reviewer.md",
       "target": "codex"
     },
@@ -84,7 +84,7 @@
       "kind": "subagents",
       "path": ".cursor/agents/decision-recovery-reviewer.md",
       "scope": "repo",
-      "sha256": "d61330cd07242a64c30dc34882942a369ffb44f87d6474d31208e4fe05f63e69",
+      "sha256": "e1aac0b96ae0d0d4bab461a9c3c688470a4a99fd2554d79bb8ff4ca04291b570",
       "source": "plugin/skills/decision-recovery/subagents/decision-recovery-reviewer.md",
       "target": "cursor"
     },
@@ -100,7 +100,7 @@
       "kind": "rules",
       "path": ".cursor/rules/bearing.mdc",
       "scope": "repo",
-      "sha256": "c58bf71f5472280feba59f57b4c992144b513fef3c346df78b79caefaaac5a96",
+      "sha256": "c61a5a6b53662e0529271bbbbd0155e663d54666fe0c6fdbc35f0e0d4ac840a1",
       "source": "plugin/src/bearing/data/templates/agents-block.md",
       "target": "cursor"
     }

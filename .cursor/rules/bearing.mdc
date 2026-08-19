@@ -34,7 +34,7 @@ When escalating, stop and ask. Do not silently choose the next plausible interpr
 ### Hard constraints
 
 - **No inference may block a merge.** A recovery signal may only flag and route to review, regardless of its confidence score. A confidence score is a statement about evidence, never a statement of organizational authority. Only structural enforcement (a broken decision link) or violation of an accepted Contract may block.
-- **Do not write to `docs/decisions/` on the basis of inference.** Every promotion out of `shadow/` requires human review, and that review determines scope, current validity, and lifecycle state — it is not a confirmation that a summary read correctly.
+- **Do not write to `docs/decisions/` on the basis of inference.** Every promotion out of `shadow/` requires human judgment that determines scope, present validity, lifecycle state, and EOCR function. One-click *execution* of that judgment (for example `bearing dispose` or MCP elicitation) is allowed; auto-promoting from confidence alone is not.
 - **A generated file is never a second source of truth.** Anything carrying a `DO NOT EDIT` header derives its authority from the canonical source it was rendered from and has none of its own. Edit the source and re-run `bearing render`.
 - **The plugin tree is read-only at runtime.** Writes go to `.bearing/` for run state, or `docs/decisions/` for decision content.
 

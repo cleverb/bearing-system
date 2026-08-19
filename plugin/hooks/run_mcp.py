@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""workspaceOpen hook: ephemeral render without requiring `bearing` on PATH.
+"""Launch the BEARING MCP disposition server from the plugin tree.
 
-Walks to the plugin root from this file (hooks live one directory below
-plugin.json), enables the operator-scope CLI shim, then runs `bearing render`.
+Used by plugin/mcp.json so marketplace install surfaces MCP without requiring
+`bearing-mcp` on PATH. Enables the operator-scope CLI shim on start.
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 PLUGIN_ROOT = os.path.dirname(HERE)
 SRC = os.path.join(PLUGIN_ROOT, "src")
-ARGS = ["render", "--ephemeral", "--emit-plugin-paths"]
 
 
 def _enable() -> None:
@@ -26,8 +25,11 @@ def _enable() -> None:
 
 def main() -> int:
     _enable()
-    launcher = os.path.join(PLUGIN_ROOT, "bin", "bearing")
-    return subprocess.call([sys.executable, launcher] + ARGS)
+    launcher = os.path.join(PLUGIN_ROOT, "bin", "bearing-mcp")
+    return subprocess.call(
+        [sys.executable, launcher] + sys.argv[1:],
+        cwd=PLUGIN_ROOT,
+    )
 
 
 if __name__ == "__main__":

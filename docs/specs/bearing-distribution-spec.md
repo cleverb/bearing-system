@@ -14,7 +14,14 @@ Install is not a step in recovery, interview, or onboarding. Conflating those la
 | Bootstrap | `bearing init`, `bearing doctor`, `bearing assessment` | How does *this* repository start using it? |
 | Operation | The Skills — recovery, interview, onboarding | How is the work performed? |
 
-**Plugin install and CLI install are both required** for the full product. A marketplace install of the plugin delivers Skills, subagent definitions, and the `workspaceOpen` hook. The hook invokes `python3` against a wrapper in the plugin tree so it does not depend on `bearing` being on `PATH`. Interactive commands (`init`, `lint`, `verify`, `onboard`, `context`) still need the CLI, via `pipx install ./plugin` or `PYTHONPATH=plugin/src python3 -m bearing` from a checkout.
+**Plugin install is user distribution.** A marketplace install delivers Skills,
+subagent definitions, hooks, MCP, and the CLI module (`plugin/src/bearing`). The
+`workspaceOpen` hook and MCP start write operator-scope launchers under
+`~/.bearing/bin` (ADR-0012). Interactive commands use those launchers or
+`python3 plugin/bin/bearing` from the plugin tree.
+
+`pipx install ./plugin` and `uv tool install ./plugin` remain optional for CI
+and contributors (`PYTHONPATH=plugin/src python3 -m bearing`).
 
 The Python distribution name is `bearing-system`. The import package and CLI
 command remain `bearing` so installation naming does not leak into runtime use.
@@ -115,6 +122,7 @@ Default subagent scope is `repo` (adapters committed with the clone). Operators 
 
 ```bash
 bearing init              # detect convention, scaffold, optional first render
+bearing enable            # write ~/.bearing/bin shims (also done on workspaceOpen)
 bearing assessment        # agentic decision-readiness scorecard; works before init; always exits 0
 bearing doctor            # what resolves, from where, and what is broken
 bearing preflight         # optional controlled-pilot readiness check

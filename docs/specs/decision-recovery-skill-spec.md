@@ -97,6 +97,17 @@ acceptable as short-lived interruption management, not durable storage.
 Commit placement does not change authority. Promotion is a separate human
 workflow that may reject, revise, split, defer, or promote the evidence.
 
+**BEARING permits one-click execution of a human promotion decision. It
+forbids one-click substitution for that decision.** A UI or CLI **Promote**
+action is valid when it carries human-determined scope, present validity,
+authored lifecycle state, and EOCR function, then scaffolds the ADR and
+updates the shadow queue. Auto-promoting because confidence is HIGH — or a
+bare Approve that copies the candidate unchanged into Accepted EOCR — is not.
+
+Operators clear the queue with `bearing review`, `bearing dispose`, or the
+`bearing-mcp` stdio server (`list_reviewable` / `review_candidate` with form
+elicitation in Cursor).
+
 ## Optional operational controls
 
 For teams running recovery repeatedly, BEARING provides building blocks rather

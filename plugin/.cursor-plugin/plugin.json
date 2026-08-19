@@ -2,7 +2,8 @@
   "author": {
     "name": "BEARING maintainers"
   },
-  "description": "An EOCR-based decision system: recover, elicit, anchor, and enforce the decisions governing a codebase, so architectural intent is discoverable at generation time rather than only enforceable at commit time.",
+  "description": "BEARING: an EOCR-based decision system — recover, elicit, anchor, and enforce the decisions governing a codebase, so architectural intent is discoverable at generation time rather than only enforceable at commit time.",
+  "displayName": "BEARING",
   "homepage": "https://github.com/cleverb/bearing-system",
   "hooks": "./hooks/cursor.json",
   "keywords": [

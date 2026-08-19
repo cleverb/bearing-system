@@ -54,7 +54,11 @@ Shadow candidates are non-authoritative repository content. The operator may:
 
 Do not use a stash as durable storage, and never imply that committing a shadow
 candidate promotes it. Promotion remains a separate human judgment about scope,
-validity, lifecycle state, and authority.
+validity, lifecycle state, and EOCR function.
+
+Execute that judgment with `bearing review`, `bearing dispose`, or MCP
+`review_candidate` (`bearing-mcp`). One-click *execution* after the human sets
+those fields is allowed; auto-promote from confidence is not.
 
 ## Hard boundaries
 

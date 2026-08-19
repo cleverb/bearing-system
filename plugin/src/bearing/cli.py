@@ -165,6 +165,48 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     return report(checks, "bearing doctor")
 
 
+def cmd_enable(args: argparse.Namespace) -> int:
+    """Write operator-scope CLI shims pointing at the installed plugin tree."""
+    from .enable import discover_plugin_roots, ensure_enabled, resolve_enable_plugin_root
+
+    root = resolve_enable_plugin_root(
+        explicit=getattr(args, "plugin_root", None),
+        discover=getattr(args, "discover", False),
+    )
+    if not root:
+        print(
+            status_line(
+                "fail",
+                "CLI enablement",
+                "no BEARING plugin tree found",
+            )
+        )
+        print(
+            paint(
+                "Run: python3 plugin/enable.py --discover  (no PATH or pipx required)",
+                "dim",
+            )
+        )
+        return EXIT_FAIL
+
+    outcome = ensure_enabled(root, sys.executable)
+    if outcome.get("ok"):
+        print(status_line("ok", "CLI enablement", outcome.get("bin_dir") or ""))
+        for path in outcome.get("written") or []:
+            print(paint("  %s" % path, "dim"))
+        print()
+        print(
+            paint(
+                'Add to PATH if needed: export PATH="%s:$PATH"' % outcome.get("bin_dir", ""),
+                "dim",
+            )
+        )
+        print()
+        return EXIT_OK
+    print(status_line("fail", "CLI enablement", "; ".join(outcome.get("errors") or [])))
+    return EXIT_FAIL
+
+
 def cmd_preflight(args: argparse.Namespace) -> int:
     from .doctor import preflight, report
 
@@ -901,6 +943,153 @@ def cmd_transcripts(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def cmd_review(args: argparse.Namespace) -> int:
+    """Interactive (or JSON) listing / guided disposition of reviewable candidates."""
+    from .disposition import (
+        ACTIONS,
+        Judgment,
+        candidate_brief,
+        defaults_from_candidate,
+        dispose,
+        find_candidate,
+        list_reviewable,
+    )
+
+    config = _load(args)
+    rows = list_reviewable(config.layout)
+    if args.json and not args.id:
+        _emit(
+            [
+                {
+                    "candidate_id": row.get("candidate_id"),
+                    "subject": row.get("subject"),
+                    "candidate_object": row.get("candidate_object"),
+                    "candidate_eocr_function": row.get("candidate_eocr_function"),
+                    "confidence": row.get("confidence"),
+                    "lifecycle_state": row.get("lifecycle_state"),
+                }
+                for row in rows
+            ],
+            True,
+        )
+        return EXIT_OK
+
+    if not rows and not args.id:
+        print(status_line("ok", "review queue", "empty"))
+        return EXIT_OK
+
+    candidate_id = args.id
+    if not candidate_id:
+        _heading("bearing review — surfaced candidates")
+        for index, row in enumerate(rows, 1):
+            print(
+                "  %d) %s  [%s/%s]  %s"
+                % (
+                    index,
+                    row.get("candidate_id"),
+                    row.get("confidence"),
+                    row.get("candidate_eocr_function"),
+                    (row.get("candidate_object") or "")[:72],
+                )
+            )
+        print()
+        raw = input("Review which # (or candidate id)? ").strip()
+        if raw.isdigit() and 1 <= int(raw) <= len(rows):
+            candidate_id = str(rows[int(raw) - 1].get("candidate_id"))
+        else:
+            candidate_id = raw
+    if not candidate_id:
+        raise BearingError("no candidate selected")
+
+    candidate = find_candidate(config.layout, candidate_id)
+    print()
+    print(candidate_brief(candidate))
+    print()
+    print("Actions: %s" % ", ".join(ACTIONS))
+    action = (args.action or input("Action? ")).strip()
+    defaults = defaults_from_candidate(candidate)
+    judgment = Judgment(
+        eocr_function=args.eocr or defaults.eocr_function,
+        lifecycle_state=args.status or defaults.lifecycle_state,
+        scope=args.scope or defaults.scope,
+        title=args.title or defaults.title,
+        trigger=args.trigger or defaults.trigger,
+        rejection_reason=args.reason or "",
+        defer_note=args.note or "",
+        edit_object=args.edit_object or "",
+        split_brief=args.note or "",
+        anchor_targets=(args.anchors or "").split(",") if args.anchors else [],
+    )
+    if action.lower() == "promote":
+        if args.still_valid is None:
+            answer = input("Still valid today? [y/N] ").strip().lower()
+            judgment.still_valid = answer in ("y", "yes")
+        else:
+            judgment.still_valid = bool(args.still_valid)
+        if not args.eocr:
+            judgment.eocr_function = (
+                input("EOCR function [%s]: " % judgment.eocr_function).strip()
+                or judgment.eocr_function
+            )
+        if not args.status:
+            judgment.lifecycle_state = (
+                input("Authored status [%s]: " % judgment.lifecycle_state).strip()
+                or judgment.lifecycle_state
+            )
+        if not args.scope:
+            judgment.scope = (
+                input("Scope [%s]: " % judgment.scope).strip() or judgment.scope
+            )
+    elif action.lower() == "edit" and not args.edit_object:
+        judgment.edit_object = input("Revised candidate_object (blank to keep): ").strip()
+    elif action.lower() == "reject" and not args.reason:
+        judgment.rejection_reason = input("Rejection reason (optional): ").strip()
+    elif action.lower() in ("defer", "split") and not args.note:
+        judgment.defer_note = input("Note (optional): ").strip()
+        judgment.split_brief = judgment.defer_note
+
+    result = dispose(config, candidate_id, action, judgment)
+    if args.json:
+        _emit(result.as_dict(), True)
+    else:
+        print()
+        print(status_line("ok", result.action, result.message))
+        for tip in result.suggested_anchors:
+            print(status_line("ok", "anchor", tip))
+    return EXIT_OK
+
+
+def cmd_dispose(args: argparse.Namespace) -> int:
+    """Non-interactive disposition — judgment fields must be passed explicitly."""
+    from .disposition import Judgment, dispose
+
+    config = _load(args)
+    still_valid = args.still_valid
+    if still_valid is not None:
+        still_valid = bool(still_valid)
+    judgment = Judgment(
+        eocr_function=args.eocr or "",
+        lifecycle_state=args.status or "Accepted",
+        scope=args.scope or "",
+        still_valid=still_valid,
+        title=args.title or "",
+        trigger=args.trigger or "",
+        rejection_reason=args.reason or "",
+        defer_note=args.note or "",
+        edit_object=args.edit_object or "",
+        split_brief=args.note or "",
+        anchor_targets=[p.strip() for p in (args.anchors or "").split(",") if p.strip()],
+    )
+    result = dispose(config, args.id, args.action, judgment)
+    if args.json:
+        _emit(result.as_dict(), True)
+    else:
+        print(status_line("ok", result.action, result.message))
+        for tip in result.suggested_anchors:
+            print(status_line("ok", "anchor", tip))
+    return EXIT_OK
+
+
 def cmd_config(args: argparse.Namespace) -> int:
     from .config import classify
 
@@ -981,6 +1170,22 @@ def build_parser() -> argparse.ArgumentParser:
     doctor = add("doctor", "Report what resolves, from where, and what is broken.", cmd_doctor)
     doctor.add_argument("--strict", action="store_true", help="also require a clean working tree")
     doctor.add_argument("--json", action="store_true")
+
+    enable = add(
+        "enable",
+        "Write operator-scope CLI shims (~/.bearing/bin) for this plugin install.",
+        cmd_enable,
+    )
+    enable.add_argument(
+        "--discover",
+        action="store_true",
+        help="find the newest BEARING plugin under ~/.cursor/plugins or ~/.claude/plugins",
+    )
+    enable.add_argument(
+        "--plugin-root",
+        default=None,
+        help="explicit plugin directory containing plugin.json",
+    )
 
     assessment = add(
         "assessment",
@@ -1074,6 +1279,64 @@ def build_parser() -> argparse.ArgumentParser:
     observe_cmd.add_argument("--json", action="store_true")
 
     add("transcripts", "Print the resolved interview-transcript path.", cmd_transcripts)
+
+    review = add(
+        "review",
+        "List or interactively dispose surfaced shadow candidates.",
+        cmd_review,
+    )
+    review.add_argument("--id", default=None, help="candidate id to review")
+    review.add_argument(
+        "--action",
+        choices=("Promote", "Edit", "Split", "Reject", "Defer", "promote", "edit", "split", "reject", "defer"),
+        default=None,
+    )
+    review.add_argument("--eocr", default=None, help="EOCR function for Promote/Edit")
+    review.add_argument("--status", default=None, help="authored lifecycle status for Promote")
+    review.add_argument("--scope", default=None, help="scope globs for Promote")
+    review.add_argument("--title", default=None, help="ADR title for Promote")
+    review.add_argument("--trigger", default=None, help="index trigger for Promote")
+    review.add_argument("--anchors", default=None, help="comma-separated suggested @see paths")
+    review.add_argument("--edit-object", default=None, help="revised candidate_object for Edit")
+    review.add_argument("--reason", default=None, help="rejection reason")
+    review.add_argument("--note", default=None, help="defer/split note")
+    review.add_argument(
+        "--still-valid",
+        type=int,
+        choices=(0, 1),
+        default=None,
+        help="1 if still organizational intent (required for Promote)",
+    )
+    review.add_argument("--json", action="store_true")
+
+    dispose_cmd = add(
+        "dispose",
+        "Apply a human disposition non-interactively (judgment fields required for Promote).",
+        cmd_dispose,
+    )
+    dispose_cmd.add_argument("--id", required=True, help="candidate id")
+    dispose_cmd.add_argument(
+        "--action",
+        required=True,
+        choices=("Promote", "Edit", "Split", "Reject", "Defer"),
+    )
+    dispose_cmd.add_argument("--eocr", default=None)
+    dispose_cmd.add_argument("--status", default="Accepted")
+    dispose_cmd.add_argument("--scope", default=None)
+    dispose_cmd.add_argument("--title", default=None)
+    dispose_cmd.add_argument("--trigger", default=None)
+    dispose_cmd.add_argument("--anchors", default=None)
+    dispose_cmd.add_argument("--edit-object", default=None)
+    dispose_cmd.add_argument("--reason", default=None)
+    dispose_cmd.add_argument("--note", default=None)
+    dispose_cmd.add_argument(
+        "--still-valid",
+        type=int,
+        choices=(0, 1),
+        default=None,
+        help="1 to affirm present validity (required for Promote)",
+    )
+    dispose_cmd.add_argument("--json", action="store_true")
 
     config_cmd = add("config", "Print resolved configuration.", cmd_config)
     config_cmd.add_argument("key", nargs="?", default=None, help="a dotted key, e.g. decisions.path")

@@ -4,6 +4,8 @@
 is not a promise that adoption or a meaningful pilot fits into a fixed amount of
 time.*
 
+If BEARING is not installed on this machine yet, start with [`SETUP.md`](SETUP.md).
+
 ## The model in one paragraph
 
 Engineering knowledge serves one of four functions: **Entry** helps people get
@@ -29,6 +31,19 @@ surfaced for review and never promoted into decisions automatically.
 
 You can stop here and use BEARING as decisions arise. There is no requirement to
 recover the repository's history before the system becomes useful.
+
+## Clear the shadow review queue
+
+When `decision-recovery` or `decision-interview` leaves Reviewable candidates:
+
+```bash
+bearing review --json
+bearing dispose --id CAND-… --action Promote \
+  --still-valid 1 --eocr Contract --scope 'src/**' --status Accepted
+```
+
+Or enable Cursor MCP (`bearing-mcp` — see [`SETUP.md`](SETUP.md)). Promote
+requires human judgment fields; confidence alone never promotes.
 
 ## Choose an evaluation path
 
@@ -70,6 +85,7 @@ BEARING does not ship or require a cadence.
 
 ## Next references
 
+- First-run install: [`SETUP.md`](SETUP.md)
 - Architecture and reasoning: [`BEARING.md`](BEARING.md)
 - Recovery boundary and options: [`decision-recovery-skill-spec.md`](docs/specs/decision-recovery-skill-spec.md)
 - Optional onboarding approaches: [`decision-onboarding-skill-spec.md`](docs/specs/decision-onboarding-skill-spec.md)

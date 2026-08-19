@@ -17,6 +17,7 @@ dependencies = []
 
 [project.scripts]
 bearing = "bearing.cli:main"
+bearing-mcp = "bearing.mcp_server:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
@@ -26,3 +27,5 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 bearing = ["data/*.json", "data/templates/*"]
+# plugin.json, runtime-compatibility.json, and skills/ live beside src/bearing
+# (marketplace layout). setup.py copies them into the installed package.

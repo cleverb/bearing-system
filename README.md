@@ -4,6 +4,7 @@
 
 BEARING makes the decisions governing a codebase discoverable at the moment code is generated, rather than enforceable only after it is written. It does that with three Skills and a governance CLI over one durable idea: **standardize the organizational source, project it into whatever each runtime natively reads.**
 
+- **First-run setup:** [`SETUP.md`](SETUP.md)
 - **Read the architecture:** [`BEARING.md`](BEARING.md)
 - **Get oriented:** [`QUICKSTART.md`](QUICKSTART.md)
 - **Agent entering this repo:** [`AGENTS.md`](AGENTS.md)
@@ -29,24 +30,29 @@ The line between those first two is a hard rule, not a convention: **the plugin 
 
 ## Install
 
-```bash
-# From the BEARING marketplace (Cursor)
-cursor-agent plugin marketplace add https://github.com/cleverb/bearing-system
-# then install `bearing` from /plugin
-
-# From the BEARING marketplace (Claude Code)
-/plugin marketplace add cleverb/bearing-system
-/plugin install bearing@bearing
-```
-
-The plugin delivers Skills and the workspace hook. Interactive commands still need the CLI:
+Install the **plugin** in your agent runtime (Cursor, Claude Code, or Codex).
+That ships Skills, hooks, MCP, and the CLI module. Open a workspace once so
+`~/.bearing/bin` is populated, then add it to your PATH:
 
 ```bash
-pipx install ./plugin        # or: uv tool install ./plugin
+export PATH="$HOME/.bearing/bin:$PATH"
 bearing --help
 ```
 
-The Python distribution is named `bearing-system`; the import package and CLI command remain `bearing`. It requires Python 3.9 or newer and no third-party packages. Plugin install alone is not enough to run `bearing init`. For v0.2 the CLI is installed from a checkout with `pipx install ./plugin`; a public package-index install is future work.
+Full first-run steps: [`SETUP.md`](SETUP.md).
+
+```bash
+# Plugin (Cursor): add the marketplace, then install BEARING from /plugin
+cursor-agent plugin marketplace add https://github.com/cleverb/bearing-system
+
+# Plugin (Claude Code)
+claude plugin marketplace add https://github.com/cleverb/bearing-system
+claude plugin install bearing@bearing
+```
+
+Optional for CI and contributors: `uv tool install ./plugin` or
+`pipx install ./plugin`. The Python distribution is named `bearing-system`; the
+import package and command remain `bearing`. Python 3.9+, no third-party packages.
 
 ## Bootstrap a repository
 

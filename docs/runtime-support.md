@@ -6,7 +6,7 @@ Support is qualified by Tier 4 evidence for behaviorally relevant artifacts.
 
 | Runtime | Discovery | Evidence | Verified range |
 | --- | --- | --- | --- |
-| claude | mechanical | verified | 2.1.220 (Claude Code) through 2.1.220 (Claude Code) |
+| claude | session-advisory | unverified | — |
 | codex | session-advisory | unverified | — |
 | cursor | session-advisory | unverified | — |
 

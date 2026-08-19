@@ -919,7 +919,7 @@ def _uninstall_cleanliness(config: ResolvedConfig) -> Result:
 
 _PATH_TOKEN_RE = re.compile(r"`([A-Za-z0-9_./{}<>\-]+)`")
 
-_DOC_FILES = ("BEARING.md", "QUICKSTART.md", "README.md", "AGENTS.md")
+_DOC_FILES = ("BEARING.md", "QUICKSTART.md", "README.md", "AGENTS.md", "SETUP.md")
 
 # Opt out one line of prose from path checking. For paths a document has to name
 # without claiming this repository has them -- an optional projection target that
@@ -993,7 +993,7 @@ def check_docs(config: ResolvedConfig) -> List[Result]:
     ]
 
 
-_ROOT_FILES = ("BEARING.md", "QUICKSTART.md", "AGENTS.md", "README.md", "LICENSE")
+_ROOT_FILES = ("BEARING.md", "QUICKSTART.md", "AGENTS.md", "README.md", "LICENSE", "SETUP.md", "CONTRIBUTING.md")
 
 # Top-level directories BEARING documents and therefore owns the accuracy of.
 # Listed explicitly rather than derived from what exists on disk, so a reference

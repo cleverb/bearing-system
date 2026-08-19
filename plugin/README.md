@@ -56,7 +56,29 @@ Each skill is self-contained — no skill reaches into a sibling's directory, be
 Bundled here and installable standalone:
 
 ```bash
-pipx install .        # or: uv tool install .
+pipx install .        # or: uv tool install .  (optional — CI/contributors)
 ```
 
+Marketplace users do not need pipx. After installing the plugin:
+
+```bash
+python3 plugin/enable.py --discover   # from a bearing-system clone
+export PATH="$HOME/.bearing/bin:$PATH"
+```
+
+Or `bearing enable --discover` once `bearing` is on PATH. Opening a workspace
+also writes the same shims automatically.
+
 Python 3.9+, standard library only. Deliberately dependency-free: the CLI runs inside whatever environment a target repository already has, and a decision system that cannot bootstrap without a package install is a decision system that does not get adopted.
+
+Candidate disposition (human judgment, then mechanical execution):
+
+```bash
+bearing review --json          # list surfaced candidates
+bearing dispose --id CAND-… --action Promote \
+  --still-valid 1 --eocr Contract --scope 'src/**' --status Accepted
+bearing-mcp                    # stdio MCP server (also shipped as plugin/mcp.json)
+```
+
+**Principle:** one-click execution of a human promotion decision is allowed;
+one-click substitution for that decision (confidence → Approve) is not.
