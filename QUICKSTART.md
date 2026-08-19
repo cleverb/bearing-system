@@ -1,57 +1,70 @@
 # BEARING Quickstart
 
-*Orientation, not a closed loop. Reading this and running `bearing init` takes a short sitting. A measured onboarding pilot — recovery, interviews, promoted anchors, paired tickets — takes reviewer sessions, not thirty minutes. See `BEARING.md` for the complete architecture.*
+*Get oriented, bootstrap safely, and choose how much evaluation is useful. This
+is not a promise that adoption or a meaningful pilot fits into a fixed amount of
+time.*
 
----
+## The model in one paragraph
 
-## The four categories, in one paragraph
+Engineering knowledge serves one of four functions: **Entry** helps people get
+oriented, **Operations** describes how work gets done, **Contracts** state what
+is required or forbidden, and **Rationale** explains why. BEARING makes that
+knowledge discoverable to humans and agents while keeping inferred history in a
+separate, non-authoritative shadow graph.
 
-Every piece of engineering knowledge is doing one of four jobs: **Entry** helps you get oriented, **Operations** describes how work gets done, **Contracts** state what's required or forbidden, **Rationale** explains why. You don't need to memorize this to start — you'll see it in action in about five minutes.
+## Bootstrap
 
-## What you're about to do
+Choose a repository where decision context could improve real work, then run:
 
-You're going to bootstrap BEARING and then run `bearing onboard`, which gates the `decision-onboarding` Skill. The CLI records state and checks preconditions; the Skill (an agent, with you reviewing) carries out the six steps. By the end of a completed pilot you'll have one branch containing a small amount of real, promoted decision knowledge, and a measured comparison showing whether it actually helped.
-
-## Before you start
-
-- Pick a repository with real history — legacy is fine, encouraged even.
-- Pick a scope inside it: one directory or one service, not the whole thing.
-- Have one or two people in mind who'd know the most about that scope if you had a question.
-
-## Run it
-
-```
-bearing assessment    # optional: score current decision readiness (works without init; always exits 0)
-bearing init          # detect the decisions directory, scaffold .bearing/ and docs/decisions/
-bearing doctor        # confirm the plugin, CLI, and config resolve
-bearing onboard       # Step 0a preflight, then load the decision-onboarding Skill
+```bash
+bearing assessment    # optional, informational readiness snapshot
+bearing init          # detect the decision-record convention and scaffold state
+bearing doctor        # confirm paths, plugin discovery, and configuration
 ```
 
-`bearing onboard` does not itself mine git or promote ADRs. It gates the pipeline and records run state (gitignored). The Skill then runs six steps, in order, on a branch — nothing touches `main` directly:
+You can stop here and use BEARING as decisions arise. There is no requirement to
+recover the repository's history before the system becomes useful.
 
-1. **Freeze** — tags the current commit as the baseline, so later comparisons are against a fixed point, not a moving target.
-2. **Scaffold** — creates `docs/decisions/`, the `.agents/` tree, and an `AGENTS.md` stub. No content yet, just structure.
-3. **Scoped recovery** — mines commits, PRs, and comments in your chosen scope for evidence of undocumented decisions. Produces candidates, not decisions — nothing here is authoritative yet.
-4. **Seed interviews** — a short conversation with the people you picked, structured around specific ambiguous points the recovery pass surfaced.
-5. **First anchors** — a small, deliberate set of candidates (3 to 5) get promoted: real ADRs, real annotations in the code, entries in the decision index.
-6. **Pilot** — a handful of real tickets run twice, once against the frozen baseline, once against the onboarded branch, measuring rework, Contract violations, and token cost side by side.
+## Choose an evaluation path
 
-You'll be asked to review and confirm at steps 4 and 5. Nothing is written to `docs/decisions/` without you looking at it first.
+`bearing onboard` checks core readiness and loads guidance for an optional trial.
+The Skill offers a menu, not a mandatory sequence:
 
-## What "day one" actually looks like
+- **Orientation:** inspect the decision index and try `bearing context <path>`.
+- **Ordinary work:** use BEARING on a real change and note where it helps or gets
+  in the way.
+- **Recovery audit:** surface shadow candidates in one useful area without
+  promoting them.
+- **Comparative pilot:** if stronger evidence is worth the effort, use a frozen
+  baseline, pre-declared criteria, and paired work samples.
 
-After handoff, this is what changes about how you work:
+Branches, baseline tags, interviews, fixed candidate counts, and paired ticket
+runs are optional. Confirm any git workflow before applying it.
 
-- **When you touch code with a `@see ADR-XXX` annotation**, you (or an agent working on your behalf) now have a one-line pointer to why it's built that way, not just what it does.
-- **When an agent is about to touch something in the onboarded scope**, it loads a short index first — cheap, a few KB — that tells it which Contracts and Rationale are relevant before it writes anything, not after.
-- **When something is genuinely ambiguous and undocumented**, the expected move — for a human or an agent — is to stop and ask, not guess. `decision-interview` is that "ask" made structured: a real conversation, pressure-tested with a deletion test (*if we removed this constraint, what would actually break?*), routed into the same review process as everything else.
-- **Recovery keeps running on a schedule**, quietly, in the background, on whatever scope you point it at next. You'll see a small queue of candidates periodically — most will be low-confidence and stay out of your way; the ones worth your time will say so.
-- **Nothing an agent infers becomes a rule on its own.** A recovery signal can flag a change that looks like it lacks decision history. It can never block a merge on its own. Only a real, authored Contract can do that.
+## Recovery in normal work
 
-That's the whole day-to-day shape of it: annotations that actually mean something when you hover over them, agents that ask instead of guess when it matters, and a small, growing set of decisions that stay true because someone checks, not because a model was confident.
+When code has no Anchor and history contains useful clues, you may run the
+`decision-recovery` Skill opportunistically. A resulting shadow candidate can be
+reviewed and committed with the current change or separated into a focused
+commit. A stash is only short-lived interruption management.
 
-## Where to go next
+None of those choices promotes the candidate. It remains evidence until a human
+reviews its scope, validity, lifecycle state, and authority.
 
-- Full architecture and reasoning: `BEARING.md`
-- How recovery and interview actually work: `decision-recovery-skill-spec.md`, `decision-interview-skill-spec.md`
-- The onboarding procedure in full: `decision-onboarding-skill-spec.md`
+Teams that want recurring recovery can invoke the same workflow manually,
+schedule it with GitHub Actions or cron, or build a compatible extractor.
+BEARING does not ship or require a cadence.
+
+## What changes day to day
+
+- An `@see ADR-XXX` Anchor points from implementation to authored intent.
+- Agents load the compact decision index and only the records relevant to their
+  current files.
+- Genuine architectural ambiguity is escalated instead of guessed through.
+- Recovery signals may flag work for review, but never block a merge.
+
+## Next references
+
+- Architecture and reasoning: [`BEARING.md`](BEARING.md)
+- Recovery boundary and options: [`decision-recovery-skill-spec.md`](docs/specs/decision-recovery-skill-spec.md)
+- Optional onboarding approaches: [`decision-onboarding-skill-spec.md`](docs/specs/decision-onboarding-skill-spec.md)

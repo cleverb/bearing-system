@@ -16,6 +16,9 @@ Install is not a step in recovery, interview, or onboarding. Conflating those la
 
 **Plugin install and CLI install are both required** for the full product. A marketplace install of the plugin delivers Skills, subagent definitions, and the `workspaceOpen` hook. The hook invokes `python3` against a wrapper in the plugin tree so it does not depend on `bearing` being on `PATH`. Interactive commands (`init`, `lint`, `verify`, `onboard`, `context`) still need the CLI, via `pipx install ./plugin` or `PYTHONPATH=plugin/src python3 -m bearing` from a checkout.
 
+The Python distribution name is `bearing-system`. The import package and CLI
+command remain `bearing` so installation naming does not leak into runtime use.
+
 ### 1.4 Local testing to marketplace promotion
 
 Four tiers, each catching a failure class the one below it cannot see. The same list is in [`tests/README.md`](../../tests/README.md).
@@ -87,13 +90,13 @@ Default subagent scope is `repo` (adapters committed with the clone). Operators 
 bearing init              # detect convention, scaffold, optional first render
 bearing assessment        # agentic decision-readiness scorecard; works before init; always exits 0
 bearing doctor            # what resolves, from where, and what is broken
-bearing preflight         # doctor plus a clean working tree (onboarding Step 0a)
+bearing preflight         # optional controlled-pilot readiness check
 bearing render            # generate adapters; --check for drift
 bearing index             # regenerate docs/decisions/index.json
 bearing lint              # structural decision-graph integrity
 bearing verify            # mandate conformance
 bearing context <path>    # index entries whose scope matches this file
-bearing onboard           # gate the onboarding pipeline; the Skill carries out steps 0–6
+bearing onboard           # readiness check and optional evaluation guidance
 bearing vendor            # copy Skills into .agents/skills/ and pin the version
 bearing vendor --pin      # pin version when copies already exist
 bearing ledger            # print the cost-ledger path
@@ -101,13 +104,14 @@ bearing eval <set>        # print an evaluation-set directory (gold|dark|negativ
 bearing transcripts       # print the transcript directory
 ```
 
-Pass/fail criteria are seeded by `bearing init` into `.bearing/ledger/pass-fail-criteria.md`. There is no `--pass-fail` flag.
+An optional evaluation-criteria template is seeded by `bearing init` into `.bearing/ledger/pass-fail-criteria.md`. There is no `--pass-fail` flag and the file is not required for ordinary use.
 
 ---
 
 ## 6. Fit and finish: the conformance suite
 
-`bearing verify` turns the four mandates into computed pass/fail:
+`bearing verify` computes the structurally testable parts of the four mandates;
+it does not certify inferred intent, decision quality, or adoption success:
 
 | Pillar | What it checks |
 | --- | --- |

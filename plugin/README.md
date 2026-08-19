@@ -1,6 +1,6 @@
-# bearing (plugin)
+# bearing-system (Python distribution) / bearing (plugin and CLI)
 
-The installable BEARING plugin: three Skills, their canonical subagent definitions, the projection renderers, and the `bearing` CLI.
+The installable BEARING plugin: three Skills, their canonical subagent definitions, the projection renderers, and the `bearing` CLI. The standalone Python distribution is named `bearing-system`; its import package and command remain `bearing`.
 
 ## Layout
 
@@ -14,9 +14,9 @@ plugin/
 ├── .codex/agents/           # generated — subagents for Codex (TOML)
 ├── hooks/hooks.json         # workspaceOpen hook for ephemeral projections
 ├── skills/
-│   ├── decision-recovery/   # retrospective acquisition (batch archaeology)
+│   ├── decision-recovery/   # retrospective acquisition (operator-invoked)
 │   ├── decision-interview/  # live acquisition (structured elicitation)
-│   └── decision-onboarding/ # orchestration (one-time per repository)
+│   └── decision-onboarding/ # optional adoption facilitation
 └── src/bearing/             # the CLI
 ```
 

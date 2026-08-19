@@ -24,7 +24,7 @@ only exists in a git context, so a fake directory would test a different program
 | `test_config.py` | The five-layer resolution chain, repo-fact versus operator-fact precedence, and `bearing init` adopting an existing convention rather than imposing one |
 | `test_render.py` | Projection determinism, drift detection, configurable targets, recorded skips, and delimited-block management |
 | `test_packaging.py` | Plugin-root containment and the installed-copy behaviour described below |
-| `test_mandate.py` | The rules BEARING states as Contracts: no inference blocks a merge, the Model Tiering Contract, honest cost accounting, profile limits, and the conformance suite itself |
+| `test_mandate.py` | Authority rules, model-tier advisories, honest cost accounting, optional profile helpers, and the conformance suite itself |
 
 ## Local testing to marketplace promotion
 

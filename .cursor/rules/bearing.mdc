@@ -50,5 +50,5 @@ returns the subset whose scope matches the file you are editing.
 - **ADR-0005** (`plugin/src/bearing/*.py`) — ADR-0005: Standard library only, Python 3.9. Trigger: adding a Python dependency, raising the minimum interpreter, or replacing the in-tree JSON Schema validator.
 - **ADR-0006** (`plugin/src/bearing/render.py`) — ADR-0006: SKILL.md is not projected. Trigger: adding a SKILL.md renderer or a projection whose targets all share one format.
 - **ADR-0007** (`plugin/src/bearing/config.py`) — ADR-0007: Repo facts versus operator facts. Trigger: adding a config key or changing which layer wins for an existing key.
-- **ADR-0008** (`plugin/src/bearing/cli.py`) — ADR-0008: Recovery is agent-executed until a real extractor exists. Trigger: implementing or invoking decision-recovery extraction.
+- **ADR-0008** (`plugin/src/bearing/cli.py`) — ADR-0008: Recovery execution is operator-selected. Trigger: implementing or invoking decision-recovery extraction.
 - **ADR-0009** (`plugin/src/bearing/assessment.py, plugin/src/bearing/cli.py`) — ADR-0009: Assessment is informational and runs without init. Trigger: changing what assessment scores, making it fail a process, or requiring init before it can run.

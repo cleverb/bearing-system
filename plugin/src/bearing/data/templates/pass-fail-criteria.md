@@ -1,30 +1,33 @@
-# Pass/Fail Criteria — <repository name>
+# Optional Evaluation Criteria — <repository name>
 
-Fill this out and commit it to the onboarding branch BEFORE Step 5 runs
-any test tickets. Do not adjust thresholds after seeing results.
+Use this template only when the team wants a pre-declared comparative pilot.
+Complete it before collecting results if protection against hindsight bias
+matters for the evaluation. BEARING does not require this document for adoption.
 
 ## Scope under test
-- Directory / service: <fill in — must match Step 2's recovery scope>
-- Baseline tag: bearing-baseline-<repo>-<date>
 
-## Thresholds to clear
+- Area or workflow: <fill in>
+- Baseline or comparison condition, if any: <fill in>
 
-| Metric | Baseline (expected) | Bar to clear |
+## Signals worth observing
+
+| Signal | Baseline or expectation | What would be encouraging |
 |---|---|---|
-| Contract-violation rate on scoped tickets | <measure on baseline first> | e.g. drops below X% |
-| Rework rate on scoped tickets | <measure on baseline first> | e.g. improves by Y% |
-| Escalation correctness (stopped-to-ask when it should have) | <measure on baseline first> | e.g. improves by Z% |
-| Token cost per ticket | <measure on baseline first> | reported alongside the above — not a pass/fail criterion on its own |
+| Contract violations | <measure or describe> | <fill in> |
+| Rework | <measure or describe> | <fill in> |
+| Escalation correctness | <measure or describe> | <fill in> |
+| Token or model cost | <measure or describe> | interpret beside outcomes where possible |
+| Maintainer experience | <describe current friction> | <fill in> |
 
-## Test tickets selected
-List tickets chosen in coordination with Step 2's scope — each should
-genuinely touch the recovered/promoted area:
-1. <ticket>
-2. <ticket>
-3. <ticket>
+## Work selected
+
+List representative tickets, tasks, or review scenarios if the evaluation uses
+them:
+
+1. <work item>
 
 ## Decision
-- [ ] Bar cleared — proceed to Step 6 handoff, merge the branch.
-- [ ] Bar not cleared — branch and pilot data retained as evidence for
-      what to change (scope, seed interview selection, promoted Anchors)
-      before re-attempting onboarding.
+
+- [ ] Continue or expand BEARING use.
+- [ ] Revise the approach and gather more evidence.
+- [ ] Pause or remove the experiment.

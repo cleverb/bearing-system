@@ -3,7 +3,7 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "bearing"
+name = "bearing-system"
 version = "0.1.0"
 description = "BEARING: an EOCR-based decision system for human-agent engineering"
 readme = "README.md"

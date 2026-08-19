@@ -1,41 +1,26 @@
-"""Onboarding profiles.
+"""Optional onboarding planning presets.
 
-@see ADR-0008 — profiles gate the Skill; they do not run extraction.
+@see ADR-0008 — profiles do not select or run recovery infrastructure.
 
 "Should I run full recovery before evaluating?" is a real question with no single
 right answer, so it becomes a named profile rather than a flag buried in prose.
 
-- **pilot** -- one scope, three to five anchors. Proves the loop closes fast.
-- **thorough** -- multi-scope recovery in reviewed waves. Coverage bounded by
-  declared review capacity rather than a fixed anchor count.
-- **audit** -- recovery only. No promotion, no branch, no pilot. Produces a
-  coverage and cost report so the decision to invest in `thorough` is made on
-  measurement instead of optimism. This is the honest answer to "do I have time
-  for this": measure first.
+- **pilot** -- suggests one scope and a small number of anchors.
+- **thorough** -- offers multi-scope recovery and review-wave planning.
+- **audit** -- suggests recovery without promotion.
 
 What `thorough` relaxes: the anchor cap, and the single-scope restriction.
 
-What it does not relax, and why each one matters *more* rather than less at
-larger scale:
+The helpers below can warn about review load, scope, and measurement quality.
+They support an operator-selected formal evaluation; they are not universal
+adoption gates. The human authority boundary remains non-negotiable.
 
 - **The human authority boundary.** Unchanged and not negotiable. More candidates
   is not an argument for reviewing them less carefully.
-- **Pre-registration of the pass/fail bar.** After two weeks of recovery
-  investment, whoever ran it is strongly motivated to find a threshold the
-  results happen to clear. Pre-registration is the only real defense, and it is
-  enforced here by comparing file mtimes rather than trusted.
-- **Wave-bounded review.** Recovery generates in waves, each fully reviewed
-  before the next is produced. This is what preserves "a human can review
-  everything the pass produces" without capping total coverage -- which is what
-  the scoped-recovery discipline was actually protecting. The original spec
-  conflated the two, and separating them is what makes `thorough` safe.
-- **Scope and test-ticket coordination.** Still required. Broad recovery makes it
-  easier, and that is the real evaluation benefit of `thorough`: it addresses the
-  null-result risk that pilot mode explicitly worries about, where the tickets
-  chosen for evaluation turn out not to touch the recovered area at all.
-- **The frozen baseline.** Same tag. The report notes elapsed wall-clock time, so
-  drift between the baseline and a weeks-later comparison is visible instead of
-  invisible.
+- **Evaluation quality.** Pre-registration, review waves, matched scope, and a
+  frozen baseline are available when a team selects a controlled pilot. The
+  helpers report problems with those controls without defining ordinary
+  onboarding success.
 """
 
 from __future__ import annotations
@@ -62,7 +47,7 @@ _SPEC: Dict[str, Dict[str, Any]] = {
         "runs_pilot": True,
         "allows_promotion": True,
         "requires_review_budget": False,
-        "summary": "One scope, 3-5 anchors, fastest path to a closed loop.",
+        "summary": "Suggested small trial: one scope and a few anchors.",
     },
     THOROUGH: {
         "max_scopes": None,
@@ -71,7 +56,7 @@ _SPEC: Dict[str, Dict[str, Any]] = {
         "runs_pilot": True,
         "allows_promotion": True,
         "requires_review_budget": True,
-        "summary": "Multi-scope recovery in reviewed waves, bounded by declared review capacity.",
+        "summary": "Optional multi-scope planning with review-capacity estimates.",
     },
     AUDIT: {
         "max_scopes": None,
@@ -80,7 +65,7 @@ _SPEC: Dict[str, Dict[str, Any]] = {
         "runs_pilot": False,
         "allows_promotion": False,
         "requires_review_budget": False,
-        "summary": "Recovery only. Measures coverage and cost so the decision to invest is informed.",
+        "summary": "Recovery-only evaluation with no promotion implied.",
     },
 }
 
@@ -126,9 +111,8 @@ class Profile:
             budget = self.config.get("review.budget_minutes_per_session")
             if not budget:
                 errors.append(
-                    "profile 'thorough' requires review.budget_minutes_per_session to be set. "
-                    "Coverage in this profile is bounded by review capacity rather than a fixed "
-                    "anchor count, so an undeclared budget means an unbounded review queue."
+                    "profile 'thorough' works best with review.budget_minutes_per_session set. "
+                    "Without it, wave estimates use the default review budget."
                 )
         return errors
 
@@ -139,14 +123,13 @@ class Profile:
         if promoted_count > limit:
             if limit == 0:
                 return [
-                    "profile 'audit' promotes nothing by design -- it exists to measure whether "
-                    "a larger investment is worth making. %d promotion(s) attempted."
+                    "profile 'audit' promotes nothing by design; %d promotion(s) fall outside "
+                    "that preset. The operator may choose another profile or workflow."
                     % promoted_count
                 ]
             return [
-                "profile %r caps promotions at %d without explicit human sign-off that a larger "
-                "scope is intentional (%d attempted). The cap is not about capacity; it is about "
-                "keeping the first pass small enough that a wrong promotion is cheap to undo."
+                "profile %r suggests at most %d promotions (%d attempted). Confirm a larger "
+                "scope or choose another workflow if it is intentional."
                 % (self.name, limit, promoted_count)
             ]
         return []
@@ -155,9 +138,8 @@ class Profile:
         limit = self.spec["max_scopes"]
         if limit is not None and len(scopes) > limit:
             return [
-                "profile %r permits %d recovery scope(s), %d given. Unscoped recovery on a "
-                "zero-anchor repository produces a first batch no one can review, which is the "
-                "fastest way to lose trust in the whole pipeline."
+                "profile %r suggests %d recovery scope(s), %d given. Confirm the broader scope "
+                "or choose another workflow if it is intentional."
                 % (self.name, limit, len(scopes))
             ]
         return []
@@ -210,27 +192,27 @@ def wave_gate(profile: Profile, config: ResolvedConfig) -> Tuple[bool, str]:
 
 
 def pre_registration_errors(config: ResolvedConfig) -> List[str]:
-    """Was the pass/fail bar written before the results were seen?
+    """Advisories for teams that selected a pre-registered comparison.
 
     Checked by comparing the criteria file's modification time against the first
     pilot row in the ledger. Not a perfect proof -- a determined person can touch
     a file -- but it catches the realistic case, which is not fraud. It is someone
     who genuinely believes the threshold was wrong now that they have seen the
-    data, which is exactly the belief pre-registration exists to overrule.
+    data. The caller decides whether this matters for the selected evaluation.
     """
     layout = config.layout
     errors: List[str] = []
 
     if not os.path.isfile(layout.pass_fail):
         return [
-            "no %s. The pass/fail bar must be written and committed before any pilot ticket "
-            "runs." % os.path.relpath(layout.pass_fail, config.workspace)
+            "no %s. A controlled, pre-registered comparison should define its bar before "
+            "collecting results." % os.path.relpath(layout.pass_fail, config.workspace)
         ]
 
     text = read_text(layout.pass_fail) or ""
     if "<measure on baseline first>" in text or "<fill in" in text:
         errors.append(
-            "%s still contains template placeholders, so no bar has actually been set."
+            "%s still contains template placeholders, so no comparison bar has been set."
             % os.path.relpath(layout.pass_fail, config.workspace)
         )
 
@@ -247,9 +229,8 @@ def pre_registration_errors(config: ResolvedConfig) -> List[str]:
     criteria_mtime = datetime.datetime.utcfromtimestamp(os.path.getmtime(layout.pass_fail))
     if criteria_mtime > first_date + datetime.timedelta(minutes=5):
         errors.append(
-            "%s was modified at %s, after the first pilot run at %s. Thresholds are not "
-            "adjusted once results are visible -- after real investment in a recovery pass, "
-            "whoever ran it is strongly motivated to find a bar the results clear."
+            "%s was modified at %s, after the first pilot run at %s. This weakens a "
+            "pre-registered comparison; label the result accordingly."
             % (
                 os.path.relpath(layout.pass_fail, config.workspace),
                 criteria_mtime.isoformat(timespec="seconds"),
@@ -304,5 +285,5 @@ def scope_ticket_overlap_warning(scopes: List[str], ticket_paths: List[str]) -> 
         "none of the %d selected test-ticket path(s) fall inside the recovery scope %s. The "
         "pilot would measure a BEARING run with no recovered knowledge bearing on the work, "
         "and report a null result for a reason unrelated to the framework. Re-select tickets "
-        "or widen the scope before running Step 5." % (len(ticket_paths), ", ".join(scopes))
+        "or widen the scope before interpreting the comparison." % (len(ticket_paths), ", ".join(scopes))
     )

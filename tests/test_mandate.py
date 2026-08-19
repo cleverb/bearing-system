@@ -308,8 +308,8 @@ class DisclosureBudgetTest(BearingTestCase):
             self.assertIn("disclosure budget", result.stdout)
 
 
-class ModelTieringContractTest(BearingTestCase):
-    def test_a_frontier_model_on_extraction_is_rejected(self):
+class ModelTieringAdvisoryTest(BearingTestCase):
+    def test_a_frontier_model_on_extraction_is_flagged(self):
         from bearing.cost import load_price_book, tiering_errors
 
         with TempWorkspace() as workspace:
@@ -317,24 +317,23 @@ class ModelTieringContractTest(BearingTestCase):
             config = workspace.config({"models.extract.model": "claude-opus-4.1",
                                        "models.extract.tier": "cheap"})
             errors = tiering_errors(config, load_price_book(config))
-            self.assertTrue(errors, "the tiering Contract must refuse this config")
-            self.assertTrue(any("Tiering Contract" in error for error in errors))
+            self.assertTrue(errors, "the reference workflow should flag this cost choice")
+            self.assertTrue(any("reference workflow" in error for error in errors))
 
-    def test_doctor_fails_on_a_contract_violating_model_choice(self):
+    def test_doctor_warns_on_an_expensive_extraction_choice(self):
         with TempWorkspace() as workspace:
             workspace.init()
+            rendered = run_cli(["render"], workspace=workspace.path)
+            self.assertEqual(rendered.returncode, 0, rendered.stdout + rendered.stderr)
             result = run_cli(
                 ["doctor"],
                 workspace=workspace.path,
                 env={"BEARING_MODELS_EXTRACT_MODEL": '"claude-opus-4.1"'},
             )
-            self.assertNotEqual(
-                result.returncode,
-                0,
-                "configuration must not be able to silently void a Contract:\n%s" % result.stdout,
-            )
+            self.assertEqual(result.returncode, 0, result.stdout)
+            self.assertIn("model tier advisory", result.stdout)
 
-    def test_an_unknown_model_is_rejected_rather_than_assumed_cheap(self):
+    def test_an_unknown_model_is_flagged_for_cost_reporting(self):
         from bearing.cost import load_price_book, tiering_errors
 
         with TempWorkspace() as workspace:
@@ -472,7 +471,7 @@ class HonestCostTest(BearingTestCase):
             self.assertIsNotNone(value)
             self.assertGreater(value, 0)
 
-    def test_the_report_refuses_token_figures_without_paired_outcome_metrics(self):
+    def test_the_report_can_identify_missing_paired_outcome_context(self):
         from bearing.cost import require_paired_metrics
 
         complete = [
@@ -491,6 +490,29 @@ class HonestCostTest(BearingTestCase):
         missing = require_paired_metrics(partial)
         self.assertTrue(missing)
         self.assertIn("contract_violations", missing[0])
+
+    def test_pilot_report_shows_available_tokens_with_advisories(self):
+        with TempWorkspace() as workspace:
+            workspace.init()
+            workspace.write(
+                ".bearing/ledger/cost.jsonl",
+                json.dumps(
+                    {
+                        "run_id": "r1",
+                        "stage": "pilot",
+                        "condition": "bearing",
+                        "input_tokens": 1200,
+                        "output_tokens": 300,
+                        "token_source": "measured",
+                    }
+                )
+                + "\n",
+            )
+            result = run_cli(["report", "--pilot"], workspace=workspace.path)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("Evaluation criteria check: advisory", result.stdout)
+            self.assertIn("Incomplete outcome context", result.stdout)
+            self.assertIn("| bearing | 1200 | 300 |", result.stdout)
 
     def test_every_cost_report_carries_the_caveat_block(self):
         with TempWorkspace() as workspace:

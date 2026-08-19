@@ -1,16 +1,19 @@
-# Agent-executed onboarding procedure
+# Onboarding reference path
 
-There is no `freeze-baseline.py`, `scaffold.py`, or `evaluate-pilot.py`.
-`bearing onboard` gates the pipeline; this Skill carries out the steps
-with host tools and other Skills.
+`bearing onboard` checks readiness and points to this Skill. It does not enforce
+an adoption pipeline. Choose only the activities that will help the maintainers
+evaluate BEARING.
 
-| Step | Mechanism |
+| Activity | Optional mechanism |
 | --- | --- |
-| 0a Preflight | `bearing preflight` (also run by `bearing onboard`) |
-| 0 Freeze | `git tag bearing-baseline-<repo>-<date>` then `git checkout -b bearing-onboarding/<repo>` |
-| 1 Scaffold | `bearing init` then `bearing render` |
-| 2 Scoped recovery | `decision-recovery` Skill, one directory or service |
-| 3 Seed interviews | `decision-interview` Skill |
-| 4 First anchors | Human promotion; `bearing index`; `bearing lint` |
-| 5 Pilot | Fill `.bearing/ledger/pass-fail-criteria.md` *before* running tickets; `bearing report --pilot` |
-| 6 Handoff | Human PR against the pre-registered bar |
+| Bootstrap | `bearing init`, `bearing doctor`, `bearing render` |
+| Select a trial | A small area, a real change, or an audit scope |
+| Surface context | `decision-recovery` and/or `decision-interview` |
+| Promote useful context | Human review, then `bearing index` and `bearing lint` |
+| Evaluate | Qualitative review, ordinary-work observations, or `bearing report --pilot` |
+| Handoff | Maintainers decide to expand, revise, pause, or remove |
+
+For a controlled comparison, the operator may create a baseline tag and a
+dedicated branch, fill in the criteria template before running tickets, and use
+paired measurements. Confirm that workflow with the user; it is not required by
+BEARING.

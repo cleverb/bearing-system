@@ -71,8 +71,7 @@
     "false_escalation_rate_max": 0.15,
     "index_token_budget": 4000,
     "negative_set_hallucination_rate_max": 0.02,
-    "proposed_stale_days": 90,
-    "time_to_first_value_minutes": 30
+    "proposed_stale_days": 90
   },
   "version": 1
 }

@@ -5,7 +5,7 @@ The ledger is append-only JSONL at **`.bearing/ledger/cost.jsonl` in the workspa
 That location is a correction, not a preference. An earlier draft of the Recovery spec placed the ledger at `references/cost-ledger.jsonl` inside this Skill. Two things break under that placement:
 
 1. Plugin directories are replaced wholesale on update, so every upgrade would silently erase the repository's entire cost history.
-2. The ledger is per-repository run history — it is knowledge about the repository, not about the Skill — and the kill switch depends on trends across many runs and many contributors.
+2. The ledger is per-repository run history — it is knowledge about the repository, not about the Skill — and optional trend analysis depends on observations across runs and contributors.
 
 Resolve it with `bearing ledger` rather than assuming a relative path.
 
@@ -27,8 +27,8 @@ One row per pipeline stage per run. `stage` discriminates the shape.
 ## The two derived metrics
 
 - **Acceptance rate** — promoted divided by reviewable. Necessary but not sufficient: a repository producing 100 trivial candidates at 30% acceptance and one producing 5 candidates at 20% acceptance where the single hit is an undocumented security constraint are not the same kind of system.
-- **Cost per promoted candidate** — total model cost plus `estimated_review_minutes` valued at the configured reviewer rate, divided by candidates promoted. This is the metric that catches what acceptance rate alone misses, because it puts the dominant cost — a senior engineer's review time, not cheap-tier tokens — into the same number that decides whether the Skill keeps running.
+- **Cost per promoted candidate** — total model cost plus `estimated_review_minutes` valued at the configured reviewer rate, divided by candidates promoted. This can complement acceptance rate because it includes the dominant cost — reviewer time, not only model tokens.
 
-The kill switch triggers on a sustained rise in cost per promoted candidate over `verify.cost_per_promoted_trailing_window` runs, not on raw acceptance rate.
+The optional stop signal flags a sustained rise in cost per promoted candidate over `verify.cost_per_promoted_trailing_window` runs. It is an operator aid, not a required execution policy.
 
 When `cost.reviewer_rate_usd_per_hour` is unset — which is the default — review cost is reported in minutes and never converted to dollars. See `bearing report --help`.

@@ -158,11 +158,11 @@ def cmd_preflight(args: argparse.Namespace) -> int:
 
     config = resolve(workspace=getattr(args, "workspace", None))
     passed, checks = preflight(config)
-    code = report(checks, "bearing preflight  (onboarding Step 0a)")
+    code = report(checks, "bearing preflight  (optional controlled-pilot check)")
     if not passed:
         print(
             paint(
-                "Onboarding stops here. Preflight verifies preconditions rather than installing\n"
+                "The controlled-pilot preflight stops here. It verifies preconditions rather than installing\n"
                 "them: install belongs to the distribution layer, and bootstrap to `bearing init`.\n",
                 "dim",
             )
@@ -599,7 +599,7 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
 # ---------------------------------------------------------------------------
 
 def cmd_onboard(args: argparse.Namespace) -> int:
-    from .doctor import preflight, report
+    from .doctor import report, run_checks
     from .profiles import Profile, describe, load_state, plan_waves, save_state, wave_gate
 
     config = _load(args)
@@ -610,16 +610,12 @@ def cmd_onboard(args: argparse.Namespace) -> int:
     print()
 
     for message in profile.readiness_errors():
-        print(status_line("fail", "profile readiness", message))
-    if profile.readiness_errors():
-        print()
-        return EXIT_FAIL
+        print(status_line("warn", "optional profile setting", message))
 
-    passed, checks = preflight(config)
-    if not passed:
-        report(checks, "Step 0a — Preflight")
+    checks = run_checks(config, require_clean_tree=False)
+    if report(checks, "Onboarding readiness") != EXIT_OK:
         return EXIT_FAIL
-    print(status_line("ok", "Step 0a preflight", "%d check(s) passed" % len(checks)))
+    print(status_line("ok", "onboarding readiness", "core checks completed"))
 
     ready, reason = wave_gate(profile, config)
     print(status_line("ok" if ready else "warn", "wave gate", reason))
@@ -652,13 +648,11 @@ def cmd_onboard(args: argparse.Namespace) -> int:
     save_state(config, state)
 
     print()
-    print(paint("  Guardrails that do not relax in any profile", "bold"))
+    print(paint("  BEARING authority boundaries", "bold"))
     for line in (
         "the human authority boundary on promotion",
-        "wave-bounded review — each wave fully reviewed before the next is generated",
-        "pre-registration of the pass/fail bar before Step 5",
-        "coordination between recovery scope and test-ticket selection",
-        "the same frozen baseline tag, with elapsed time noted in the report",
+        "shadow candidates remain non-authoritative",
+        "inference and onboarding results never block a merge",
     ):
         print(status_line("ok", line, ""))
 
@@ -666,8 +660,8 @@ def cmd_onboard(args: argparse.Namespace) -> int:
     print(paint("State written to .bearing/runs/onboarding.json.", "dim"))
     print(
         paint(
-            "Steps 0 through 6 are carried out by the decision-onboarding Skill; this command\n"
-            "gates and records them. Load the Skill to proceed.",
+            "The decision-onboarding Skill offers an adaptable evaluation path. This command\n"
+            "checks readiness and records optional planning hints; load the Skill to proceed.",
             "dim",
         )
     )
@@ -861,7 +855,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     assessment.add_argument("--json", action="store_true")
 
-    add("preflight", "Onboarding Step 0a: verify preconditions before any pipeline step.", cmd_preflight)
+    add("preflight", "Verify optional onboarding preconditions.", cmd_preflight)
 
     render = add("render", "Generate runtime adapters from canonical sources.", cmd_render)
     render.add_argument("--check", action="store_true", help="fail on drift instead of writing")
@@ -891,7 +885,7 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--json", action="store_true")
 
     report_cmd = add("report", "Cost and outcome reporting.", cmd_report)
-    report_cmd.add_argument("--pilot", action="store_true", help="pilot report with pre-registration check")
+    report_cmd.add_argument("--pilot", action="store_true", help="optional evaluation report with criteria advisory")
     report_cmd.add_argument("--no-tokens", action="store_true", help="omit the token section")
 
     vendor_cmd = add("vendor", "Copy the Skills into this repository and pin the version.", cmd_vendor)
@@ -907,7 +901,7 @@ def build_parser() -> argparse.ArgumentParser:
     uninstall_cmd.add_argument("--dry-run", action="store_true", help="list what would change")
     uninstall_cmd.add_argument("--purge-config", action="store_true", help="also remove .bearing/config.json")
 
-    onboard = add("onboard", "Gate and record the onboarding pipeline.", cmd_onboard)
+    onboard = add("onboard", "Check readiness and guide an optional BEARING evaluation.", cmd_onboard)
     onboard.add_argument("--profile", choices=("pilot", "thorough", "audit"), default=None)
     onboard.add_argument("--candidates", type=int, default=0, help="candidate count to plan waves for")
 

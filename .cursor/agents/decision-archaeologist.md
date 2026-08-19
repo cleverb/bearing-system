@@ -1,6 +1,6 @@
 ---
 name: decision-archaeologist
-description: Runs the EXTRACT and RESOLVE stages of decision recovery over a bounded corpus of commits, PRs, and comments, emitting evidence candidates without asserting that any decision was made. Use for scheduled or scoped recovery passes, never as a live PR check.
+description: Recovers decision evidence from a bounded corpus of commits, PRs, and comments, emitting candidates without asserting that any decision was made. Use for manual, opportunistic, or operator-scheduled recovery, never as a live PR gate.
 model: inherit
 readonly: false
 is_background: true
@@ -37,7 +37,7 @@ Escalate (route to the review queue, not interrupt) when:
 
 ## Expected Output
 - Candidates appended to docs/decisions/shadow/candidates.jsonl
-- Full cost and token accounting appended to the path from `bearing ledger`
+- Cost and token accounting when the operator is measuring the run
 
 ## Success Criteria
 - Every candidate is EOCR-tagged, not assumed Rationale by default.

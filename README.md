@@ -5,7 +5,7 @@
 BEARING makes the decisions governing a codebase discoverable at the moment code is generated, rather than enforceable only after it is written. It does that with three Skills and a governance CLI over one durable idea: **standardize the organizational source, project it into whatever each runtime natively reads.**
 
 - **Read the architecture:** [`BEARING.md`](BEARING.md)
-- **Get oriented in 30 minutes:** [`QUICKSTART.md`](QUICKSTART.md)
+- **Get oriented:** [`QUICKSTART.md`](QUICKSTART.md)
 - **Agent entering this repo:** [`AGENTS.md`](AGENTS.md)
 
 ## The mandate
@@ -15,7 +15,7 @@ BEARING makes the decisions governing a codebase discoverable at the moment code
 - **PROJECT** — standardize the organizational source; generate the tool adapters.
 - **EVOLVE** — treat the system as a stateful graph, not a static library.
 
-`bearing verify` turns each of those four into a computed pass/fail rather than an aspiration. See [Fit and finish](docs/specs/bearing-distribution-spec.md#6-fit-and-finish-the-conformance-suite). Missing eval fixtures warn rather than pass silently.
+`bearing verify` checks the structural parts of those mandates that the repository can establish mechanically. It does not score inferred intent or certify that a team's decision practice is effective. See [Fit and finish](docs/specs/bearing-distribution-spec.md#6-fit-and-finish-the-conformance-suite).
 
 ## What's in this repository
 
@@ -46,7 +46,7 @@ pipx install ./plugin        # or: uv tool install ./plugin
 bearing --help
 ```
 
-Requires Python 3.9 or newer and no third-party packages. Plugin install alone is not enough to run `bearing init`.
+The Python distribution is named `bearing-system`; the import package and CLI command remain `bearing`. It requires Python 3.9 or newer and no third-party packages. Plugin install alone is not enough to run `bearing init`.
 
 ## Bootstrap a repository
 
@@ -59,7 +59,7 @@ bearing doctor        # verifies everything resolves before you rely on it
 
 `bearing init` never guesses where your decisions live. If the repo already uses `docs/adr/`, `docs/ADRs/`, or anything else, it detects and asks — see [the legacy convention case](docs/specs/bearing-distribution-spec.md#33-the-legacy-convention-case).
 
-Then run the onboarding pilot, which is the actual 30-minute path in [`QUICKSTART.md`](QUICKSTART.md).
+Then use the optional onboarding guide—or simply try BEARING during ordinary work—to gather enough evidence to decide whether it is useful. [`QUICKSTART.md`](QUICKSTART.md) shows the available paths.
 
 ## Developing BEARING itself
 

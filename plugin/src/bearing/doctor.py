@@ -1,4 +1,4 @@
-"""`bearing doctor` and the Step 0a preflight gate.
+"""`bearing doctor` and the optional controlled-pilot preflight.
 
 @see ADR-0002 — doctor flags runtime data that has drifted back into the plugin tree.
 
@@ -12,7 +12,7 @@ So there are three layers, and preflight sits on the seam between the first two:
 
 1. **Distribution** -- the plugin is installed once per user or organization.
 2. **Bootstrap** -- `bearing init` writes config and scaffolds the corpus.
-3. **Operation** -- the onboarding pipeline, steps 0 through 6.
+3. **Operation** -- normal BEARING use or an optional onboarding evaluation.
 
 Every check reports a remedy, because a preflight failure that does not say what
 to run is just a slower way of getting stuck.
@@ -182,9 +182,8 @@ def _git_checks(config: ResolvedConfig, require_clean: bool) -> List[Check]:
                 FAIL if require_clean else WARN,
                 "working tree is clean",
                 "%d uncommitted change(s)" % count,
-                "Onboarding compares a frozen baseline against a branch. Uncommitted work "
-                "means the comparison measures your working tree, not the framework. Commit "
-                "or stash first.",
+                "A controlled baseline comparison needs a clean tree. Ordinary onboarding "
+                "does not; commit or stash only if you selected that evaluation method.",
                 gating=require_clean,
             )
         )
@@ -425,18 +424,19 @@ def _cost_checks(config: ResolvedConfig) -> List[Check]:
         for message in errors:
             checks.append(
                 Check(
-                    FAIL,
-                    "Model Tiering Contract",
+                    WARN,
+                    "model tier advisory",
                     message,
-                    "Model choice is yours; the tiering Contract is not. Configuration must "
-                    "not be able to silently void a Contract.",
+                    "Model choice and recovery execution are operator-controlled. Confirm the "
+                    "assignment or update the price book if cost reporting matters.",
+                    gating=False,
                 )
             )
     else:
         assignments = ", ".join(
             "%s=%s" % (role, settings["model"]) for role, settings in sorted(resolve_models(config).items())
         )
-        checks.append(Check(OK, "Model Tiering Contract", assignments))
+        checks.append(Check(OK, "model tier advisory", assignments, gating=False))
 
     for message in price_book_warnings(config, book):
         checks.append(Check(WARN, "price book advisory", message, gating=False))
@@ -517,12 +517,11 @@ def _wrap(text: str, width: int) -> List[str]:
 
 
 def preflight(config: ResolvedConfig) -> Tuple[bool, List[Check]]:
-    """Step 0a. The gate onboarding runs before it touches anything.
+    """Stricter readiness check for an operator-selected controlled pilot.
 
     Stricter than `doctor` in one respect -- it requires a clean working tree --
-    because everything downstream compares a frozen baseline against a branch,
-    and uncommitted work makes that comparison measure drift rather than the
-    framework.
+    A clean tree matters when comparing a frozen baseline against a branch. The
+    ordinary onboarding guide does not require this check.
     """
     checks = run_checks(config, require_clean_tree=True)
     blocked = any(check.status == FAIL and check.gating for check in checks)

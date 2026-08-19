@@ -12,10 +12,9 @@ are thresholds read from config, because the right value genuinely varies by
 repository -- but the threshold is declared in advance and committed, which is
 the difference between a target and a rationalization.
 
-A fifth group is included that the mandate does not name: usability. A system
-that satisfies all four pillars while producing an unreviewable queue and a
-30-minute promise it takes a day to meet has failed at something that matters
-just as much.
+A fifth group is included that the mandate does not name: usability. It checks
+concrete repository ergonomics without certifying adoption success or promising
+a fixed onboarding duration.
 """
 
 from __future__ import annotations
@@ -578,7 +577,7 @@ def check_evolve(config: ResolvedConfig) -> List[Result]:
         )
     )
 
-    # Cost trend and the kill switch.
+    # Optional recovery cost trend.
     book = load_price_book(config)
     rows = load_ledger(config)
     triggered, reason = kill_switch_triggered(config, book, rows)
@@ -667,10 +666,11 @@ def check_usability(config: ResolvedConfig) -> List[Result]:
         Result(
             "usability",
             "review queue is clearable in the declared budget",
-            PASS if surfaced <= affordable else FAIL,
+            PASS if surfaced <= affordable else WARN,
             "%d surfaced, %d clearable in %d min at %ds each. A queue larger than one person "
             "clears does not get reviewed carefully, it gets rubber-stamped."
             % (surfaced, affordable, budget_minutes, seconds),
+            hard=False,
         )
     )
 
@@ -683,10 +683,8 @@ def check_usability(config: ResolvedConfig) -> List[Result]:
                 "usability",
                 "Negative Set hallucination rate",
                 WARN,
-                "no scored results in .bearing/eval/negative/cases.jsonl. This is the metric "
-                "that gates every extractor or model change: the risk is not only missing "
-                "real decisions, it is inventing convincing fictional ones. Unmeasured is "
-                "not a pass.",
+                "no scored results in .bearing/eval/negative/cases.jsonl. A Negative Set can "
+                "help evaluate an extractor's tendency to invent convincing fictional decisions.",
                 hard=False,
             )
         )
@@ -695,23 +693,37 @@ def check_usability(config: ResolvedConfig) -> List[Result]:
             Result(
                 "usability",
                 "Negative Set hallucination rate",
-                PASS if hallucination <= ceiling else FAIL,
+                PASS if hallucination <= ceiling else WARN,
                 "%.3f against a ceiling of %.3f" % (hallucination, ceiling),
+                hard=False,
             )
         )
 
     # Time to first value.
     ttfv = _time_to_first_value(config)
-    promised = int(config.get("verify.time_to_first_value_minutes") or 30)
+    promised_value = config.get("verify.time_to_first_value_minutes")
+    promised = int(promised_value) if promised_value is not None else None
     if ttfv is None:
         results.append(
             Result(
                 "usability",
                 "time to first value",
-                WARN,
-                "no measured run yet (no ledger row with minutes_to_first_anchor). The "
-                "configured ceiling is %d minutes. Unmeasured is not a pass."
-                % promised,
+                WARN if promised is not None else SKIP,
+                (
+                    "no measured run yet; the operator-selected target is %d minutes" % promised
+                    if promised is not None
+                    else "no operator target configured; BEARING makes no fixed onboarding-time promise"
+                ),
+                hard=False,
+            )
+        )
+    elif promised is None:
+        results.append(
+            Result(
+                "usability",
+                "time to first value",
+                SKIP,
+                "%d min measured; no operator target configured" % ttfv,
                 hard=False,
             )
         )
@@ -721,7 +733,8 @@ def check_usability(config: ResolvedConfig) -> List[Result]:
                 "usability",
                 "time to first value",
                 PASS if ttfv <= promised else FAIL,
-                "%d min measured against a documented promise of %d min" % (ttfv, promised),
+                "%d min measured against an operator-selected target of %d min" % (ttfv, promised),
+                hard=False,
             )
         )
 

@@ -2,7 +2,7 @@
 
 interface:
   display_name: "Decision Onboarding"
-  short_description: "Bootstrap a repository into the BEARING decision system as one reviewable branch — preflight, freeze a baseline, scaffold, run a scoped recovery pass, seed interviews, promote a small number of first anchors, then measure the result against the frozen baseline"
+  short_description: "Help a repository try BEARING, establish a small amount of useful decision context, and evaluate whether it is worth continuing"
 policy:
   allow_implicit_invocation: false
   # Onboarding tags a baseline commit and creates a branch. That is a

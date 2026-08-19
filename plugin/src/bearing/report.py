@@ -1,11 +1,10 @@
-"""`bearing report`: cost and outcome reporting, with two refusals built in.
+"""`bearing report`: cost and outcome reporting with explicit caveats.
 
-@see ADR-0005 — reporting refusals are code, not a documentation plea.
+@see ADR-0005 — reporting and caveat logic remains standard-library only.
 
-**Refusal one: token counts are not printed alone.** The onboarding spec lists
-this as a Success Criterion, and a criterion that depends on someone remembering
-it will be violated the first time somebody just wants the token number. So the
-command fails instead.
+Token counts are more useful beside outcomes. The report warns when paired
+outcomes are missing, while still exposing the measured data so operators can
+choose an evaluation method appropriate to their repository.
 
 The reasoning is not pedantry. The BEARING run is *expected* to consume more
 tokens than the baseline, because it now loads a constitution, a disclosure index,
@@ -15,7 +14,7 @@ token delta reported without those numbers beside it is not a weak signal, it is
 an actively misleading one -- it looks like a cost regression and reads as
 authoritative.
 
-**Refusal two: engineer time is not silently priced.** Review minutes convert to
+Engineer time is not silently priced. Review minutes convert to
 dollars only when someone supplies a rate. Everything else in a cost report is at
 least traceable to a published price; a fabricated hourly figure for a senior
 engineer's attention would put the least defensible number in the most prominent
@@ -114,8 +113,8 @@ def cost_report(config: ResolvedConfig, include_tokens: bool = True) -> str:
     if per_promoted is None:
         lines.append(
             "- Cost per promoted candidate: **not computed.** This metric exists to put the "
-            "dominant cost — review time — into the number that decides whether the Skill keeps "
-            "running. Computing it from tokens alone would report the small half and call it the "
+            "dominant cost — review time — into a number that can inform whether repeated runs "
+            "remain worthwhile. Computing it from tokens alone would report the small half and call it the "
             "whole. Set `cost.reviewer_rate_usd_per_hour` to enable it."
         )
     else:
@@ -123,9 +122,9 @@ def cost_report(config: ResolvedConfig, include_tokens: bool = True) -> str:
 
     triggered, reason = kill_switch_triggered(config, book, rows)
     lines.append("")
-    lines.append("## Kill switch")
+    lines.append("## Optional cost-trend stop signal")
     lines.append("")
-    lines.append("- **%s** — %s" % ("TRIGGERED" if triggered else "not triggered", reason))
+    lines.append("- **%s** — %s" % ("review suggested" if triggered else "no trend signal", reason))
 
     if include_tokens:
         gate = require_paired_metrics(rows)
@@ -134,20 +133,13 @@ def cost_report(config: ResolvedConfig, include_tokens: bool = True) -> str:
         lines.append("")
         if gate:
             lines.append(
-                "**Withheld.** Token figures are only reported alongside rework, "
-                "Contract-violation, and escalation-correctness metrics. Missing:"
+                "> **Incomplete outcome context.** Interpret token figures cautiously; "
+                "the following paired fields are missing:"
             )
             for message in gate:
-                lines.append("- %s" % message)
+                lines.append("> - %s" % message)
             lines.append("")
-            lines.append(
-                "This is a refusal, not a formatting choice. See the reasoning in the caveats "
-                "below: the BEARING run is expected to use more tokens, and that number without "
-                "outcome metrics beside it reads as a cost regression when it may be the "
-                "opposite."
-            )
-        else:
-            lines.extend(_token_table(rows))
+        lines.extend(_token_table(rows))
 
     lines.append("")
     lines.append(CAVEAT_BLOCK)
@@ -186,28 +178,27 @@ def _token_table(rows: List[Dict[str, Any]]) -> List[str]:
 
 
 def pilot_report(config: ResolvedConfig) -> Tuple[str, int]:
-    """Pilot outcome against the pre-registered bar. Returns (text, exit code)."""
+    """Optional evaluation report with an advisory criteria check."""
     from .profiles import pre_registration_errors
 
     errors = pre_registration_errors(config)
     lines: List[str] = ["# BEARING pilot report", ""]
 
     if errors:
-        lines.append("## Pre-registration check: FAILED")
+        lines.append("## Evaluation criteria check: advisory")
         lines.append("")
         for message in errors:
             lines.append("- %s" % message)
         lines.append("")
         lines.append(
-            "The pass/fail bar is pre-registered before Step 5 runs, and this check is the only "
-            "real defense against a threshold that moves to fit the results. It matters more "
-            "after a large recovery investment, not less."
+            "A pre-declared bar can make a controlled comparison easier to interpret, but it "
+            "is optional. The report below includes the available measurements."
         )
         lines.append("")
-        lines.append(cost_report(config, include_tokens=False))
-        return "\n".join(lines) + "\n", 1
+        lines.append(cost_report(config, include_tokens=True))
+        return "\n".join(lines) + "\n", 0
 
-    lines.append("## Pre-registration check: passed")
+    lines.append("## Evaluation criteria check: available")
     lines.append("")
     lines.append(
         "`%s` was in place before the first pilot run."

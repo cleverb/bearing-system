@@ -72,7 +72,6 @@
     "anchor_coverage_min": 0.6,
     "index_token_budget": 4000,
     "proposed_stale_days": 90,
-    "time_to_first_value_minutes": 30,
     "negative_set_hallucination_rate_max": 0.02,
     "cost_per_promoted_trailing_window": 4
   }

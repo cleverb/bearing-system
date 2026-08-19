@@ -4,7 +4,7 @@
       "kind": "subagents",
       "path": ".claude/agents/decision-archaeologist.md",
       "scope": "repo",
-      "sha256": "c2a5c7fe4eb8c19076e30d687da9763ad25f3aaebd215d713ff6fafa13a778e7",
+      "sha256": "92fb821eee997b22b1e7a74f975ef3f10a5b97abc56376d685886092fb344c76",
       "source": "plugin/skills/decision-recovery/subagents/decision-archaeologist.md",
       "target": "claude"
     },
@@ -28,7 +28,7 @@
       "kind": "subagents",
       "path": ".claude/agents/onboarding-coordinator.md",
       "scope": "repo",
-      "sha256": "7f77295a9b335a5427396909b8771930210d44d01ae525462d658873476b3aab",
+      "sha256": "5439a184847c50342606e908e80bef3ed49af4a48457220edbd0034a5fbabcb6",
       "source": "plugin/skills/decision-onboarding/subagents/onboarding-coordinator.md",
       "target": "claude"
     },
@@ -36,7 +36,7 @@
       "kind": "subagents",
       "path": ".codex/agents/decision-archaeologist.toml",
       "scope": "repo",
-      "sha256": "68914797ba3b28c41a54e1d4eecb5b6f53f8e1088c00a4af0298eac5934eddcc",
+      "sha256": "8a66547607dce830628c35d8f53d35028a2feca6dddb539ea26516587dec4992",
       "source": "plugin/skills/decision-recovery/subagents/decision-archaeologist.md",
       "target": "codex"
     },
@@ -60,7 +60,7 @@
       "kind": "subagents",
       "path": ".codex/agents/onboarding-coordinator.toml",
       "scope": "repo",
-      "sha256": "71886a7497d609b5a6d4757444075fced47c84d96464ebc3e89f848123290de9",
+      "sha256": "33780b0a60c9a924ea04387293c6aebab435a87e6850b0188cf227cd939a5dde",
       "source": "plugin/skills/decision-onboarding/subagents/onboarding-coordinator.md",
       "target": "codex"
     },
@@ -68,7 +68,7 @@
       "kind": "subagents",
       "path": ".cursor/agents/decision-archaeologist.md",
       "scope": "repo",
-      "sha256": "d2bcb91ecc602004e9a2bae111bf1dbcc35d54f9cdb83e3bc4d28fbb4adb75df",
+      "sha256": "c2dcf536c77b86b7382f9fa09f9af209b1881a8bcc8f2d3065ca3f40651750de",
       "source": "plugin/skills/decision-recovery/subagents/decision-archaeologist.md",
       "target": "cursor"
     },
@@ -92,7 +92,7 @@
       "kind": "subagents",
       "path": ".cursor/agents/onboarding-coordinator.md",
       "scope": "repo",
-      "sha256": "7f77295a9b335a5427396909b8771930210d44d01ae525462d658873476b3aab",
+      "sha256": "5439a184847c50342606e908e80bef3ed49af4a48457220edbd0034a5fbabcb6",
       "source": "plugin/skills/decision-onboarding/subagents/onboarding-coordinator.md",
       "target": "cursor"
     },
@@ -100,7 +100,7 @@
       "kind": "rules",
       "path": ".cursor/rules/bearing.mdc",
       "scope": "repo",
-      "sha256": "767c6299b2b87c688758bb277ed222be893f29be6c26ccc63b69336c0e81590a",
+      "sha256": "f267a63e351a2889641e80925c879d016d33a87b03ab7617e86fa5acc34f53c1",
       "source": "plugin/src/bearing/data/templates/agents-block.md",
       "target": "cursor"
     }

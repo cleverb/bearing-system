@@ -1,6 +1,6 @@
 ---
 name: decision-recovery
-description: Recover evidence of undocumented architectural decisions from commit history, PR descriptions, tickets, and code comments into a reviewable shadow graph of candidates. Use when auditing a legacy area for missing decision ancestry, running a scheduled BEARING recovery pass, or asked why code looks the way it does when no ADR exists. Never writes to the authored decision record directly.
+description: Recover evidence of undocumented architectural decisions from commit history, PR descriptions, tickets, and code comments into reviewable shadow candidates. Use for a manual or scheduled audit, or opportunistically when ordinary work exposes missing decision ancestry. Never writes to the authored decision record directly.
 metadata:
   bearing-role: retrospective-acquisition
   writes-to: shadow-graph
@@ -8,91 +8,68 @@ metadata:
 
 # Skill: Decision Recovery
 
-## Context
-Undocumented decisions accumulate as commit messages, PR descriptions, and
-comments — but never as `@see ADR-XXX` annotations or entries in
-docs/decisions/. This Skill recovers evidence of such decisions and routes
-it to a human for judgment. It does not assert that a decision was made —
-only that evidence suggesting one exists. It never writes to
-docs/decisions/ or adds annotations directly.
+## Purpose
 
-## Trigger
-Runs as a scheduled *agent* session (weekly is a policy, not a shipped
-cron) against a bounded scope. Never a live PR check. Never triggered
-per-commit. There is no `extract.py`: this Skill is agent-executed.
+Surface evidence that may help a human recover undocumented decisions. This
+Skill does not assert that a decision was made, promote candidates, add code
+annotations, or prescribe how often recovery runs.
 
-## Pipeline (bounded, non-recursive)
+## Invocation
 
-The stages are judgment. The CLI validates the result. Follow
-`references/agent-procedure.md` for the mechanical steps.
+Recovery is operator-controlled. Use whichever mode fits the repository:
 
-1. EXTRACT (cheap-tier, decision-archaeologist): using git log, `gh`,
-   and code comments, scan the scoped corpus once. For each code symbol
-   with no existing Anchor, extract candidate evidence tagged with its
-   EOCR function. Runs once per item per corpus version. Do not invoke
-   any Skill `scripts/` — there are none.
+- opportunistically, when ordinary work exposes useful evidence;
+- as an explicit, bounded manual pass;
+- from operator-owned automation such as GitHub Actions or cron; or
+- through a custom extractor that emits the same candidate format.
 
-2. RESOLVE (mid-tier, decision-archaeologist, candidates only): cluster
-   evidence referring to the same underlying decision. If evidence
-   conflicts, do NOT reconcile it into one confident answer — emit a
-   "conflicting evidence" candidate with all sources attached and
-   confidence capped at LOW. Check docs/decisions/shadow/rejected.jsonl
-   before emitting — suppress by default if evidence substantially
-   overlaps a prior rejection fingerprint.
+The procedure in `references/agent-procedure.md` is the shipped reference
+workflow, not a required scheduler or system architecture. Never make recovery
+a live PR gate.
 
-3. SCORE (mid-tier): compute all five evidence axes (reliability,
-   authority, corroboration, specificity, temporal relevance) per source,
-   and a collapsed top-line confidence. Store the full breakdown
-   regardless of whether it's surfaced by default.
+## Reference workflow
 
-4. QUEUE: append candidates to docs/decisions/shadow/candidates.jsonl
-   matching `bearing schema candidate`. Then run `bearing lint`.
-   Reviewable candidates are those with confidence MEDIUM or higher, OR
-   any LOW candidate meeting an exception below. Append a cost row to
-   the path printed by `bearing ledger`.
+When this Skill is asked to perform a recovery pass:
 
-## Instructions for the Agent
-1. Never write directly to docs/decisions/ or add a code annotation.
-   Output is always a candidate in the shadow graph, never a commit.
-2. Never claim a decision "was made." Claim only that evidence exists
-   suggesting one may have been.
-3. Idempotency key is `symbol + source-corpus-version + extractor-version`
-   — NOT symbol alone. Unchanged evidence is never reprocessed. New
-   evidence makes a symbol eligible for reconsideration even if a prior
-   candidate exists; a candidate whose evidence base materially changed
-   since scoring moves to lifecycle state Stale rather than being
-   silently overwritten.
-4. If resolution produces conflicting evidence, surface the conflict;
-   never resolve it by selecting one side.
-5. Stop the run and report partial results if the budget cap is reached
-   before the scope completes.
+1. Bound the corpus to the area and evidence relevant to the request.
+2. Extract evidence without inventing intent. Tag the possible EOCR function.
+3. Cluster evidence that appears to concern the same decision. Preserve
+   conflicts instead of choosing a side.
+4. Record confidence and its evidence basis. Confidence is about evidence,
+   never organizational authority.
+5. Write schema-valid candidates to the configured shadow graph and run
+   `bearing lint`.
 
-## Escalation Rules (LOW-confidence handling)
-Default: LOW-confidence candidates are retained in the ledger but NOT
-surfaced to the review queue.
+Detailed scoring, cost logging, idempotency, evaluation sets, and budget limits
+are available when an operator wants a repeatable batch. They are optional
+operational controls, not prerequisites for surfacing a useful candidate.
 
-Exceptions — a LOW candidate IS surfaced when:
-- it conflicts with an existing accepted ADR, regardless of its own
-  confidence; or
-- the subject is flagged load-bearing or high-impact (payment path, auth
-  boundary, or code already carrying a HIGH-severity Contract).
+## Candidate disposition
 
-## Model Tiering (Contract)
-- Extraction MUST use the cheap tier.
-- Resolution and scoring MAY use the mid/frontier tier, but only on the
-  candidate set already narrowed by extraction.
+Shadow candidates are non-authoritative repository content. The operator may:
 
-## PR-Time Signal Boundary (hard constraint)
-A recovery signal MUST NOT block a merge, under any confidence score.
-Only structural enforcement ("the referenced ADR doesn't exist") or
-known-Contract enforcement ("this violates accepted Contract C-17") may
-block. A recovery signal may only flag and route to review.
+- review and commit a candidate alongside the work that exposed it;
+- put it in a separate focused commit or change for easier review; or
+- keep it as a short-lived local change while finishing an interruption.
 
-## Success Criteria
-- Every Reviewable candidate carries: EOCR-tagged summary, collapsed
-  confidence, full axis breakdown on request, source excerpts, temporal
-  scope, and an idempotency key tied to corpus version.
-- No candidate is reprocessed against unchanged evidence.
-- Run cost and estimated reviewer time are both logged before any
-  candidate is surfaced.
-- No recovery signal blocks a merge under any circumstances.
+Do not use a stash as durable storage, and never imply that committing a shadow
+candidate promotes it. Promotion remains a separate human judgment about scope,
+validity, lifecycle state, and authority.
+
+## Hard boundaries
+
+- Never write directly to `docs/decisions/` outside `shadow/`, add an `@see`
+  annotation, or claim a decision "was made."
+- Never turn confidence into organizational authority.
+- Never resolve conflicting evidence by silently selecting one account.
+- Never let a recovery signal block a merge. Only structural enforcement or a
+  known accepted Contract may block.
+- Check prior rejected candidates before repeatedly surfacing substantially the
+  same evidence.
+
+## Useful output
+
+A useful candidate is schema-valid, identifies its sources and uncertainty, and
+gives a reviewer enough context to decide whether to reject, revise, defer, or
+promote it. Completeness, a fixed candidate count, and a particular run cadence
+are not success criteria.

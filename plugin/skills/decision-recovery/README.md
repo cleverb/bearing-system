@@ -21,9 +21,12 @@ In the workspace, never in this directory:
 
 Resolve these with `bearing ledger` and `bearing eval <set>` rather than assuming a layout. The earlier draft of the spec kept the ledger and eval sets under `references/` here, which would have erased both on every plugin update.
 
-## Run schedule
+## Invocation model
 
-Weekly batch by default, scoped per repository policy. Never triggered per-commit, never a live PR check.
+The operator chooses the mode: opportunistic during ordinary work, an explicit
+manual pass, operator-owned automation such as GitHub Actions or cron, or a
+compatible custom extractor. BEARING ships no required cadence and recovery is
+never a live PR gate.
 
 ## Maintenance model
 

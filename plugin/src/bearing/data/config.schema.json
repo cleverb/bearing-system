@@ -46,7 +46,7 @@
         "include": {
           "type": "array",
           "items": { "type": "string" },
-          "description": "Glob patterns defining the recovery scope. An empty list means no default scope -- recovery must be given one explicitly, which is deliberate: unscoped recovery on a zero-anchor repository produces an unreviewable first batch."
+          "description": "Optional default glob patterns for recovery. An empty list leaves scope to the invoking operator or workflow."
         },
         "exclude": { "type": "array", "items": { "type": "string" } }
       }
@@ -54,7 +54,7 @@
 
     "profile": {
       "enum": ["pilot", "thorough", "audit"],
-      "description": "REPO FACT. Onboarding profile. 'pilot' proves the loop closes on a small scope; 'thorough' pursues coverage in reviewed waves; 'audit' measures without promoting anything."
+      "description": "REPO FACT. Optional onboarding planning preset: 'pilot' suggests a small trial, 'thorough' adds multi-scope review planning, and 'audit' suggests recovery without promotion."
     },
 
     "skills": {
@@ -87,7 +87,7 @@
     "models": {
       "type": "object",
       "additionalProperties": false,
-      "description": "OPERATOR FACT. Model assignment per pipeline role. Free to choose, but the Model Tiering Contract is enforced: the extract role must resolve to a model the price book marks 'cheap'.",
+      "description": "OPERATOR FACT. Optional model assignment per recovery role. The shipped reference workflow recommends a cheap extraction tier, and doctor reports mismatches as advisories.",
       "properties": {
         "extract": { "$ref": "#/$defs/modelRole" },
         "resolve": { "$ref": "#/$defs/modelRole" },
@@ -195,7 +195,7 @@
         "time_to_first_value_minutes": {
           "type": "integer",
           "minimum": 1,
-          "description": "The promise QUICKSTART.md makes, held as a measured criterion rather than a claim."
+          "description": "Optional operator-selected evaluation target. BEARING defines no default onboarding-time promise."
         },
         "negative_set_hallucination_rate_max": { "type": "number", "minimum": 0, "maximum": 1 },
         "cost_per_promoted_trailing_window": { "type": "integer", "minimum": 2 }

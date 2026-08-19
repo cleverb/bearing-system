@@ -2,6 +2,6 @@
 
 interface:
   display_name: "Decision Recovery"
-  short_description: "Recover evidence of undocumented architectural decisions from commit history, PR descriptions, tickets, and code comments into a reviewable shadow graph of candidates"
+  short_description: "Recover evidence of undocumented architectural decisions from commit history, PR descriptions, tickets, and code comments into reviewable shadow candidates"
 policy:
   allow_implicit_invocation: true

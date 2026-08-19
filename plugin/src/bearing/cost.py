@@ -1,4 +1,4 @@
-"""Cost: the price book, the tiering Contract, and what BEARING refuses to claim.
+"""Cost: price-book accounting and optional model-tier advisories.
 
 @see ADR-0005 — price math is stdlib; a fabricated dollar figure is worse than minutes.
 
@@ -9,11 +9,10 @@ Three positions this module exists to hold.
 it used, and a stale book produces a warning stamped into the report rather than
 a silent number that looks as authoritative as a fresh one.
 
-**Configuration must not be able to void a Contract.** Model choice per pipeline
-role is an operator decision, but the Model Tiering Contract says extraction MUST
-use the cheap tier. So the choice is free and the Contract is enforced: a config
-that puts a frontier model on extraction fails `bearing doctor`. This is the
-documented-to-machine-verifiable ladder applied to BEARING's own configuration.
+Model choice per recovery role is an operator decision. Using a cheaper model for
+broad extraction is a useful cost recommendation, so `bearing doctor` reports
+tier mismatches and unknown pricing as advisories rather than treating BEARING's
+reference workflow as a universal execution Contract.
 
 **Review time is the dominant cost and the least knowable.** So it is reported in
 minutes, and converted to dollars only when someone supplies a rate. Inventing an
@@ -33,10 +32,9 @@ from .util import BearingError, read_json, read_jsonl
 
 PIPELINE_ROLES = ("extract", "resolve", "score", "interview")
 
-# The Model Tiering Contract, as a machine-checkable rule rather than prose.
-# Extraction is the only stage that runs over the *whole* corpus, so it is the
-# only one where model choice changes cost by orders of magnitude.
-TIER_CONTRACT = {
+# Recommendations for the shipped reference workflow. Broad extraction can
+# amplify model cost, but operators remain free to select another tradeoff.
+RECOMMENDED_TIERS = {
     "extract": ("cheap",),
     "resolve": ("cheap", "mid", "frontier"),
     "score": ("cheap", "mid", "frontier"),
@@ -165,7 +163,7 @@ def resolve_models(config: ResolvedConfig) -> Dict[str, Dict[str, Any]]:
 
 
 def tiering_errors(config: ResolvedConfig, book: PriceBook) -> List[str]:
-    """Enforce the Model Tiering Contract against the resolved config.
+    """Return model-tier and price-book advisories for the reference workflow.
 
     Two distinct failures are reported, because they have different causes:
     a model the price book has never heard of (so its tier is unknowable), and a
@@ -176,12 +174,12 @@ def tiering_errors(config: ResolvedConfig, book: PriceBook) -> List[str]:
         model = settings["model"]
         declared = settings["declared_tier"]
         actual = book.tier(model)
-        allowed = TIER_CONTRACT.get(role, ("cheap", "mid", "frontier"))
+        allowed = RECOMMENDED_TIERS.get(role, ("cheap", "mid", "frontier"))
 
         if actual is None:
             errors.append(
                 "models.%s.model is %r, which the price book does not list. Its tier cannot be "
-                "verified against the Model Tiering Contract, and its cost cannot be estimated. "
+                "verified for the reference workflow, and its cost cannot be estimated. "
                 "Add it to .bearing/pricing.json with a tier, as_of date, and source."
                 % (role, model)
             )
@@ -196,10 +194,9 @@ def tiering_errors(config: ResolvedConfig, book: PriceBook) -> List[str]:
 
         if actual not in allowed:
             errors.append(
-                "models.%s.model is %r (tier %r), but the Model Tiering Contract permits only "
-                "%s for this role. Extraction runs over the entire scoped corpus, so this is "
-                "the one place model choice changes cost by orders of magnitude -- which is why "
-                "configuration is not permitted to override it."
+                "models.%s.model is %r (tier %r); the reference workflow recommends "
+                "%s for this role. Broad extraction can amplify model cost, so confirm that "
+                "this operator-selected assignment is intentional."
                 % (role, model, actual, " or ".join(repr(t) for t in allowed))
             )
 
@@ -354,7 +351,7 @@ def cost_per_promoted(
 
     Returns None when no reviewer rate is configured. That is intentional: this
     metric's entire purpose is to make the dominant cost -- review time, not
-    tokens -- visible in the number that decides whether the Skill keeps running.
+    tokens -- visible in a number that can inform whether repeated runs remain worthwhile.
     Computing it from tokens alone would report the small half and call it the
     whole, which is more misleading than reporting nothing.
     """
@@ -410,13 +407,10 @@ def kill_switch_triggered(
 
 
 def require_paired_metrics(rows: List[Dict[str, Any]]) -> List[str]:
-    """The token-reporting gate.
+    """Identify missing context for interpreting pilot token figures.
 
-    `bearing report` will not print token figures without rework,
-    Contract-violation, and escalation-correctness metrics beside them. The
-    onboarding spec already lists this as a Success Criterion; making it a
-    refusal rather than a guideline is what stops it eroding the first time
-    somebody is in a hurry and just wants the token number.
+    `bearing report` uses these messages as advisories and still prints the
+    available measurements.
     """
     required = ("rework_count", "contract_violations", "escalation_correct")
     pilot_rows = [row for row in rows if row.get("stage") == "pilot"]

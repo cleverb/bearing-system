@@ -15,4 +15,4 @@ This directory is the authored, authoritative source of decisions governing this
 3. Link the implementation it governs with `@see ADR-000N` in an annotation.
 4. Run the index regeneration so `index.json` picks it up.
 
-See `/BEARING.md` for the full architecture this directory is part of, and `/QUICKSTART.md` for a 30-minute orientation.
+See `/BEARING.md` for the full architecture this directory is part of, and `/QUICKSTART.md` for an orientation and optional evaluation paths.
