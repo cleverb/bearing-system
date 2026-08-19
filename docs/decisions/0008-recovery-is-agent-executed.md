@@ -3,7 +3,7 @@ id: ADR-0008
 status: Accepted
 eocr_function: Contract
 trigger: implementing or invoking decision-recovery extraction
-scope: plugin/src/bearing/cli.py
+scope: plugin/src/bearing/cli.py, plugin/src/bearing/profiles.py
 ---
 
 # ADR-0008: Recovery execution is operator-selected

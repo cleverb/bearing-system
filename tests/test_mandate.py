@@ -872,7 +872,7 @@ class VerifyTest(BearingTestCase):
             checks = json.loads(result.stdout)
             self.assertEqual(
                 {check["pillar"] for check in checks},
-                {"escalate", "anchor", "project", "evolve", "usability"},
+            {"discover", "escalate", "anchor", "project", "evolve", "usability"},
             )
 
     def test_repository_wide_anchor_coverage_is_not_reported_without_a_scope(self):

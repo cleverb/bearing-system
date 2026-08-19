@@ -1,4 +1,4 @@
-# DO NOT EDIT. Generated from plugin/skills/decision-onboarding/subagents/onboarding-coordinator.md by bearing 0.1.0. Run `bearing render` to update; edits here are overwritten and reported as drift by `bearing render --check`.
+# DO NOT EDIT. Generated from plugin/skills/decision-onboarding/subagents/onboarding-coordinator.md by bearing 0.2.0. Run `bearing render` to update; edits here are overwritten and reported as drift by `bearing render --check`.
 
 name = "onboarding-coordinator"
 description = "Guides a repository through an adaptable BEARING evaluation, offering bootstrap, recovery, interview, promotion, and measurement activities without enforcing a fixed pilot protocol. Use when maintainers ask for structured onboarding help."

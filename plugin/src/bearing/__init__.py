@@ -9,13 +9,13 @@ propagates it into every generated manifest, so no manifest carries a
 hand-maintained version number.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 # Bumped independently of __version__, and only when the *output* of a renderer
 # changes. A renderer-version bump invalidates every artifact in
 # .bearing/projections.lock.json and is what makes `bearing render --check`
 # report drift after an upgrade that changed generated formatting.
-RENDERER_VERSION = 2
+RENDERER_VERSION = 3
 
 # Bumped only on a breaking change to .bearing/config.json.
 CONFIG_VERSION = 1

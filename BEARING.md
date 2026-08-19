@@ -177,6 +177,13 @@ Separate **knowledge nodes** from **operational relationships.**
 
 **Decision-system behavior:** `Discover → Anchor → Constrain → Execute → Verify → Evolve`
 
+Discover is complete only when relevant authority can affect the work:
+`Index → Resolve → Inject`. The index keeps discovery cheap, resolution selects
+the Accepted Contracts governing the effective file, and injection makes that
+context available before affected generation or mutation where a runtime offers
+a suitable lifecycle point. Client hooks are adapters for this operation, not
+part of the organizational model.
+
 Artifacts participate in both dimensions simultaneously:
 
 | Artifact or mechanism | Primary EOCR function | Decision-System role |
@@ -209,6 +216,11 @@ Nodes are not enough. Documentation systems emphasize artifacts; Decision System
 Take a legacy component. Its source tells you what exists. An ADR explains why it exists and what should eventually replace it. A ticket represents the remaining migration work. A Skill explains how to perform that migration. A Contract defines what new code is allowed to do. A test verifies behavior. **Unless these are connected, whoever encounters the component has to reconstruct those relationships independently** — which is exactly where humans lean on institutional memory and agents improvise.
 
 Annotations provide the missing locality — they connect implementation → architecture → execution directly in the code, so nobody has to go looking.
+
+A scan-recognized `@see ADR-*` is a governing graph edge: the referenced
+decision governs or explains the implementation carrying it. Generic related
+reading belongs in ordinary prose or links. BEARING does not define a second,
+informational Anchor relationship.
 
 ```typescript
 /**
@@ -560,7 +572,7 @@ A rendered adapter can go in three places, and which one is correct depends on f
 - **`user`** — written under the operator's own configuration directory. Right when three developers use three different runtimes and none of them wants the other two's adapters in the diff.
 - **`ephemeral`** — generated into a temporary directory, handed to the runtime for one session, never written to the repository at all.
 
-What does not vary is the accounting. Every generated file opens with a `DO NOT EDIT` header naming its canonical source and the command that regenerates it; every one is recorded in `projections.lock.json` with a content hash; and every *deliberate* absence is recorded there too, with its reason. That last part matters more than it looks: absence has to be distinguishable from breakage, or a renderer that silently stopped emitting a target looks exactly like a target somebody turned off on purpose.
+What does not vary is the accounting. Every generated file opens with a `DO NOT EDIT` header naming its canonical source and the command that regenerates it; repo projections are recorded in `.bearing/projections.lock.json`, user projections in `~/.bearing/projections/<workspace-id>.lock.json`, and ephemeral projections in their temporary root. Each lock carries content hashes and every *deliberate* absence for its own authority scope. Rendering one scope never treats another scope's artifacts as orphans.
 
 ---
 

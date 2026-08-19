@@ -1,4 +1,4 @@
-# DO NOT EDIT. Generated from plugin/skills/decision-interview/subagents/decision-interviewer.md by bearing 0.1.0. Run `bearing render` to update; edits here are overwritten and reported as drift by `bearing render --check`.
+# DO NOT EDIT. Generated from plugin/skills/decision-interview/subagents/decision-interviewer.md by bearing 0.2.0. Run `bearing render` to update; edits here are overwritten and reported as drift by `bearing render --check`.
 
 name = "decision-interviewer"
 description = "Conducts a structured live interview when an agent hits genuine architectural ambiguity — eliciting testimony, applying the deletion test, having the interviewee commit to an EOCR function, and checking organizational authority before writing a candidate. Use at a real escalation point, never speculatively."

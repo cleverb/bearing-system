@@ -22,7 +22,7 @@ import os
 import shutil
 from typing import Dict, List
 
-from .artifacts import read_lock
+from .artifacts import projection_lock_path, read_lock
 from .config import ResolvedConfig
 from .util import read_text
 
@@ -35,23 +35,25 @@ def removable_paths(config: ResolvedConfig) -> List[str]:
     update this function. That is the second reason the lock file exists: it is
     the only complete record of what BEARING put on disk.
     """
-    layout = config.layout
     paths: List[str] = []
 
-    lock = read_lock(layout.lock)
-    for entry in (lock or {}).get("artifacts", []):
-        recorded = entry.get("path")
-        if not recorded:
-            continue
-        if recorded.startswith("~/"):
-            paths.append(os.path.join(os.path.expanduser("~"), recorded[2:]))
-        else:
-            paths.append(os.path.join(config.workspace, recorded))
+    for scope in ("repo", "user"):
+        lock_path = projection_lock_path(config.workspace, scope)
+        lock = read_lock(lock_path)
+        for entry in (lock or {}).get("artifacts", []):
+            recorded = entry.get("path")
+            if not recorded:
+                continue
+            if recorded.startswith("~/"):
+                paths.append(os.path.join(os.path.expanduser("~"), recorded[2:]))
+            else:
+                paths.append(os.path.join(config.workspace, recorded))
+        if os.path.isfile(lock_path):
+            paths.append(lock_path)
 
     for relative in (
         ".bearing/runs",
         ".bearing/cache",
-        ".bearing/projections.lock.json",
     ):
         paths.append(os.path.join(config.workspace, relative))
 

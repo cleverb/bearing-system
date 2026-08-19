@@ -6,7 +6,7 @@
       "eocr_function": "Contract",
       "id": "ADR-0001",
       "lifecycle_state": "Accepted",
-      "scope": "docs/decisions/**",
+      "scope": "docs/decisions/**, plugin/src/bearing/decisions.py",
       "source": "docs/decisions/0001-record-architecture-decisions.md",
       "trigger": "adopting or modifying the decision-recording process itself"
     },
@@ -62,7 +62,7 @@
       "eocr_function": "Contract",
       "id": "ADR-0008",
       "lifecycle_state": "Accepted",
-      "scope": "plugin/src/bearing/cli.py",
+      "scope": "plugin/src/bearing/cli.py, plugin/src/bearing/profiles.py",
       "source": "docs/decisions/0008-recovery-is-agent-executed.md",
       "trigger": "implementing or invoking decision-recovery extraction"
     },
@@ -73,6 +73,22 @@
       "scope": "plugin/src/bearing/assessment.py, plugin/src/bearing/cli.py",
       "source": "docs/decisions/0009-assessment-is-informational.md",
       "trigger": "changing what assessment scores, making it fail a process, or requiring init before it can run"
+    },
+    {
+      "eocr_function": "Contract",
+      "id": "ADR-0010",
+      "lifecycle_state": "Accepted",
+      "scope": "plugin/src/bearing/workspace.py, plugin/src/bearing/decisions.py, plugin/src/bearing/lint.py, plugin/src/bearing/verify.py, plugin/hooks/**",
+      "source": "docs/decisions/0010-discovery-completes-at-injection.md",
+      "trigger": "resolving authoritative decisions for a task, file, or runtime action"
+    },
+    {
+      "eocr_function": "Contract",
+      "id": "ADR-0011",
+      "lifecycle_state": "Accepted",
+      "scope": "plugin/src/bearing/compatibility.py, plugin/src/bearing/doctor.py, plugin/src/bearing/manifests.py, scripts/conformance/**",
+      "source": "docs/decisions/0011-runtime-conformance-qualifies-support.md",
+      "trigger": "claiming that a runtime client is supported by a BEARING release"
     }
   ]
 }

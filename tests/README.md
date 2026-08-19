@@ -25,16 +25,16 @@ only exists in a git context, so a fake directory would test a different program
 | `test_render.py` | Projection determinism, drift detection, configurable targets, recorded skips, and delimited-block management |
 | `test_packaging.py` | Plugin-root containment and the installed-copy behaviour described below |
 | `test_mandate.py` | Authority rules, model-tier advisories, honest cost accounting, optional profile helpers, and the conformance suite itself |
+| `test_v02.py` | Effective-workspace, scope, runtime evidence, hook, lock-authority, health, measurement, detector, and workflow-inspection contracts |
 
 ## Local testing to marketplace promotion
 
-Four tiers, each catching a failure class the one below it cannot see.
+Five tiers, each catching a failure class the one below it cannot see.
 
 **Tier 0 — iteration.** Point a client at the working tree.
 
 ```bash
 ln -s "$(pwd)/plugin" ~/.cursor/plugins/local/bearing
-cursor-agent --plugin-dir ./plugin
 ```
 
 **Tier 1 — manifest validation.** Every client manifest is generated from
@@ -48,8 +48,7 @@ python3 -m unittest discover -s tests -k ManifestConformance
 The repository root *is* the marketplace, so a local catalog needs no build step:
 
 ```bash
-cursor-agent plugin marketplace add .    # Cursor
-/plugin marketplace add .                # Claude Code
+claude plugin marketplace add . --scope local
 ```
 
 **Tier 2 — copy isolation.** The tier that has to be automated, because the bug
@@ -75,6 +74,16 @@ what was installed and that `uninstall` leaves decision content behind.
 
 **Tier 3 — publish.** Cursor at `cursor.com/marketplace/publish`; Claude Code by
 pointing at the git-hosted `.claude-plugin/marketplace.json`.
+
+**Tier 4 — real-client conformance.** Install a release candidate in scratch
+repositories using supported runtime clients, exercise all six behaviors in the
+evidence schema, and qualify the release:
+
+```bash
+PYTHONPATH=plugin/src python3 -m bearing package --release-check
+```
+
+Tier 4 is scheduled and manually dispatchable. It does not gate ordinary PRs.
 
 ## Nothing here gates a merge on inference
 

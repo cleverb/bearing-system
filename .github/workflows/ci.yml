@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 7 * * 2"
 
 # Nothing here gates a merge on a recovery signal. That is not an omission to be
 # corrected later: a confidence score is a statement about evidence, never a
@@ -41,6 +44,22 @@ jobs:
           git config --global init.defaultBranch main
 
       - name: Run the suite
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+
+  windows-suite:
+    name: Test suite (Windows, Python 3.13)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Configure git for scratch repositories
+        run: |
+          git config --global user.email "ci@example.invalid"
+          git config --global user.name "CI"
+          git config --global init.defaultBranch main
+      - name: Run the full Python suite
         run: python -m unittest discover -s tests -p "test_*.py" -v
 
   # ---------------------------------------------------------------------------
@@ -131,3 +150,19 @@ jobs:
 
       - name: Mandate conformance
         run: python -m bearing verify
+
+  # Tier 4 qualifies releases and scheduled support claims. It deliberately
+  # does not run on ordinary pushes or pull requests.
+  client-conformance:
+    name: Tier 4 - current client evidence
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Validate current release evidence
+        run: PYTHONPATH=plugin/src python -m bearing package --release-check
+      - name: Published configuration schema resolves
+        run: curl --fail --silent --show-error https://raw.githubusercontent.com/cleverb/bearing-system/main/schemas/config-1.json > /dev/null

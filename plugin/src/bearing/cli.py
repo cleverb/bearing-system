@@ -156,6 +156,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
                 "detail": check.detail,
                 "remedy": check.remedy,
                 "gating": check.gating,
+                "data": check.data,
             }
             for check in checks
         ]
@@ -197,13 +198,33 @@ def cmd_assessment(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def cmd_health(args: argparse.Namespace) -> int:
+    """Aggregation only; health never acquires enforcement authority."""
+    from .health import aggregate, render
+
+    config = _load(args)
+    result = aggregate(config)
+    if args.json:
+        _emit(result, True)
+    else:
+        print(render(result), end="")
+    return EXIT_OK
+
+
 # ---------------------------------------------------------------------------
 # render / package
 # ---------------------------------------------------------------------------
 
 def cmd_render(args: argparse.Namespace) -> int:
     from .agentsmd import apply_block, check_block, rule_body, targets as agents_targets
-    from .artifacts import apply as apply_artifacts, build_lock, read_lock, write_lock
+    from .artifacts import (
+        ApplyResult,
+        apply as apply_artifacts,
+        build_lock,
+        projection_lock_path,
+        read_lock,
+        write_lock,
+    )
     from .render import load_subagents, render_contracts, render_rules, render_subagents
 
     config = _load(args)
@@ -228,9 +249,41 @@ def cmd_render(args: argparse.Namespace) -> int:
         print(json.dumps({"pluginPaths": [ephemeral_dir] if ephemeral_dir else []}))
         return EXIT_OK
 
-    previous = read_lock(config.layout.lock)
     check = getattr(args, "check", False)
-    outcome = apply_artifacts(artifacts, config.workspace, check=check, previous_lock=previous)
+    grouped_artifacts = {}
+    grouped_skips = {}
+    for artifact in artifacts:
+        grouped_artifacts.setdefault(artifact.scope, []).append(artifact)
+    for skip in skips:
+        grouped_skips.setdefault(skip.scope, []).append(skip)
+    scopes = sorted(set(grouped_artifacts) | set(grouped_skips))
+
+    migration_problem = _migrate_projection_locks(
+        config.workspace, config.layout.lock, check, projection_lock_path, read_lock, write_lock
+    )
+    outcome = ApplyResult()
+    locks = {}
+    stale_locks = []
+    for scope in scopes:
+        scoped_artifacts = grouped_artifacts.get(scope, [])
+        scoped_skips = grouped_skips.get(scope, [])
+        lock_path = projection_lock_path(config.workspace, scope, ephemeral_dir)
+        previous = read_lock(lock_path)
+        scoped = apply_artifacts(
+            scoped_artifacts,
+            config.workspace,
+            check=check,
+            previous_lock=previous,
+        )
+        outcome.written += scoped.written
+        outcome.unchanged += scoped.unchanged
+        outcome.drifted += scoped.drifted
+        outcome.missing += scoped.missing
+        outcome.orphaned += scoped.orphaned
+        expected_lock = build_lock(scoped_artifacts, scoped_skips, config.workspace)
+        locks[scope] = (lock_path, expected_lock)
+        if check and read_lock(lock_path) != expected_lock:
+            stale_locks.append((scope, lock_path))
 
     _heading("bearing render%s" % ("  --check" % () if check else ""))
 
@@ -274,15 +327,15 @@ def cmd_render(args: argparse.Namespace) -> int:
     for skip in skips:
         print(status_line("skip", "%s -> %s" % (skip.kind, skip.target), skip.reason))
 
-    lock = build_lock(artifacts, skips, config.workspace)
     if check:
-        current = read_lock(config.layout.lock)
-        lock_stale = current != lock
-        if lock_stale:
-            print(status_line("fail", "projections.lock.json", "out of date"))
-        else:
-            print(status_line("ok", "projections.lock.json", "current"))
-        failed = bool(block_problems) or not outcome.clean or lock_stale
+        for scope, lock_path in stale_locks:
+            print(status_line("fail", "%s projection lock" % scope, "%s is out of date" % lock_path))
+        for scope, (lock_path, _) in locks.items():
+            if not any(item[0] == scope for item in stale_locks):
+                print(status_line("ok", "%s projection lock" % scope, "current"))
+        if migration_problem:
+            print(status_line("fail", "projection lock authority", migration_problem))
+        failed = bool(block_problems) or not outcome.clean or bool(stale_locks) or bool(migration_problem)
         print()
         if failed:
             print(paint("DRIFT: generated adapters do not match their canonical sources.", "fail"))
@@ -299,16 +352,48 @@ def cmd_render(args: argparse.Namespace) -> int:
         print()
         return EXIT_OK
 
-    write_lock(config.layout.lock, lock)
-    print(
-        status_line(
-            "ok",
-            "projections.lock.json",
-            "%d artifact(s), %d recorded skip(s)" % (len(artifacts), len(skips)),
+    for scope, (lock_path, lock) in locks.items():
+        write_lock(lock_path, lock)
+        print(
+            status_line(
+                "ok",
+                "%s projection lock" % scope,
+                "%s — %d artifact(s), %d recorded skip(s)"
+                % (lock_path, len(lock.get("artifacts") or []), len(lock.get("skipped") or [])),
+            )
         )
-    )
     print()
     return EXIT_OK
+
+
+def _migrate_projection_locks(workspace, repo_lock_path, check, lock_path_fn, read_lock, write_lock):
+    """Split legacy mixed locks without crossing authority domains."""
+    current = read_lock(repo_lock_path)
+    if not current:
+        return ""
+    artifacts = current.get("artifacts") or []
+    skips = current.get("skipped") or []
+    foreign_artifacts = [entry for entry in artifacts if entry.get("scope", "repo") != "repo"]
+    foreign_skips = [entry for entry in skips if entry.get("scope", "repo") != "repo"]
+    if not foreign_artifacts and not foreign_skips:
+        return ""
+    if check:
+        return "legacy mixed lock contains operator-scoped entries; run `bearing render`"
+    for scope in sorted(
+        {entry.get("scope") for entry in foreign_artifacts + foreign_skips if entry.get("scope") in ("user",)}
+    ):
+        destination = lock_path_fn(workspace, scope)
+        migrated = {
+            "bearing_version": current.get("bearing_version"),
+            "renderer_version": current.get("renderer_version"),
+            "artifacts": [entry for entry in foreign_artifacts if entry.get("scope") == scope],
+            "skipped": [entry for entry in foreign_skips if entry.get("scope") == scope],
+        }
+        write_lock(destination, migrated)
+    current["artifacts"] = [entry for entry in artifacts if entry.get("scope", "repo") == "repo"]
+    current["skipped"] = [entry for entry in skips if entry.get("scope", "repo") == "repo"]
+    write_lock(repo_lock_path, current)
+    return ""
 
 
 def cmd_package(args: argparse.Namespace) -> int:
@@ -325,9 +410,11 @@ def cmd_package(args: argparse.Namespace) -> int:
         raise BearingError("\n  ".join(problems))
 
     artifacts, skips = all_package_artifacts(workspace, root)
-    outcome = apply_artifacts(artifacts, workspace, check=args.check)
+    check_mode = bool(args.check or getattr(args, "release_check", False))
+    outcome = apply_artifacts(artifacts, workspace, check=check_mode)
 
-    _heading("bearing package%s" % ("  --check" if args.check else ""))
+    suffix = "  --release-check" if getattr(args, "release_check", False) else "  --check" if args.check else ""
+    _heading("bearing package%s" % suffix)
     for path in outcome.written:
         print(status_line("ok", "wrote", path))
     for path, why in outcome.drifted:
@@ -340,10 +427,22 @@ def cmd_package(args: argparse.Namespace) -> int:
         print(status_line("skip", "%s -> %s" % (skip.kind, skip.target), skip.reason))
 
     print()
-    if args.check and not outcome.clean:
+    if check_mode and not outcome.clean:
         print(paint("DRIFT: client manifests do not match plugin/plugin.json.", "fail"))
         print()
         return EXIT_FAIL
+    if getattr(args, "release_check", False):
+        from .compatibility import release_errors
+
+        errors = release_errors(workspace)
+        for message in errors:
+            print(status_line("fail", "Tier 4 client conformance", message))
+        if errors:
+            print()
+            print(paint("NOT QUALIFIED: runtime conformance evidence is incomplete.", "fail"))
+            print()
+            return EXIT_FAIL
+        print(status_line("ok", "Tier 4 client conformance", "all supported runtimes qualified"))
     print(paint("OK: %d manifest artifact(s) current." % len(artifacts), "ok"))
     print()
     return EXIT_OK
@@ -452,6 +551,7 @@ def cmd_lint(args: argparse.Namespace) -> int:
 # ---------------------------------------------------------------------------
 
 _PILLAR_LABEL = {
+    "discover": "DISCOVER — verify Index -> Resolve -> Inject",
     "escalate": "ESCALATE — if intent is missing, stop",
     "anchor": "ANCHOR — wire implementation to intent",
     "project": "PROJECT — standardize the source, generate the adapters",
@@ -694,7 +794,9 @@ def cmd_context(args: argparse.Namespace) -> int:
         rel = os.path.relpath(raw, config.workspace)
     else:
         rel = raw
-    rel = rel.replace(os.sep, "/").lstrip("./")
+    rel = rel.replace(os.sep, "/")
+    while rel.startswith("./"):
+        rel = rel[2:]
     entries = context_entries(config.layout, rel)
     if args.json:
         print(dump_json({"path": rel, "entries": entries}), end="")
@@ -756,13 +858,34 @@ def cmd_schema(args: argparse.Namespace) -> int:
 
 def cmd_ledger(args: argparse.Namespace) -> int:
     config = _load(args)
+    if getattr(args, "ledger_action", None) == "add":
+        from .measurement import add_ledger_row
+
+        row = add_ledger_row(config, args.from_json)
+        _emit(row, getattr(args, "json", False))
+        return EXIT_OK
     print(config.layout.cost_ledger)
     return EXIT_OK
 
 
 def cmd_eval(args: argparse.Namespace) -> int:
     config = _load(args)
+    if getattr(args, "score", False):
+        from .measurement import score_set
+
+        result = score_set(config, args.set)
+        _emit(result, True)
+        return EXIT_FAIL if result["errors"] else EXIT_OK
     print(os.path.join(config.layout.eval_dir, args.set))
+    return EXIT_OK
+
+
+def cmd_observe(args: argparse.Namespace) -> int:
+    from .measurement import observe
+
+    config = _load(args)
+    row = observe(config, args.set, args.case, args.observed)
+    _emit(row, args.json)
     return EXIT_OK
 
 
@@ -866,6 +989,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     assessment.add_argument("--json", action="store_true")
 
+    health = add("health", "Aggregate graph health without creating new checks.", cmd_health)
+    health.add_argument("--json", action="store_true")
+
     add("preflight", "Verify optional onboarding preconditions.", cmd_preflight)
 
     render = add("render", "Generate runtime adapters from canonical sources.", cmd_render)
@@ -883,6 +1009,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     package = add("package", "Maintainer: regenerate client manifests from plugin.json.", cmd_package)
     package.add_argument("--check", action="store_true", help="fail on drift instead of writing")
+    package.add_argument(
+        "--release-check",
+        action="store_true",
+        help="also require current Tier 4 evidence for every supported runtime",
+    )
 
     index = add("index", "Regenerate the progressive-disclosure index.", cmd_index)
     index.add_argument("--json", action="store_true", help="print the index instead of writing it")
@@ -891,7 +1022,7 @@ def build_parser() -> argparse.ArgumentParser:
     lint.add_argument("--json", action="store_true")
 
     verify = add("verify", "Run the mandate conformance suite.", cmd_verify)
-    for pillar in ("escalate", "anchor", "project", "evolve", "usability"):
+    for pillar in ("discover", "escalate", "anchor", "project", "evolve", "usability"):
         verify.add_argument("--%s" % pillar, action="store_true", help="run only this pillar")
     verify.add_argument("--json", action="store_true")
 
@@ -927,10 +1058,20 @@ def build_parser() -> argparse.ArgumentParser:
     context.add_argument("path", help="workspace-relative file path")
     context.add_argument("--json", action="store_true")
 
-    add("ledger", "Print the resolved cost-ledger path.", cmd_ledger)
+    ledger = add("ledger", "Print the ledger path or append a validated row.", cmd_ledger)
+    ledger.add_argument("ledger_action", nargs="?", choices=("add",))
+    ledger.add_argument("--from-json", default="-", help="JSON file or - for stdin")
+    ledger.add_argument("--json", action="store_true")
 
     eval_cmd = add("eval", "Print the resolved path to an evaluation set.", cmd_eval)
     eval_cmd.add_argument("set", choices=("gold", "dark", "negative", "escalation"))
+    eval_cmd.add_argument("--score", action="store_true", help="validate and score observations")
+
+    observe_cmd = add("observe", "Record one schema-validated evaluation observation.", cmd_observe)
+    observe_cmd.add_argument("set", choices=("negative", "escalation"))
+    observe_cmd.add_argument("--case", required=True)
+    observe_cmd.add_argument("--observed", required=True)
+    observe_cmd.add_argument("--json", action="store_true")
 
     add("transcripts", "Print the resolved interview-transcript path.", cmd_transcripts)
 

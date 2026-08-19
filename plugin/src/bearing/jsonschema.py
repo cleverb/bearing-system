@@ -6,7 +6,7 @@ a bare Python 3.9.
 Not a general-purpose implementation. It covers exactly the keywords used by
 `config.schema.json`, `candidate.schema.json`, and `evidence.schema.json`:
 type, enum, const, properties, additionalProperties, required, items,
-minimum/maximum, minItems, pattern, $ref (local `#/$defs/...` only), oneOf and
+minimum/maximum, minItems, minLength, pattern, $ref (local `#/$defs/...` only), oneOf and
 anyOf.
 
 The reason this exists rather than a dependency: config validation runs during
@@ -125,6 +125,9 @@ def _validate(
         if isinstance(min_items, int) and len(instance) < min_items:
             errors.append("%s must have at least %d item(s)" % (_label(path), min_items))
     elif isinstance(instance, str):
+        min_length = schema.get("minLength")
+        if isinstance(min_length, int) and len(instance) < min_length:
+            errors.append("%s must have at least %d character(s)" % (_label(path), min_length))
         pattern = schema.get("pattern")
         if isinstance(pattern, str) and not re.search(pattern, instance):
             errors.append("%s must match pattern %s" % (_label(path), pattern))

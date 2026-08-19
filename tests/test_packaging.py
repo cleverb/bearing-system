@@ -280,6 +280,18 @@ class ManifestConformanceTest(BearingTestCase):
             with open(path, "r", encoding="utf-8") as handle:
                 json.load(handle)
 
+    def test_cursor_and_claude_hooks_use_separate_client_schemas(self):
+        with open(os.path.join(PLUGIN_ROOT, ".cursor-plugin", "plugin.json"), "r", encoding="utf-8") as handle:
+            cursor_manifest = json.load(handle)
+        self.assertEqual(cursor_manifest["hooks"], "./hooks/cursor.json")
+        with open(os.path.join(PLUGIN_ROOT, "hooks", "cursor.json"), "r", encoding="utf-8") as handle:
+            cursor = json.load(handle)
+        with open(os.path.join(PLUGIN_ROOT, "hooks", "hooks.json"), "r", encoding="utf-8") as handle:
+            claude = json.load(handle)
+        self.assertIn("workspaceOpen", cursor["hooks"])
+        self.assertIn("PreToolUse", claude["hooks"])
+        self.assertNotEqual(cursor, claude)
+
     def test_marketplace_source_points_at_the_plugin_directory(self):
         for relative in (".cursor-plugin/marketplace.json", ".claude-plugin/marketplace.json"):
             with open(os.path.join(REPO_ROOT, relative), "r", encoding="utf-8") as handle:

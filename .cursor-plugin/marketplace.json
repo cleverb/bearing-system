@@ -1,7 +1,7 @@
 {
   "metadata": {
     "description": "The BEARING decision system.",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "name": "bearing",
   "owner": {
@@ -14,7 +14,7 @@
       },
       "category": "engineering-governance",
       "description": "An EOCR-based decision system: recover, elicit, anchor, and enforce the decisions governing a codebase, so architectural intent is discoverable at generation time rather than only enforceable at commit time.",
-      "homepage": "https://github.com/oeist/bearing-system",
+      "homepage": "https://github.com/cleverb/bearing-system",
       "keywords": [
         "adr",
         "architecture-decision-records",
@@ -26,7 +26,7 @@
       ],
       "license": "MIT",
       "name": "bearing",
-      "repository": "https://github.com/oeist/bearing-system",
+      "repository": "https://github.com/cleverb/bearing-system",
       "source": "./plugin",
       "tags": [
         "adr",
@@ -34,7 +34,7 @@
         "architecture",
         "legacy"
       ],
-      "version": "0.1.0"
+      "version": "0.2.0"
     }
   ]
 }

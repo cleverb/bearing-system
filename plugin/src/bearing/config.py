@@ -44,7 +44,7 @@ OPERATOR_FACT = "operator"
 # A URL rather than a relative path: the schema ships inside the plugin, and a
 # relative path from a target repository into a plugin cache directory would
 # break on the next plugin update.
-SCHEMA_URL = "https://bearing.dev/schemas/config-1.json"
+SCHEMA_URL = "https://raw.githubusercontent.com/cleverb/bearing-system/main/schemas/config-1.json"
 
 # Longest matching prefix wins, so a specific key can override its section.
 _CLASSIFICATION: Tuple[Tuple[str, str], ...] = (

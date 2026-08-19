@@ -24,7 +24,7 @@ import os
 import shutil
 import sys
 import tempfile
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from . import __version__
 from .config import LAYER_LOCAL, LAYER_REPO, LAYER_USER, ResolvedConfig
@@ -46,12 +46,21 @@ FAIL = "fail"
 
 
 class Check:
-    def __init__(self, status: str, label: str, detail: str = "", remedy: str = "", gating: bool = True):
+    def __init__(
+        self,
+        status: str,
+        label: str,
+        detail: str = "",
+        remedy: str = "",
+        gating: bool = True,
+        data: Optional[Dict[str, Any]] = None,
+    ):
         self.status = status
         self.label = label
         self.detail = detail
         self.remedy = remedy
         self.gating = gating
+        self.data = data or {}
 
 
 def _minimum_python() -> Check:
@@ -467,6 +476,70 @@ def _projection_design_checks(config: ResolvedConfig) -> List[Check]:
     return checks
 
 
+def _runtime_compatibility_checks(config: ResolvedConfig) -> List[Check]:
+    """Report evidence-backed compatibility without assuming a client accepts us.
+
+    @see ADR-0011
+    """
+    from .compatibility import COMPATIBILITY_API, runtime_statuses
+    from .util import read_json
+
+    checks: List[Check] = []
+    root = plugin_root()
+    manifest = read_json(os.path.join(root, "plugin.json"), {}) or {}
+    summary = read_json(os.path.join(root, "runtime-compatibility.json"), {}) or {}
+    plugin_version = manifest.get("version")
+    plugin_api = summary.get("bearing_compatibility_api")
+    if plugin_api is not None and plugin_api != COMPATIBILITY_API:
+        checks.append(
+            Check(
+                FAIL,
+                "CLI/plugin compatibility API",
+                "CLI=%s plugin=%s" % (COMPATIBILITY_API, plugin_api),
+                "Install CLI and plugin builds with the same compatibility API.",
+                data={"cli_api": COMPATIBILITY_API, "plugin_api": plugin_api},
+            )
+        )
+    else:
+        status = WARN if plugin_version and plugin_version != __version__ else OK
+        checks.append(
+            Check(
+                status,
+                "CLI/plugin compatibility",
+                "CLI=%s plugin=%s API=%s" % (__version__, plugin_version or "unknown", COMPATIBILITY_API),
+                "Upgrade the older artifact; compatible version skew is advisory."
+                if status == WARN else "",
+                gating=False if status == WARN else True,
+                data={
+                    "cli_version": __version__,
+                    "plugin_version": plugin_version,
+                    "compatibility_api": COMPATIBILITY_API,
+                },
+            )
+        )
+
+    for entry in runtime_statuses(config):
+        state = entry["status"]
+        checks.append(
+            Check(
+                OK if state == "verified" else WARN,
+                "runtime compatibility: %s" % entry["runtime"],
+                "%s; installed=%s; verified=%s; discovery=%s"
+                % (
+                    state,
+                    entry.get("installed_version") or "not detected",
+                    entry.get("verified_range") or "none",
+                    entry.get("discovery_mode"),
+                ),
+                "Run Tier 4 conformance for this client version before claiming release support."
+                if state != "verified" else "",
+                gating=False,
+                data=entry,
+            )
+        )
+    return checks
+
+
 def run_checks(config: ResolvedConfig, require_clean_tree: bool = False) -> List[Check]:
     checks: List[Check] = [_minimum_python(), _plugin_check(), _plugin_readonly_check()]
     checks.extend(_config_checks(config))
@@ -476,6 +549,7 @@ def run_checks(config: ResolvedConfig, require_clean_tree: bool = False) -> List
     checks.append(_constitution_check(config))
     checks.extend(_writability_checks(config))
     checks.extend(_projection_design_checks(config))
+    checks.extend(_runtime_compatibility_checks(config))
     checks.extend(_cost_checks(config))
     return checks
 

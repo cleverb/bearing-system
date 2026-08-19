@@ -16,6 +16,8 @@ about whether a decision exists, it is a pointer to a decision that does not.
 from __future__ import annotations
 
 import os
+import ntpath
+import re
 from typing import Dict, List, Optional, Tuple
 
 from .config import ResolvedConfig
@@ -31,8 +33,10 @@ from .decisions import (
     load_records,
     scan_anchors,
     surfaced_candidates,
+    path_matches_scope,
 )
 from .util import read_json
+from .workspace import effective_workspace_files
 
 
 class Finding:
@@ -54,6 +58,7 @@ def run(config: ResolvedConfig) -> List[Finding]:
     findings: List[Finding] = []
     records = load_records(layout)
     by_id = {record.id: record for record in records}
+    effective_files = effective_workspace_files(config)
 
     by_record_id: Dict[str, List] = {}
     for record in records:
@@ -169,6 +174,8 @@ def run(config: ResolvedConfig) -> List[Finding]:
                 )
             )
 
+    findings.extend(_scope_findings(records, anchors, by_id, effective_files))
+
     # --- bidirectionality ---------------------------------------------------
     anchored_ids = {anchor.adr_id for anchor in anchors}
     for record in records:
@@ -191,6 +198,134 @@ def run(config: ResolvedConfig) -> List[Finding]:
     findings.extend(_candidate_schema_findings(config))
 
     return findings
+
+
+def _scope_findings(records, anchors, by_id, effective_files: List[str]) -> List[Finding]:
+    """Scope is a Discover edge, so stale or dishonest scope is structural."""
+    findings: List[Finding] = []
+    for record in records:
+        if not record.scope:
+            if record.scope_allow_empty or record.scope_empty_reason:
+                findings.append(
+                    Finding(
+                        "error",
+                        "scope-empty-exception-without-scope",
+                        "scope_allow_empty and scope_empty_reason require an explicit scope",
+                        record.rel,
+                    )
+                )
+            continue
+
+        invalid = _invalid_scope_patterns(record.scope)
+        if invalid:
+            findings.append(
+                Finding(
+                    "error",
+                    "scope-invalid",
+                    "; ".join(invalid),
+                    record.rel,
+                )
+            )
+            continue
+
+        matches = [path for path in effective_files if path_matches_scope(path, record.scope)]
+        if record.scope_empty_reason and not record.scope_allow_empty:
+            findings.append(
+                Finding(
+                    "warning",
+                    "scope-empty-reason-without-exception",
+                    "scope_empty_reason has no effect unless scope_allow_empty is true",
+                    record.rel,
+                )
+            )
+        if record.scope_allow_empty and (
+            record.status != ACCEPTED or record.eocr_function != "Contract"
+        ):
+            findings.append(
+                Finding(
+                    "error",
+                    "scope-empty-exception-non-contract",
+                    "scope_allow_empty is valid only for an Accepted Contract",
+                    record.rel,
+                )
+            )
+        if record.scope_allow_empty and not record.scope_empty_reason:
+            findings.append(
+                Finding(
+                    "error",
+                    "scope-empty-reason-missing",
+                    "scope_allow_empty requires a non-empty scope_empty_reason",
+                    record.rel,
+                )
+            )
+        if matches and record.scope_allow_empty:
+            findings.append(
+                Finding(
+                    "warning",
+                    "scope-empty-exception-stale",
+                    "scope now matches %d effective workspace file(s); remove scope_allow_empty"
+                    % len(matches),
+                    record.rel,
+                )
+            )
+        elif not matches:
+            if record.scope_allow_empty and record.scope_empty_reason:
+                findings.append(
+                    Finding(
+                        "warning",
+                        "scope-intentionally-empty",
+                        "scope matches no effective workspace files: %s"
+                        % record.scope_empty_reason,
+                        record.rel,
+                    )
+                )
+            else:
+                hard = record.status == ACCEPTED and record.eocr_function == "Contract"
+                findings.append(
+                    Finding(
+                        "error" if hard else "warning",
+                        "scope-no-matches",
+                        "scope %r matches no effective workspace files" % record.scope,
+                        record.rel,
+                    )
+                )
+
+    for anchor in anchors:
+        record = by_id.get(anchor.adr_id)
+        if (
+            record is not None
+            and record.status == ACCEPTED
+            and record.eocr_function == "Contract"
+            and record.scope
+            and not path_matches_scope(anchor.file, record.scope)
+        ):
+            findings.append(
+                Finding(
+                    "error",
+                    "anchor-outside-contract-scope",
+                    "@see %s is a governing Anchor, but %s is outside Contract scope %r"
+                    % (record.id, anchor.file, record.scope),
+                    "%s:%d" % (anchor.file, anchor.line),
+                )
+            )
+    return findings
+
+
+def _invalid_scope_patterns(scope: str) -> List[str]:
+    errors: List[str] = []
+    patterns = [part.strip() for part in scope.replace(";", ",").split(",")]
+    for pattern in patterns:
+        if not pattern:
+            errors.append("scope contains an empty pattern")
+            continue
+        normalized = pattern.replace("\\", "/")
+        if normalized.startswith("/") or ntpath.isabs(pattern):
+            errors.append("scope pattern %r must be workspace-relative" % pattern)
+        if ".." in normalized.split("/"):
+            errors.append("scope pattern %r may not traverse through '..'" % pattern)
+        if re.search(r"\[[^\]]*$", normalized):
+            errors.append("scope pattern %r has an unterminated character class" % pattern)
+    return errors
 
 
 def _index_findings(config: ResolvedConfig, records) -> List[Finding]:

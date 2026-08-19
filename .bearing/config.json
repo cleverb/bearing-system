@@ -1,5 +1,5 @@
 {
-  "$schema": "https://bearing.dev/schemas/config-1.json",
+  "$schema": "https://raw.githubusercontent.com/cleverb/bearing-system/main/schemas/config-1.json",
   "cost": {
     "budget_usd_per_run": 25.0
   },
@@ -57,7 +57,15 @@
       "**/build/**"
     ],
     "include": [
-      "plugin/src/bearing/*.py"
+      "docs/decisions/**",
+      ".github/**",
+      ".cursor/rules/**",
+      "AGENTS.md",
+      "CLAUDE.md",
+      "CONTRIBUTING.md",
+      "plugin/src/bearing/*.py",
+      "plugin/hooks/**",
+      "scripts/conformance/**"
     ]
   },
   "skills": {

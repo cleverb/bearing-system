@@ -115,13 +115,29 @@ class Artifact:
 class Skip:
     """A target that was deliberately not generated."""
 
-    def __init__(self, kind: str, target: str, reason: str) -> None:
+    def __init__(self, kind: str, target: str, reason: str, scope: str = "repo") -> None:
         self.kind = kind
         self.target = target
         self.reason = reason
+        self.scope = scope
 
     def as_dict(self) -> Dict[str, str]:
-        return {"kind": self.kind, "target": self.target, "reason": self.reason}
+        return {"kind": self.kind, "target": self.target, "reason": self.reason, "scope": self.scope}
+
+
+def projection_lock_path(workspace: str, scope: str, ephemeral_dir: Optional[str] = None) -> str:
+    """Return the authority-local lock path for one projection scope."""
+    if scope == "repo":
+        return os.path.join(workspace, ".bearing", "projections.lock.json")
+    if scope == "ephemeral":
+        if not ephemeral_dir:
+            raise ValueError("ephemeral projection lock requires an ephemeral directory")
+        return os.path.join(ephemeral_dir, "projections.lock.json")
+    if scope == "user":
+        identity = sha256_text(os.path.realpath(workspace))[:20]
+        root = os.environ.get("BEARING_HOME") or os.path.join(os.path.expanduser("~"), ".bearing")
+        return os.path.join(root, "projections", identity + ".lock.json")
+    raise ValueError("unknown projection scope %r" % scope)
 
 
 class ApplyResult:

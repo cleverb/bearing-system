@@ -77,9 +77,6 @@ SOURCE_EXTENSIONS = frozenset(
     }
 )
 
-_SKIP_DIRS = frozenset({".git", "node_modules", "vendor", "dist", "build", "__pycache__", ".venv", "venv", ".bearing"})
-
-
 class DecisionRecord:
     def __init__(self, path: str, workspace: str, decisions_rel: str) -> None:
         self.path = path
@@ -99,6 +96,8 @@ class DecisionRecord:
         self.eocr_function = _normalize_eocr(front.get("eocr_function") or bullets.get("eocr"))
         self.trigger = _clean(front.get("trigger") or bullets.get("trigger"))
         self.scope = _clean(front.get("scope") or bullets.get("scope"))
+        self.scope_allow_empty = front.get("scope_allow_empty") is True
+        self.scope_empty_reason = _clean(front.get("scope_empty_reason"))
         self.superseded_by = _clean(front.get("superseded_by") or bullets.get("superseded by"))
         self.supersedes = _clean(front.get("supersedes") or bullets.get("supersedes"))
         self.date = _clean(front.get("date") or bullets.get("date"))
@@ -233,14 +232,18 @@ def path_matches_scope(rel_path: str, scope: str) -> bool:
     """
     from .util import match_any
 
-    rel_path = rel_path.replace(os.sep, "/").lstrip("./")
+    rel_path = rel_path.replace(os.sep, "/")
+    while rel_path.startswith("./"):
+        rel_path = rel_path[2:]
     patterns = [part.strip() for part in (scope or "").replace(";", ",").split(",") if part.strip()]
     return bool(patterns) and match_any(rel_path, patterns)
 
 
 def context_entries(layout: Layout, rel_path: str) -> List[Dict[str, Any]]:
     """Index entries whose scope matches `rel_path`. The generation-time slice."""
-    rel_path = rel_path.replace(os.sep, "/").lstrip("./")
+    rel_path = rel_path.replace(os.sep, "/")
+    while rel_path.startswith("./"):
+        rel_path = rel_path[2:]
     entries: List[Dict[str, Any]] = []
     for record in load_records(layout):
         if record.status not in (ACCEPTED, PROPOSED):
@@ -248,6 +251,17 @@ def context_entries(layout: Layout, rel_path: str) -> List[Dict[str, Any]]:
         if path_matches_scope(rel_path, record.scope or ""):
             entries.append(record.index_entry())
     return entries
+
+
+def accepted_contracts_for_path(layout: Layout, rel_path: str) -> List[Dict[str, Any]]:
+    """The authoritative slice runtime adapters may inject for one file."""
+    return [
+        record.index_entry()
+        for record in load_records(layout)
+        if record.status == ACCEPTED
+        and record.eocr_function == "Contract"
+        and path_matches_scope(rel_path, record.scope or "")
+    ]
 
 
 def contracts_digest(layout: Layout) -> str:
@@ -348,22 +362,10 @@ def scan_anchors(
 def iter_source_files(
     workspace: str, include: Optional[List[str]] = None, exclude: Optional[List[str]] = None
 ) -> Iterable[str]:
-    from .util import match_any
+    from .workspace import effective_source_files
 
-    exclude = exclude or []
-    for root, dirnames, filenames in os.walk(workspace):
-        dirnames[:] = [name for name in sorted(dirnames) if name not in _SKIP_DIRS]
-        for filename in sorted(filenames):
-            _, extension = os.path.splitext(filename)
-            if extension.lower() not in SOURCE_EXTENSIONS:
-                continue
-            path = os.path.join(root, filename)
-            rel_path = os.path.relpath(path, workspace).replace(os.sep, "/")
-            if exclude and match_any(rel_path, exclude):
-                continue
-            if include and not match_any(rel_path, include):
-                continue
-            yield path
+    for rel_path in effective_source_files(workspace, SOURCE_EXTENSIONS, include, exclude):
+        yield os.path.join(workspace, rel_path.replace("/", os.sep))
 
 
 def load_candidates(layout: Layout) -> List[Dict[str, Any]]:

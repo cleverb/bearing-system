@@ -21,7 +21,7 @@ import re
 import subprocess
 from typing import Dict, List, Optional, Tuple
 
-from .util import BearingError
+from .util import BearingError, read_json
 
 # Conventions probed by `bearing init`, in the order they are reported.
 # `docs/decisions` first because it is the recommended target; the rest exist
@@ -98,8 +98,11 @@ def plugin_root() -> str:
     here = os.path.dirname(os.path.abspath(__file__))
     cursor = here
     while True:
-        if os.path.isfile(os.path.join(cursor, "plugin.json")):
-            return cursor
+        manifest_path = os.path.join(cursor, "plugin.json")
+        if os.path.isfile(manifest_path):
+            manifest = read_json(manifest_path, {}) or {}
+            if manifest.get("name") == "bearing":
+                return cursor
         parent = os.path.dirname(cursor)
         if parent == cursor:
             # Installed as a bare package with no plugin manifest alongside it.

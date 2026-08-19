@@ -4,6 +4,9 @@ status: Proposed
 eocr_function: Rationale
 trigger: <the situation in which an agent needs this record — not what it contains>
 scope: <glob the decision governs, e.g. src/payments/**>
+# Optional only when this Contract intentionally governs a scope with no files:
+# scope_allow_empty: true
+# scope_empty_reason: <why the implementation scope is presently empty>
 ---
 
 # ADR-{{number}}: <title>

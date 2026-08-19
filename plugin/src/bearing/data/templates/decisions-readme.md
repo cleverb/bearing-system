@@ -54,3 +54,8 @@ Code that depends on a decision carries an annotation:
 ```
 
 `bearing lint` verifies every anchor resolves, and that none point into `{{shadow_dir}}/`.
+
+Every scan-recognized `@see ADR-NNNN` is a governing Anchor: it asserts that
+the linked decision governs or explains the implementation carrying the
+annotation. Use an ordinary prose link for related reading that does not make
+that claim.

@@ -20,12 +20,12 @@ Choose a repository where decision context could improve real work, then run:
 bearing assessment    # optional, informational readiness snapshot
 bearing init          # detect the decision-record convention and scaffold state
 bearing doctor        # confirm paths, plugin discovery, and configuration
+bearing health        # aggregate existing checks and descriptive counts
 ```
 
-Both `bearing assessment` and `bearing init` look for PMD and Checkstyle XML.
-A file on its own is reported as configuration evidence; selection from Gradle
-is the stronger signal that its rules are operative. Consequential customized
-values are surfaced for review, never promoted into decisions automatically.
+Assessment uses declared static detectors for Java, JS/TS, Python, and Rust.
+Unsupported ecosystems are explicitly `not-assessed`; configuration evidence is
+surfaced for review and never promoted into decisions automatically.
 
 You can stop here and use BEARING as decisions arise. There is no requirement to
 recover the repository's history before the system becomes useful.
@@ -63,8 +63,8 @@ BEARING does not ship or require a cadence.
 ## What changes day to day
 
 - An `@see ADR-XXX` Anchor points from implementation to authored intent.
-- Agents load the compact decision index and only the records relevant to their
-  current files.
+- Agents discover decisions through `Index → Resolve → Inject`: they load the
+  compact index and receive the Accepted Contracts relevant to current files.
 - Genuine architectural ambiguity is escalated instead of guessed through.
 - Recovery signals may flag work for review, but never block a merge.
 

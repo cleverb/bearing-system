@@ -137,7 +137,7 @@ def render_subagents(
     root = _scope_root(scope, config.workspace, ephemeral_dir)
     if root is None:
         skips.append(
-            Skip("subagents", "*", "ephemeral scope requested with no session directory available")
+            Skip("subagents", "*", "ephemeral scope requested with no session directory available", scope)
         )
         return artifacts, skips
 
@@ -149,6 +149,7 @@ def render_subagents(
                     target,
                     "not in projections.subagents.targets; adapters for this runtime are "
                     "intentionally not generated",
+                    scope,
                 )
             )
             continue
@@ -239,13 +240,13 @@ def render_rules(
     skips: List[Skip] = []
     root = _scope_root(scope, config.workspace, ephemeral_dir)
     if root is None:
-        skips.append(Skip("rules", "*", "ephemeral scope requested with no session directory"))
+        skips.append(Skip("rules", "*", "ephemeral scope requested with no session directory", scope))
         return artifacts, skips
 
     for target in _RULE_TARGETS:
         if target not in targets:
             skips.append(
-                Skip("rules", target, "not in projections.rules.targets")
+                Skip("rules", target, "not in projections.rules.targets", scope)
             )
             continue
 
@@ -284,6 +285,7 @@ def render_rules(
                     target,
                     "managed as a delimited block inside a hand-maintained file by "
                     "`bearing render`, not written as a whole generated file",
+                    scope,
                 )
             )
 
@@ -304,6 +306,7 @@ def render_contracts(
     del ephemeral_dir
     settings = config.get("projections.contracts") or {}
     targets = list(settings.get("targets") or [])
+    scope = settings.get("scope") or "repo"
     skips: List[Skip] = []
     known = ("lint", "ci", "agents-md")
     reasons = {
@@ -316,12 +319,12 @@ def render_contracts(
     }
     for target in known:
         if target not in targets:
-            skips.append(Skip("contracts", target, "not in projections.contracts.targets"))
+            skips.append(Skip("contracts", target, "not in projections.contracts.targets", scope))
             continue
-        skips.append(Skip("contracts", target, reasons[target]))
+        skips.append(Skip("contracts", target, reasons[target], scope))
     for target in targets:
         if target not in known:
-            skips.append(Skip("contracts", target, "unknown contracts target"))
+            skips.append(Skip("contracts", target, "unknown contracts target", scope))
     return [], skips
 
 

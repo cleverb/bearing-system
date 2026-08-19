@@ -1,11 +1,28 @@
 {
+  "description": "Inject matching Accepted Contracts before governed file mutations.",
   "hooks": {
-    "workspaceOpen": [
+    "PreToolUse": [
       {
-        "command": "python3 hooks/render_ephemeral.py",
-        "timeout": 30
+        "hooks": [
+          {
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/context_injection.py\"",
+            "timeout": 30,
+            "type": "command"
+          }
+        ],
+        "matcher": "Read|Edit|Write"
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/context_injection.py\"",
+            "timeout": 30,
+            "type": "command"
+          }
+        ]
       }
     ]
-  },
-  "version": 1
+  }
 }

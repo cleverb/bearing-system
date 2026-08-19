@@ -3,7 +3,7 @@ id: ADR-0001
 status: Accepted
 eocr_function: Contract
 trigger: adopting or modifying the decision-recording process itself
-scope: docs/decisions/**
+scope: docs/decisions/**, plugin/src/bearing/decisions.py
 ---
 
 # ADR-0001: Record Architecture Decisions

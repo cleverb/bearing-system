@@ -21,7 +21,7 @@ command remain `bearing` so installation naming does not leak into runtime use.
 
 ### 1.4 Local testing to marketplace promotion
 
-Four tiers, each catching a failure class the one below it cannot see. The same list is in [`tests/README.md`](../../tests/README.md).
+Five tiers, each catching a failure class the one below it cannot see. The same list is in [`tests/README.md`](../../tests/README.md).
 
 **Tier 0 — iteration.** Point a client at the working tree.
 
@@ -45,6 +45,15 @@ bash scripts/ci/git-hosted-install.sh
 
 **Tier 3 — publish.** Cursor at `cursor.com/marketplace/publish`; Claude Code by pointing at the git-hosted `.claude-plugin/marketplace.json`.
 
+**Tier 4 — client conformance.** Install the release candidate in a scratch
+repository using each declared supported runtime and record installation, Skill
+discovery, agent acceptance, hook execution, the plugin read-only boundary, and
+uninstall preservation. Evidence is schema-validated and bound to the
+compatibility API, renderer/schema versions, runtime version range, platform,
+and hashes of only the runtime-specific artifacts exercised. Run
+`bearing package --release-check` for release qualification. Tier 4 runs on a
+schedule and by manual workflow dispatch; it does not gate ordinary pull requests.
+
 ---
 
 ## 2. The purity rule
@@ -60,6 +69,18 @@ A path may not escape the plugin root. Skills that need a sibling schema ask the
 ## 3. Configuration
 
 Everything derives from `decisions.path`. No script hardcodes a decisions directory.
+
+An **effective workspace file** is a currently existing, workspace-contained
+path returned by `git ls-files -z --cached --others --exclude-standard` in a Git
+repository, or by BEARING's documented filesystem fallback outside Git, after
+resolved `scope.include` and `scope.exclude` are applied. It is represented as a
+normalized workspace-relative POSIX path. `effective_workspace_files(config)`
+owns this universe; consumers may add specialized filters but may not redefine it.
+
+For a Contract, `scope_allow_empty: true` means its implementation scope is
+intentionally empty *at present* and requires a non-empty
+`scope_empty_reason`. Lint keeps the exception visible while empty and warns
+when matching files make the exception stale.
 
 ### 3.3 The legacy convention case
 
@@ -79,7 +100,7 @@ The configured shadow subtree is always excluded from authored-record traversal.
 
 ## 4. Projection
 
-Canonical sources live in the plugin. `bearing render` produces runtime adapters. Generated files carry a `DO NOT EDIT` header and are recorded in `.bearing/projections.lock.json`.
+Canonical sources live in the plugin. `bearing render` produces runtime adapters. Generated files carry a `DO NOT EDIT` header. Repo artifacts are recorded in `.bearing/projections.lock.json`; user artifacts use an operator-local workspace lock, and ephemeral artifacts use an ephemeral lock.
 
 - **Subagents** — genuine format gap (markdown frontmatter vs Codex TOML).
 - **Rules** — genuine format gap (`.cursor/rules`, `AGENTS.md`, Copilot instructions).
@@ -101,12 +122,16 @@ bearing render            # generate adapters; --check for drift
 bearing index             # regenerate docs/decisions/index.json
 bearing lint              # structural decision-graph integrity
 bearing verify            # mandate conformance
+bearing health            # aggregate lint, verify, compatibility, and corpus statistics; always exits 0
 bearing context <path>    # index entries whose scope matches this file
 bearing onboard           # readiness check and optional evaluation guidance
 bearing vendor            # copy Skills into .agents/skills/ and pin the version
 bearing vendor --pin      # pin version when copies already exist
 bearing ledger            # print the cost-ledger path
+bearing ledger add --from-json FILE
 bearing eval <set>        # print an evaluation-set directory (gold|dark|negative|escalation)
+bearing eval <set> --score
+bearing observe <escalation|negative> --case ID --observed VALUE
 bearing transcripts       # print the transcript directory
 ```
 
@@ -114,7 +139,7 @@ An optional evaluation-criteria template is seeded by `bearing init` into `.bear
 
 ### Assessment of build quality evidence
 
-Assessment recognizes PMD- or Checkstyle-named XML files as configuration
+Assessment uses capability-declared ecosystem detectors. It recognizes PMD- or Checkstyle-named XML files as configuration
 evidence, then distinguishes the stronger signal of literal Gradle references to PMD `ruleSetFiles` and
 `ruleSetConfig`, Checkstyle `configFile`/`config`, and the conventional
 `config/checkstyle/checkstyle.xml` location when the Checkstyle plugin is
@@ -137,7 +162,10 @@ that an architectural decision was made.
 
 This is an informational discovery aid, not a claim that every PMD or Checkstyle
 rule deserves an ADR. Dynamic Gradle expressions are not guessed, and
-assessment never runs or gates on the repository's build.
+assessment never runs or gates on the repository's build. Static detectors also
+report ESLint and TypeScript configuration for JS/TS, Ruff and Flake8 for
+Python, and Clippy for Rust. An ecosystem outside those capabilities is reported
+as `not-assessed`, never silently treated as clean.
 
 `bearing init` reports this same build-quality subset after scaffolding. It does
 not copy the rules into generated guidance or create a decision record. When a
@@ -155,16 +183,21 @@ still exits zero.
 
 ## 6. Fit and finish: the conformance suite
 
-`bearing verify` computes the structurally testable parts of the four mandates;
+`bearing verify` computes the structurally testable parts of the mandate;
 it does not certify inferred intent, decision quality, or adoption success:
 
 | Pillar | What it checks |
 | --- | --- |
+| DISCOVER | Index freshness and budget, Contract digest freshness, scope integrity, and declared runtime discovery strength |
 | ESCALATE | Anchors resolve; superseded records have successors; no inference gates a merge; escalation fixtures score recall when present |
 | ANCHOR | No shadow pointers; accepted records are reachable; coverage within `scope.include` |
 | PROJECT | Deterministic render, lock drift, DO-NOT-EDIT headers, no redundant projection |
 | EVOLVE | Idempotent fingerprints, rejection durability, lifecycle honesty, cost trend |
-| USABILITY | Index budget, review-queue size, Negative Set hallucination rate, uninstall safety, documented paths exist |
+| USABILITY | Review-queue size, Negative Set hallucination rate, uninstall safety, documented paths exist |
+
+`DISCOVER` is verification vocabulary, not a new conceptual pillar. The
+Decision System remains `Discover → Anchor → Constrain → Execute → Verify →
+Evolve`; its Discover operation is refined as `Index → Resolve → Inject`.
 
 Missing evaluation fixtures are a **WARN**, not a silent pass. An empty Negative Set or escalation set cannot claim the mandate is met; it can only admit the metric was not measured.
 

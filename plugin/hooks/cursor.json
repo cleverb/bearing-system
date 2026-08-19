@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "workspaceOpen": [
+      {
+        "command": "python3 hooks/render_ephemeral.py",
+        "timeout": 30
+      }
+    ]
+  },
+  "version": 1
+}

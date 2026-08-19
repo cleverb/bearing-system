@@ -1,0 +1,82 @@
+{
+  "bearing_compatibility_api": 1,
+  "config_schema_version": 1,
+  "renderer_version": 3,
+  "runtimes": [
+    {
+      "config_schema_version": 1,
+      "discovery_mode": "mechanical",
+      "evidence": {
+        "artifacts": [
+          {
+            "path": "plugin/.claude-plugin/plugin.json",
+            "sha256": "f3bbb989f20ef71ecfea092e68133f90ec6e3d2d81dc389e550ccab966843293"
+          },
+          {
+            "path": "plugin/hooks/context_injection.py",
+            "sha256": "9785ba485fecb43a5a23d7e33b2f4ee0e06b96a5126fdb708d2f1e3ff3677113"
+          },
+          {
+            "path": "plugin/hooks/hooks.json",
+            "sha256": "519f99a82028a54e9060831958dea078162d8cb28f4de6b8619f36db70e88d1f"
+          },
+          {
+            "path": "plugin/src/bearing/decisions.py",
+            "sha256": "7e12e2b8abf566eabe7aa7246e9be59cb0444280d8868e1af391c4c58acdd0b6"
+          },
+          {
+            "path": "plugin/src/bearing/render.py",
+            "sha256": "253fd91596561fc8ac01af47416dd3756b759e06d4e4e73962b26b5f8ba5c6eb"
+          },
+          {
+            "path": "plugin/src/bearing/workspace.py",
+            "sha256": "67d6272e546b1e8382b266a306d77083873a3e29ec65236d0127c884b82cd853"
+          }
+        ],
+        "bearing_compatibility_api": 1,
+        "checks": {
+          "agent_acceptance": true,
+          "hook_execution": true,
+          "install": true,
+          "readonly_boundary": true,
+          "skill_discovery": true,
+          "uninstall_preservation": true
+        },
+        "config_schema_version": 1,
+        "fingerprint": "616aa5abfef25fa92073091d6d48bbb5c101c1bcbbccbd952daaef627b2838a1",
+        "notes": "Local-scope marketplace install in a scratch Git repository; plugin details reported three Skills and both lifecycle hooks; a no-tool real-client prompt naming src/example.py created the early scoped digest under .bearing/runtime/context; four projected agents were accepted in the session; plugin source remained unchanged; uninstall preserved docs/decisions.",
+        "platform": "macOS-14.4-arm64-arm-64bit",
+        "renderer_version": 1,
+        "result": "pass",
+        "runtime": "claude",
+        "runtime_version_max": "2.1.220 (Claude Code)",
+        "runtime_version_min": "2.1.220 (Claude Code)",
+        "schema_version": 1,
+        "tested_at": "2026-08-18"
+      },
+      "fingerprint": "616aa5abfef25fa92073091d6d48bbb5c101c1bcbbccbd952daaef627b2838a1",
+      "renderer_version": 1,
+      "runtime": "claude",
+      "supported": true
+    },
+    {
+      "config_schema_version": 1,
+      "discovery_mode": "session-advisory",
+      "evidence": null,
+      "fingerprint": "c97a5ba65c658ad70f05a902cf89601e7ee6e06f5d65e0fb9254f88fc936850d",
+      "renderer_version": 1,
+      "runtime": "codex",
+      "supported": true
+    },
+    {
+      "config_schema_version": 1,
+      "discovery_mode": "session-advisory",
+      "evidence": null,
+      "fingerprint": "3522295e60fa8a59f52f4abe6567a11a3387687ebf75fd338597b47f5b7e6b61",
+      "renderer_version": 1,
+      "runtime": "cursor",
+      "supported": true
+    }
+  ],
+  "schema_version": 1
+}

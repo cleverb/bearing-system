@@ -22,6 +22,7 @@ from .config import ResolvedConfig
 from .decisions import DecisionRecord, load_records, scan_anchors
 from .paths import Layout, detect_decision_dirs
 from .util import parse_frontmatter, read_text
+from .workspace import effective_workspace_files
 
 # Readiness bands, independent of whether BEARING is installed.
 BAND_UNPREPARED = "unprepared"
@@ -175,6 +176,7 @@ _RECOMMENDATIONS: Tuple[Tuple[str, str], ...] = (
 def assess(config: ResolvedConfig) -> Dict[str, Any]:
     """Scan the workspace. Pure function of the tree plus resolved config."""
     workspace = config.workspace
+    effective_files = effective_workspace_files(config)
     detected = detect_decision_dirs(workspace)
     primary, competing = _primary_corpus(config, detected)
     records = _load_numbered(workspace, primary) if primary else []
@@ -191,8 +193,9 @@ def assess(config: ResolvedConfig) -> Dict[str, Any]:
     agents_text = read_text(agents_root)
     nested_only = os.path.isfile(agents_nested) and not os.path.isfile(agents_root)
 
-    baselines = _agent_baselines(workspace, primary)
-    build_rules = _build_quality_contracts(workspace, baselines)
+    baselines = _agent_baselines(workspace, primary, effective_files)
+    build_rules = _build_quality_contracts(workspace, baselines, effective_files)
+    ecosystems = _ecosystem_coverage(workspace, effective_files)
     names_corpus = any(item["present"] and item["mentions_corpus"] for item in baselines)
     discovery_status, discovery_detail = _discovery_status(
         os.path.isfile(agents_root), nested_only, names_corpus, primary
@@ -202,12 +205,10 @@ def assess(config: ResolvedConfig) -> Dict[str, Any]:
     anchor_count = len(anchors)
     unique_ids = sorted({anchor.adr_id for anchor in anchors})
 
-    pr_paths = _pr_template_paths(workspace)
+    pr_paths = _pr_template_paths(workspace, effective_files)
     pr_text = _concat_files(workspace, pr_paths)
     pr_related = _is_adr_related(pr_text, primary) if pr_text else False
-    contributing_rel = "CONTRIBUTING.md" if os.path.isfile(
-        os.path.join(workspace, "CONTRIBUTING.md")
-    ) else None
+    contributing_rel = "CONTRIBUTING.md" if "CONTRIBUTING.md" in set(effective_files) else None
     contributing_text = read_text(os.path.join(workspace, "CONTRIBUTING.md")) if contributing_rel else None
     contributing_related = _is_adr_related(contributing_text, primary) if contributing_text else False
     review_related = pr_related or contributing_related
@@ -225,7 +226,7 @@ def assess(config: ResolvedConfig) -> Dict[str, Any]:
 
     index_rel = _index_rel(config, primary)
     has_index = bool(index_rel and os.path.isfile(os.path.join(workspace, index_rel)))
-    ci_mentions = _ci_mentions_bearing(workspace)
+    ci_mentions = _ci_mentions_bearing(workspace, effective_files)
 
     band = _band(
         record_count=record_count,
@@ -299,6 +300,7 @@ def assess(config: ResolvedConfig) -> Dict[str, Any]:
             },
             "baselines": baselines,
             "build_quality_contracts": build_rules,
+            "ecosystems": ecosystems,
             "bearing": {
                 "overlay": overlay,
                 "index": index_rel if has_index else None,
@@ -328,6 +330,13 @@ def render_text(result: Dict[str, Any]) -> str:
             dims["build_quality_contracts"]["detail"],
         )
     )
+    lines.append("## Ecosystem detectors")
+    for item in dims["ecosystems"]:
+        lines.append(
+            "  %-12s  %-12s  %s"
+            % (item["ecosystem"], item["status"], item["detail"])
+        )
+    lines.append("")
     for item in dims["build_quality_contracts"]["files"]:
         selected = [
             rule for rule in item["rules"]
@@ -574,15 +583,18 @@ def _scan(config: ResolvedConfig):
     return scan_anchors(config.layout, include, exclude)
 
 
-def _agent_baselines(workspace: str, primary: Optional[str]) -> List[Dict[str, Any]]:
+def _agent_baselines(
+    workspace: str, primary: Optional[str], effective_files: Sequence[str]
+) -> List[Dict[str, Any]]:
     items: List[Dict[str, Any]] = []
+    effective = set(effective_files)
 
     def add(baseline_id: str, rel_paths: List[str], detail: str = "") -> None:
         texts = []
         present_paths = []
         for rel in rel_paths:
             path = os.path.join(workspace, rel)
-            if os.path.isfile(path):
+            if rel in effective and os.path.isfile(path):
                 present_paths.append(rel)
                 texts.append(read_text(path) or "")
         present = bool(present_paths)
@@ -600,7 +612,7 @@ def _agent_baselines(workspace: str, primary: Optional[str]) -> List[Dict[str, A
     add("AGENTS.md", ["AGENTS.md"])
     add("CLAUDE.md", ["CLAUDE.md"])
 
-    cursor_files = _cursor_rule_files(workspace)
+    cursor_files = _cursor_rule_files(workspace, effective_files)
     cursor_detail = "%d file(s)" % len(cursor_files) if cursor_files else ""
     add("cursor-rules", cursor_files, cursor_detail)
 
@@ -610,7 +622,9 @@ def _agent_baselines(workspace: str, primary: Optional[str]) -> List[Dict[str, A
 
 
 def _build_quality_contracts(
-    workspace: str, baselines: Sequence[Dict[str, Any]]
+    workspace: str,
+    baselines: Sequence[Dict[str, Any]],
+    effective_files: Optional[Sequence[str]] = None,
 ) -> Dict[str, Any]:
     """Discover PMD/Checkstyle XML, Gradle selection, and agent visibility.
 
@@ -623,7 +637,7 @@ def _build_quality_contracts(
     files: List[Dict[str, Any]] = []
     seen = set()
 
-    for script in _gradle_build_scripts(workspace):
+    for script in _gradle_build_scripts(workspace, effective_files):
         text = read_text(script) or ""
         script_dir = os.path.dirname(script)
         found_checkstyle = False
@@ -658,7 +672,7 @@ def _build_quality_contracts(
 
     # An unreferenced ruleset is still useful evidence, but Gradle wiring is the
     # stronger signal that the repository actively selected it for enforcement.
-    for absolute, tool in _quality_xml_candidates(workspace):
+    for absolute, tool in _quality_xml_candidates(workspace, effective_files):
         _add_quality_file(
             files,
             seen,
@@ -714,29 +728,99 @@ def _build_quality_contracts(
     }
 
 
-def _gradle_build_scripts(workspace: str) -> List[str]:
-    scripts: List[str] = []
-    skipped = {".git", ".gradle", ".bearing", "build", "dist", "node_modules", "vendor", ".venv", "venv"}
-    for root, dirnames, filenames in os.walk(workspace):
-        dirnames[:] = sorted(name for name in dirnames if name not in skipped and not name.startswith("."))
-        for filename in ("build.gradle", "build.gradle.kts"):
-            if filename in filenames:
-                scripts.append(os.path.join(root, filename))
-    return sorted(scripts)
+def _gradle_build_scripts(
+    workspace: str, effective_files: Optional[Sequence[str]] = None
+) -> List[str]:
+    files = effective_files if effective_files is not None else effective_workspace_files(workspace)
+    return sorted(
+        os.path.join(workspace, rel.replace("/", os.sep))
+        for rel in files
+        if os.path.basename(rel) in ("build.gradle", "build.gradle.kts")
+    )
 
 
-def _quality_xml_candidates(workspace: str) -> List[Tuple[str, str]]:
+def _quality_xml_candidates(
+    workspace: str, effective_files: Optional[Sequence[str]] = None
+) -> List[Tuple[str, str]]:
     candidates: List[Tuple[str, str]] = []
-    skipped = {".git", ".gradle", ".bearing", "build", "dist", "node_modules", "vendor", ".venv", "venv"}
-    for root, dirnames, filenames in os.walk(workspace):
-        dirnames[:] = sorted(name for name in dirnames if name not in skipped and not name.startswith("."))
-        for filename in sorted(filenames):
-            lower = filename.lower()
-            if not lower.endswith(".xml") or ("pmd" not in lower and "checkstyle" not in lower):
-                continue
-            tool = "checkstyle" if "checkstyle" in lower else "pmd"
-            candidates.append((os.path.join(root, filename), tool))
+    files = effective_files if effective_files is not None else effective_workspace_files(workspace)
+    for rel in files:
+        lower = os.path.basename(rel).lower()
+        if not lower.endswith(".xml") or ("pmd" not in lower and "checkstyle" not in lower):
+            continue
+        tool = "checkstyle" if "checkstyle" in lower else "pmd"
+        candidates.append((os.path.join(workspace, rel.replace("/", os.sep)), tool))
     return candidates
+
+
+def _ecosystem_coverage(
+    workspace: str, effective_files: Sequence[str]
+) -> List[Dict[str, str]]:
+    """Declare exactly which static ecosystem signals assessment understands."""
+    files = set(effective_files)
+    names = {os.path.basename(path) for path in files}
+    rows: List[Dict[str, str]] = []
+
+    def add(ecosystem: str, detected: bool, evidence: Sequence[str], capability: str) -> None:
+        if not detected:
+            status = "not-assessed"
+            detail = "ecosystem not detected; detector capability: %s" % capability
+        elif evidence:
+            status = "assessed"
+            detail = "%s (%s)" % (capability, ", ".join(sorted(evidence)))
+        else:
+            status = "assessed"
+            detail = "%s; no supported configuration found" % capability
+        rows.append({"ecosystem": ecosystem, "status": status, "detail": detail})
+
+    java_detected = bool(names & {"build.gradle", "build.gradle.kts", "pom.xml"})
+    java_evidence = [p for p in files if os.path.basename(p).lower().endswith(".xml") and any(x in os.path.basename(p).lower() for x in ("pmd", "checkstyle"))]
+    add("java", java_detected, java_evidence, "PMD and Checkstyle")
+
+    js_detected = "package.json" in names or any(p.startswith("tsconfig") and p.endswith(".json") for p in names)
+    js_evidence = [p for p in files if os.path.basename(p).startswith(("eslint.config.", ".eslintrc")) or os.path.basename(p).startswith("tsconfig") and p.endswith(".json")]
+    add("js-ts", js_detected, js_evidence, "ESLint and TypeScript configuration")
+
+    python_detected = bool(names & {"pyproject.toml", "setup.cfg", "tox.ini", "requirements.txt"}) or any(p.endswith(".py") for p in files)
+    python_evidence = [p for p in files if os.path.basename(p) in {"ruff.toml", ".ruff.toml", ".flake8"}]
+    for rel in (p for p in files if os.path.basename(p) in {"pyproject.toml", "setup.cfg", "tox.ini"}):
+        text = (read_text(os.path.join(workspace, rel.replace("/", os.sep))) or "").lower()
+        if "[tool.ruff" in text or "[ruff" in text or "[flake8" in text:
+            python_evidence.append(rel)
+    add("python", python_detected, python_evidence, "Ruff and Flake8 configuration")
+
+    rust_detected = "Cargo.toml" in names or any(p.endswith(".rs") for p in files)
+    rust_evidence = [p for p in files if os.path.basename(p) in {"clippy.toml", ".clippy.toml"}]
+    for rel in (p for p in files if os.path.basename(p) == "Cargo.toml"):
+        text = (read_text(os.path.join(workspace, rel.replace("/", os.sep))) or "").lower()
+        if "clippy" in text:
+            rust_evidence.append(rel)
+    add("rust", rust_detected, rust_evidence, "Clippy configuration")
+    unsupported_extensions = {
+        ".go": "Go",
+        ".rb": "Ruby",
+        ".php": "PHP",
+        ".cs": "C#",
+        ".swift": "Swift",
+        ".ex": "Elixir",
+        ".exs": "Elixir",
+    }
+    unsupported = sorted(
+        {
+            unsupported_extensions[os.path.splitext(path)[1].lower()]
+            for path in files
+            if os.path.splitext(path)[1].lower() in unsupported_extensions
+        }
+    )
+    if unsupported:
+        rows.append(
+            {
+                "ecosystem": "unsupported",
+                "status": "not-assessed",
+                "detail": "no detector capability for %s" % ", ".join(unsupported),
+            }
+        )
+    return rows
 
 
 def _add_quality_file(
@@ -861,23 +945,16 @@ def _rule_is_named(rule: Dict[str, Any], baseline_text: str) -> bool:
     return not values or any(str(value).lower() in baseline_text for value in values)
 
 
-def _cursor_rule_files(workspace: str) -> List[str]:
-    files: List[str] = []
-    if os.path.isfile(os.path.join(workspace, ".cursorrules")):
-        files.append(".cursorrules")
-    rules_dir = os.path.join(workspace, ".cursor", "rules")
-    if os.path.isdir(rules_dir):
-        try:
-            names = sorted(os.listdir(rules_dir))
-        except OSError:
-            names = []
-        for name in names:
-            if name.endswith(".mdc") or name.endswith(".md"):
-                files.append(".cursor/rules/%s" % name)
-    return files
+def _cursor_rule_files(workspace: str, effective_files: Sequence[str]) -> List[str]:
+    return [
+        rel for rel in effective_files
+        if rel == ".cursorrules"
+        or rel.startswith(".cursor/rules/") and rel.endswith((".mdc", ".md"))
+    ]
 
 
-def _pr_template_paths(workspace: str) -> List[str]:
+def _pr_template_paths(workspace: str, effective_files: Sequence[str]) -> List[str]:
+    effective = set(effective_files)
     found: List[str] = []
     for rel in (
         "PULL_REQUEST_TEMPLATE.md",
@@ -887,19 +964,13 @@ def _pr_template_paths(workspace: str) -> List[str]:
         "docs/PULL_REQUEST_TEMPLATE.md",
         "docs/pull_request_template.md",
     ):
-        if os.path.isfile(os.path.join(workspace, rel)):
+        if rel in effective:
             found.append(rel)
-    for dirname in (".github/PULL_REQUEST_TEMPLATE", ".github/pull_request_template"):
-        directory = os.path.join(workspace, dirname)
-        if not os.path.isdir(directory):
-            continue
-        try:
-            names = sorted(os.listdir(directory))
-        except OSError:
-            continue
-        for name in names:
-            if name.endswith(".md"):
-                found.append("%s/%s" % (dirname, name))
+    for rel in effective_files:
+        if rel.endswith(".md") and rel.startswith(
+            (".github/PULL_REQUEST_TEMPLATE/", ".github/pull_request_template/")
+        ):
+            found.append(rel)
     return found
 
 
@@ -935,18 +1006,11 @@ def _index_rel(config: ResolvedConfig, primary: Optional[str]) -> Optional[str]:
     return None
 
 
-def _ci_mentions_bearing(workspace: str) -> bool:
-    wf = os.path.join(workspace, ".github", "workflows")
-    if not os.path.isdir(wf):
-        return False
-    try:
-        names = os.listdir(wf)
-    except OSError:
-        return False
-    for name in names:
-        if not (name.endswith(".yml") or name.endswith(".yaml")):
+def _ci_mentions_bearing(workspace: str, effective_files: Sequence[str]) -> bool:
+    for rel in effective_files:
+        if not rel.startswith(".github/workflows/") or not rel.endswith((".yml", ".yaml")):
             continue
-        text = read_text(os.path.join(wf, name)) or ""
+        text = read_text(os.path.join(workspace, rel.replace("/", os.sep))) or ""
         if "bearing lint" in text or "bearing verify" in text:
             return True
     return False

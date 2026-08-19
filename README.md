@@ -31,11 +31,11 @@ The line between those first two is a hard rule, not a convention: **the plugin 
 
 ```bash
 # From the BEARING marketplace (Cursor)
-cursor-agent plugin marketplace add https://github.com/oeist/bearing-system
+cursor-agent plugin marketplace add https://github.com/cleverb/bearing-system
 # then install `bearing` from /plugin
 
 # From the BEARING marketplace (Claude Code)
-/plugin marketplace add oeist/bearing-system
+/plugin marketplace add cleverb/bearing-system
 /plugin install bearing@bearing
 ```
 
@@ -46,7 +46,7 @@ pipx install ./plugin        # or: uv tool install ./plugin
 bearing --help
 ```
 
-The Python distribution is named `bearing-system`; the import package and CLI command remain `bearing`. It requires Python 3.9 or newer and no third-party packages. Plugin install alone is not enough to run `bearing init`.
+The Python distribution is named `bearing-system`; the import package and CLI command remain `bearing`. It requires Python 3.9 or newer and no third-party packages. Plugin install alone is not enough to run `bearing init`. For v0.2 the CLI is installed from a checkout with `pipx install ./plugin`; a public package-index install is future work.
 
 ## Bootstrap a repository
 
@@ -55,12 +55,14 @@ cd /path/to/your/repo
 bearing assessment    # scorecard of agentic decision readiness; works before init; always exits 0
 bearing init          # detects your decision-record convention, writes .bearing/config.json
 bearing doctor        # verifies everything resolves before you rely on it
+bearing health        # aggregates current checks and statistics; always exits 0
 ```
 
-Assessment and init also report PMD and Checkstyle XML as build-quality
-evidence. File presence is a clue; Gradle selection is the stronger indication
-that a ruleset is active. Customized thresholds are surfaced for human review,
-not treated as decisions automatically.
+Assessment and init also report capability-declared build-quality evidence:
+PMD and Checkstyle for Java, ESLint and TypeScript configuration for JS/TS,
+Ruff and Flake8 for Python, and Clippy for Rust. Unsupported ecosystems are
+reported as `not-assessed`. Configuration is evidence for human review, never a
+decision inferred automatically.
 
 `bearing init` never guesses where your decisions live. If the repo already uses `docs/adr/`, `docs/ADRs/`, or anything else, it detects and asks — see [the legacy convention case](docs/specs/bearing-distribution-spec.md#33-the-legacy-convention-case).
 

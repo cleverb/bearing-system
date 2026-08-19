@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["expects"],
+  "anyOf": [
+    { "required": ["id"] },
+    { "required": ["case_id"] }
+  ],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "case_id": { "type": "string", "minLength": 1 },
+    "expects": { "type": "string", "minLength": 1 },
+    "observed": { "type": "string", "minLength": 1 },
+    "notes": { "type": "string" }
+  }
+}

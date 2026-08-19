@@ -16,4 +16,8 @@ This directory tree is the authored, authoritative source of decisions governing
 4. Link the implementation it governs with `@see ADR-000N` in an annotation.
 5. Run the index regeneration so `index.json` picks it up.
 
+Every scan-recognized `@see ADR-NNNN` is a governing Anchor. Use an ordinary
+prose link for related reading that does not claim the decision governs or
+explains that implementation.
+
 See `/BEARING.md` for the full architecture this directory is part of, and `/QUICKSTART.md` for an orientation and optional evaluation paths.

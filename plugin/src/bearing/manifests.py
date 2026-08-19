@@ -177,6 +177,11 @@ def plugin_manifests(plugin_root: str, canonical: Dict[str, Any]) -> List[Artifa
         ),
     ):
         body = _shared(canonical)
+        if directory == ".cursor-plugin":
+            # Claude reserves hooks/hooks.json as its convention. Cursor can
+            # name its component path explicitly, keeping the incompatible
+            # schemas out of the same file.
+            body["hooks"] = "./hooks/cursor.json"
         out.append(
             Artifact(
                 path=os.path.join(plugin_root, directory, "plugin.json"),
@@ -287,6 +292,7 @@ def marketplace_manifests(
             "Codex distributes plugins through the shared ChatGPT plugin directory and "
             "defines no git-hosted marketplace manifest; .codex-plugin/plugin.json is "
             "sufficient for installation",
+            "package",
         )
     )
 
@@ -345,7 +351,7 @@ def _display_name(skill_name: str) -> str:
     return " ".join(part.capitalize() for part in skill_name.split("-"))
 
 
-def hooks_manifest(plugin_root: str) -> Artifact:
+def hooks_manifests(plugin_root: str) -> List[Artifact]:
     """The `workspaceOpen` hook backing `scope: "ephemeral"` projections.
 
     Cursor's `workspaceOpen` hook may return `{"pluginPaths": [...]}` to load
@@ -354,7 +360,7 @@ def hooks_manifest(plugin_root: str) -> Artifact:
     start and nothing is ever written into the working tree -- which is how you
     evaluate BEARING against a baseline you are not allowed to modify.
     """
-    payload = {
+    cursor_payload = {
         "version": 1,
         "hooks": {
             "workspaceOpen": [
@@ -365,14 +371,52 @@ def hooks_manifest(plugin_root: str) -> Artifact:
             ]
         },
     }
-    return Artifact(
-        path=os.path.join(plugin_root, "hooks", "hooks.json"),
-        content=dump_json(payload),
-        source="plugin/src/bearing/manifests.py",
-        kind="manifest",
-        target="cursor",
-        scope="package",
-    )
+    claude_payload = {
+        "description": "Inject matching Accepted Contracts before governed file mutations.",
+        "hooks": {
+            "UserPromptSubmit": [
+                {
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": 'python3 "${CLAUDE_PLUGIN_ROOT}/hooks/context_injection.py"',
+                            "timeout": 30,
+                        }
+                    ]
+                }
+            ],
+            "PreToolUse": [
+                {
+                    "matcher": "Read|Edit|Write",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": 'python3 "${CLAUDE_PLUGIN_ROOT}/hooks/context_injection.py"',
+                            "timeout": 30,
+                        }
+                    ],
+                }
+            ]
+        },
+    }
+    return [
+        Artifact(
+            path=os.path.join(plugin_root, "hooks", "cursor.json"),
+            content=dump_json(cursor_payload),
+            source="plugin/src/bearing/manifests.py",
+            kind="manifest",
+            target="cursor",
+            scope="package",
+        ),
+        Artifact(
+            path=os.path.join(plugin_root, "hooks", "hooks.json"),
+            content=dump_json(claude_payload),
+            source="plugin/src/bearing/manifests.py",
+            kind="manifest",
+            target="claude",
+            scope="package",
+        ),
+    ]
 
 
 def all_package_artifacts(
@@ -382,19 +426,97 @@ def all_package_artifacts(
     artifacts: List[Artifact] = []
     artifacts.extend(plugin_manifests(plugin_root, canonical))
     artifacts.extend(codex_skill_metadata(plugin_root))
-    artifacts.append(hooks_manifest(plugin_root))
+    artifacts.extend(hooks_manifests(plugin_root))
+    schema_source = os.path.join(plugin_root, "src", "bearing", "data", "config.schema.json")
+    schema_content = read_text(schema_source)
+    if schema_content is None:
+        raise BearingError("missing packaged configuration schema at %s" % schema_source)
+    artifacts.extend(
+        [
+            Artifact(
+                path=os.path.join(workspace, "schemas", "config-1.json"),
+                content=schema_content,
+                source="plugin/src/bearing/data/config.schema.json",
+                kind="schema",
+                target="public",
+                scope="package",
+            ),
+            Artifact(
+                path=os.path.join(workspace, "schemas", "GENERATED.md"),
+                content=generated_dir_notice(
+                    "The public configuration schema is generated from the schema shipped "
+                    "inside the BEARING Python package."
+                ),
+                source="plugin/src/bearing/data/config.schema.json",
+                kind="schema",
+                target="public",
+                scope="package",
+            ),
+        ]
+    )
     market, skips = marketplace_manifests(workspace, canonical)
     artifacts.extend(market)
     artifacts.append(
         Artifact(
             path=os.path.join(plugin_root, "hooks", "GENERATED.md"),
             content=generated_dir_notice(
-                "Cursor reads hook configuration from `hooks/hooks.json` inside a plugin. This "
-                "one backs ephemeral projections via the `workspaceOpen` event."
+                "Claude reads `hooks/hooks.json` by convention; Cursor's manifest points at "
+                "`hooks/cursor.json`. Their incompatible schemas are generated separately."
             ),
             source="plugin/src/bearing/manifests.py",
             kind="manifest",
             target="cursor",
+            scope="package",
+        )
+    )
+    from .compatibility import build_summary
+
+    overrides = {artifact.path: artifact.content for artifact in artifacts}
+    summary = build_summary(workspace, overrides=overrides)
+    artifacts.append(
+        Artifact(
+            path=os.path.join(plugin_root, "runtime-compatibility.json"),
+            content=dump_json(summary),
+            source="conformance/evidence/*.json",
+            kind="compatibility",
+            target="all",
+            scope="package",
+        )
+    )
+    matrix = [
+        "# Runtime support",
+        "",
+        "Support is qualified by Tier 4 evidence for behaviorally relevant artifacts.",
+        "",
+        "| Runtime | Discovery | Evidence | Verified range |",
+        "| --- | --- | --- | --- |",
+    ]
+    for entry in summary["runtimes"]:
+        evidence = entry.get("evidence") or {}
+        verified = "verified" if evidence else "unverified"
+        version_range = (
+            "%s through %s"
+            % (evidence.get("runtime_version_min"), evidence.get("runtime_version_max"))
+            if evidence
+            else "—"
+        )
+        matrix.append(
+            "| %s | %s | %s | %s |"
+            % (entry["runtime"], entry["discovery_mode"], verified, version_range)
+        )
+    matrix += [
+        "",
+        "Documentation changes do not invalidate this evidence. Adapter, hook, manifest, ",
+        "schema, renderer, or compatibility-API changes invalidate only affected runtimes.",
+        "",
+    ]
+    artifacts.append(
+        Artifact(
+            path=os.path.join(workspace, "docs", "runtime-support.md"),
+            content="\n".join(matrix),
+            source="conformance/evidence/*.json",
+            kind="compatibility",
+            target="all",
             scope="package",
         )
     )

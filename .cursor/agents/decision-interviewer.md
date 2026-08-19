@@ -5,7 +5,7 @@ model: inherit
 readonly: false
 ---
 
-<!-- DO NOT EDIT. Generated from plugin/skills/decision-interview/subagents/decision-interviewer.md by bearing 0.1.0. Run `bearing render` to update; edits here are overwritten and reported as drift by `bearing render --check`. -->
+<!-- DO NOT EDIT. Generated from plugin/skills/decision-interview/subagents/decision-interviewer.md by bearing 0.2.0. Run `bearing render` to update; edits here are overwritten and reported as drift by `bearing render --check`. -->
 
 # Subagent: Decision Interviewer
 
