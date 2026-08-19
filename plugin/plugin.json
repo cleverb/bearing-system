@@ -1,0 +1,21 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "bearing",
+  "version": "0.1.0",
+  "description": "An EOCR-based decision system: recover, elicit, anchor, and enforce the decisions governing a codebase, so architectural intent is discoverable at generation time rather than only enforceable at commit time.",
+  "author": {
+    "name": "BEARING maintainers"
+  },
+  "homepage": "https://github.com/oeist/bearing-system",
+  "repository": "https://github.com/oeist/bearing-system",
+  "license": "MIT",
+  "keywords": [
+    "adr",
+    "architecture-decision-records",
+    "decisions",
+    "eocr",
+    "governance",
+    "legacy-code",
+    "code-archaeology"
+  ]
+}

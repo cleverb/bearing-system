@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "workspaceOpen": [
+      {
+        "command": "bearing render --ephemeral --emit-plugin-paths",
+        "timeout": 30
+      }
+    ]
+  },
+  "version": 1
+}

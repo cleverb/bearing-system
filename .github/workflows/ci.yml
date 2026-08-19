@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Nothing here gates a merge on a recovery signal. That is not an omission to be
+# corrected later: a confidence score is a statement about evidence, never a
+# statement of organizational authority, and `bearing verify` inspects this file
+# for exactly that mistake.
+permissions:
+  contents: read
+
+env:
+  NO_COLOR: "1"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # BEARING claims to need nothing but a Python interpreter, so the claim is
+  # tested on the oldest interpreter it supports and on the newest.
+  # ---------------------------------------------------------------------------
+  suite:
+    name: Test suite (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Configure git for the scratch repositories the suite creates
+        run: |
+          git config --global user.email "ci@example.invalid"
+          git config --global user.name "CI"
+          git config --global init.defaultBranch main
+
+      - name: Run the suite
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+
+  # ---------------------------------------------------------------------------
+  # Tier 1 -- manifest validation. Every client manifest is generated from
+  # plugin/plugin.json, so a hand-edited manifest is drift rather than a fix.
+  # ---------------------------------------------------------------------------
+  manifests:
+    name: Tier 1 - manifest validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Client manifests match the canonical plugin.json
+        run: PYTHONPATH=plugin/src python -m bearing package --check
+
+      - name: Manifest conformance tests
+        run: python -m unittest discover -s tests -p "test_packaging.py" -k ManifestConformance -v
+
+  # ---------------------------------------------------------------------------
+  # Tier 2 -- the copy-isolation gate, and the reason this workflow exists.
+  #
+  # Cursor and Claude Code both copy a plugin into a versioned cache, and Agent
+  # Plugins v1.0.0 section 4.1.3 requires a client to reject any package path
+  # that resolves outside the plugin root. A `../` reference reads perfectly in a
+  # checkout and is fatal after install, which makes this the one tier that
+  # cannot be a manual step.
+  # ---------------------------------------------------------------------------
+  copy-isolation:
+    name: Tier 2 - copy isolation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Configure git
+        run: |
+          git config --global user.email "ci@example.invalid"
+          git config --global user.name "CI"
+          git config --global init.defaultBranch main
+
+      - name: Packaging conformance
+        run: python -m unittest discover -s tests -p "test_packaging.py" -v
+
+      - name: Install from a git ref and run against a scratch repository
+        run: bash scripts/ci/git-hosted-install.sh
+
+  # ---------------------------------------------------------------------------
+  # BEARING held to its own mandate, on its own repository. If the framework
+  # cannot pass its own conformance suite, there is no argument left to make.
+  # ---------------------------------------------------------------------------
+  dogfood:
+    name: Mandate conformance (this repository)
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: plugin/src
+      # Adapters belong in the working tree here: a runner has no user-scope
+      # agent directories and should not create any.
+      BEARING_PROJECTIONS_SUBAGENTS_SCOPE: '"repo"'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # `verify` reads commit dates to judge whether a Proposed record has
+          # gone stale, which a shallow clone cannot answer.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Everything resolves
+        run: python -m bearing doctor
+
+      - name: Generated adapters match their canonical sources
+        run: python -m bearing render --check
+
+      - name: Disclosure index is current and within budget
+        run: python -m bearing index
+
+      - name: Decision graph is structurally sound
+        run: python -m bearing lint
+
+      - name: Mandate conformance
+        run: python -m bearing verify

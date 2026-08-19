@@ -1,0 +1,79 @@
+{
+  "$schema": "./config.schema.json",
+  "version": 1,
+
+  "decisions": {
+    "path": "docs/decisions",
+    "shadow_dir": "shadow",
+    "index_file": "index.json",
+    "transcripts_dir": "transcripts"
+  },
+
+  "scope": {
+    "include": [],
+    "exclude": ["**/node_modules/**", "**/vendor/**", "**/dist/**", "**/build/**"]
+  },
+
+  "profile": "pilot",
+
+  "skills": {
+    "source": "plugin",
+    "vendored_version": null
+  },
+
+  "projections": {
+    "subagents": {
+      "targets": ["cursor", "claude", "codex"],
+      "scope": "user"
+    },
+    "rules": {
+      "targets": ["cursor", "agents-md"],
+      "scope": "repo"
+    },
+    "contracts": {
+      "targets": ["lint", "ci", "agents-md"],
+      "scope": "repo"
+    }
+  },
+
+  "models": {
+    "extract": { "tier": "cheap", "model": "claude-haiku-4.5" },
+    "resolve": { "tier": "mid", "model": "claude-sonnet-4.5" },
+    "score": { "tier": "mid", "model": "claude-sonnet-4.5" },
+    "interview": { "tier": "frontier", "model": "inherit" }
+  },
+
+  "cost": {
+    "reviewer_rate_usd_per_hour": null,
+    "price_book_max_age_days": 90,
+    "token_estimate_uncertainty": 0.25,
+    "budget_usd_per_run": 25.0
+  },
+
+  "interview": {
+    "transcripts": {
+      "retention": "committed"
+    }
+  },
+
+  "review": {
+    "budget_minutes_per_session": 90,
+    "wave_size": 25,
+    "seconds_per_candidate_estimate": 85
+  },
+
+  "enforcement": {
+    "block_on": ["structural", "known_contract"]
+  },
+
+  "verify": {
+    "escalation_recall_min": 0.9,
+    "false_escalation_rate_max": 0.15,
+    "anchor_coverage_min": 0.6,
+    "index_token_budget": 4000,
+    "proposed_stale_days": 90,
+    "time_to_first_value_minutes": 30,
+    "negative_set_hallucination_rate_max": 0.02,
+    "cost_per_promoted_trailing_window": 4
+  }
+}

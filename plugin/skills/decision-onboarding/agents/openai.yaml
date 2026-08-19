@@ -1,0 +1,9 @@
+# DO NOT EDIT. Generated from plugin/skills/decision-onboarding/SKILL.md by bearing 0.1.0. Run `bearing render` to update; edits here are overwritten and reported as drift by `bearing render --check`.
+
+interface:
+  display_name: "Decision Onboarding"
+  short_description: "Bootstrap a repository into the BEARING decision system as one reviewable branch — preflight, freeze a baseline, scaffold, run a scoped recovery pass, seed interviews, promote a small number of first anchors, then measure the result against the frozen baseline"
+policy:
+  allow_implicit_invocation: false
+  # Onboarding tags a baseline commit and creates a branch. That is a
+  # deliberate, once-per-repository act, not something to infer from a prompt.
