@@ -81,9 +81,12 @@ CANONICAL_FIELDS = (
 )
 
 # Fields the client manifests share with the canonical one. Component paths are
-# deliberately never emitted: in Cursor, specifying a component path *replaces*
-# folder discovery rather than adding to it, so an explicit `skills` entry that
-# falls out of date silently hides skills. Omitting them keeps auto-discovery.
+# omitted from the shared projection: in Cursor, specifying a component path
+# *replaces* folder discovery rather than adding to it, so a stale explicit
+# entry silently hides skills. Cursor-only manifests therefore use the same
+# conventional directory paths auto-discovery would find (`./skills/`, etc.),
+# which lets the marketplace UI link to GitHub without changing what installs.
+CURSOR_SKILLS_PATH = "./skills/"
 SHARED_FIELDS = (
     "name",
     "version",
@@ -185,6 +188,8 @@ def plugin_manifests(plugin_root: str, canonical: Dict[str, Any]) -> List[Artifa
             # name its component path explicitly, keeping the incompatible
             # schemas out of the same file.
             body["hooks"] = "./hooks/cursor.json"
+            # Same path auto-discovery would use; required for marketplace GitHub links.
+            body["skills"] = CURSOR_SKILLS_PATH
             # Cursor-only: marketplace title. `name` stays the install id.
             body["displayName"] = PRODUCT_DISPLAY_NAME
         out.append(
@@ -274,6 +279,8 @@ def marketplace_manifests(
             cursor_entry = dict(entry)
             cursor_entry["displayName"] = PRODUCT_DISPLAY_NAME
             cursor_entry["mcpServers"] = "./mcp.json"
+            cursor_entry["skills"] = CURSOR_SKILLS_PATH
+            cursor_entry["hooks"] = "./hooks/cursor.json"
             body = dict(catalog)
             body["plugins"] = [cursor_entry]
         artifacts.append(

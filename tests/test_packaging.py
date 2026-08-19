@@ -422,6 +422,7 @@ class ManifestConformanceTest(BearingTestCase):
         with open(os.path.join(PLUGIN_ROOT, ".cursor-plugin", "plugin.json"), "r", encoding="utf-8") as handle:
             cursor_manifest = json.load(handle)
         self.assertEqual(cursor_manifest["hooks"], "./hooks/cursor.json")
+        self.assertEqual(cursor_manifest["skills"], "./skills/")
         self.assertEqual(cursor_manifest["displayName"], "BEARING")
         with open(os.path.join(PLUGIN_ROOT, "hooks", "cursor.json"), "r", encoding="utf-8") as handle:
             cursor = json.load(handle)
@@ -449,6 +450,8 @@ class ManifestConformanceTest(BearingTestCase):
             cursor = json.load(handle)["plugins"][0]
         self.assertEqual(cursor["displayName"], "BEARING")
         self.assertEqual(cursor["mcpServers"], "./mcp.json")
+        self.assertEqual(cursor["skills"], "./skills/")
+        self.assertEqual(cursor["hooks"], "./hooks/cursor.json")
         self.assertTrue(cursor["description"].startswith("BEARING"))
         with open(os.path.join(REPO_ROOT, ".claude-plugin/marketplace.json"), "r", encoding="utf-8") as handle:
             claude = json.load(handle)["plugins"][0]

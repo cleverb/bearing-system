@@ -16,6 +16,7 @@
       "description": "BEARING: an EOCR-based decision system — recover, elicit, anchor, and enforce the decisions governing a codebase, so architectural intent is discoverable at generation time rather than only enforceable at commit time.",
       "displayName": "BEARING",
       "homepage": "https://github.com/cleverb/bearing-system",
+      "hooks": "./hooks/cursor.json",
       "keywords": [
         "adr",
         "architecture-decision-records",
@@ -29,6 +30,7 @@
       "mcpServers": "./mcp.json",
       "name": "bearing",
       "repository": "https://github.com/cleverb/bearing-system",
+      "skills": "./skills/",
       "source": "./plugin",
       "tags": [
         "adr",
