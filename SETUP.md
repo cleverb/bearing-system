@@ -187,7 +187,7 @@ copy the template after the shim exists:
 cp plugin/src/bearing/data/templates/mcp.json.example /path/to/repo/.cursor/mcp.json
 ```
 
-`${workspaceFolder}` is only for that **project** `.cursor/mcp.json` path. Do
+`${workspaceFolder}` is only for that **project** `.cursor/mcp.json` path. Do <!-- bearing:ignore-paths: optional project MCP override, not this checkout -->
 not expect it inside the plugin-bundled MCP config.
 
 Tools: `list_reviewable`, `review_candidate`.
@@ -321,7 +321,7 @@ The testing tiers from this symlink up to a published marketplace are in the
 - **`Failed to install bearing` / `Workspace collection is not available`.**
   Cursor's **Add to Project** path is broken in current builds. Install with
   **Add for Myself** (User scope), or add the plugin manually under
-  `.cursor/settings.json` and reload. Unrelated to `${workspaceFolder}`.
+  `.cursor/settings.json` and reload. Unrelated to `${workspaceFolder}`. <!-- bearing:ignore-paths: Cursor settings, not a file this repo ships -->
 - **No BEARING MCP after plugin install.** Confirm the install succeeded (User
   scope) and that `plugin/mcp.json` is present in the installed plugin copy.
   Reinstall the marketplace plugin after pulling this change. Project-local

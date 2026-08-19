@@ -10,7 +10,7 @@ import sys
 import tempfile
 import unittest
 
-from context import PLUGIN_ROOT, BearingTestCase
+from context import PLUGIN_ROOT, BearingTestCase, clean_environment
 
 
 class PluginBinLauncherTest(BearingTestCase):
@@ -32,12 +32,14 @@ class PluginBinLauncherTest(BearingTestCase):
         super().tearDown()
 
     def _run(self, launcher: str, args):
+        env = clean_environment()
+        env["NO_COLOR"] = "1"
         return subprocess.run(
             [sys.executable, os.path.join(self.plugin_copy, "bin", launcher)] + list(args),
             cwd=self.install_root,
             capture_output=True,
             text=True,
-            env={"NO_COLOR": "1"},
+            env=env,
         )
 
     def test_bearing_launcher_reports_version(self):
@@ -46,12 +48,14 @@ class PluginBinLauncherTest(BearingTestCase):
         self.assertIn("bearing", result.stdout)
 
     def test_bearing_mcp_launcher_imports(self):
+        env = clean_environment()
+        env["NO_COLOR"] = "1"
         result = subprocess.run(
             [sys.executable, os.path.join(self.plugin_copy, "bin", "bearing-mcp"), "--help"],
             cwd=self.install_root,
             capture_output=True,
             text=True,
-            env={"NO_COLOR": "1"},
+            env=env,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
 

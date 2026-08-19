@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 
 
@@ -22,14 +23,23 @@ def _plugin_root() -> str:
         cursor = parent
 
 
+def _exec_python(argv: list, env: dict) -> None:
+    """See plugin/bin/bearing — Windows cannot use a stripped execve environment."""
+    python = argv[0]
+    if os.name == "nt":
+        merged = os.environ.copy()
+        merged.update(env)
+        raise SystemExit(subprocess.call(argv, env=merged))
+    os.execve(python, argv, env)
+
+
 def main() -> None:
     root = _plugin_root()
     src = os.path.join(root, "src")
     env = os.environ.copy()
     prefix = env.get("PYTHONPATH")
     env["PYTHONPATH"] = src + (os.pathsep + prefix if prefix else "")
-    os.execve(
-        sys.executable,
+    _exec_python(
         [sys.executable, "-m", "bearing.mcp_server"] + sys.argv[1:],
         env,
     )

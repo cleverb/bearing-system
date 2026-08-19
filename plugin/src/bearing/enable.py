@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 
 _LAUNCHER = {launcher!r}
@@ -47,7 +48,10 @@ def main() -> int:
     script = os.path.join(plugin_root, "bin", _LAUNCHER)
     if not os.path.isfile(script):
         raise SystemExit("%s: missing plugin launcher at %s" % (_LAUNCHER, script))
-    os.execv(python, [python, script] + sys.argv[1:])
+    argv = [python, script] + sys.argv[1:]
+    if os.name == "nt":
+        raise SystemExit(subprocess.call(argv))
+    os.execv(python, argv)
 
 
 if __name__ == "__main__":
@@ -56,9 +60,14 @@ if __name__ == "__main__":
 )
 
 _SHIM_WINDOWS = '''@echo off
+REM ''' + _SHIM_MARKER + '''
+REM Delegates through install.json via the Python shim beside this file.
 setlocal
-if defined BEARING_HOME (set "_BH=%BEARING_HOME%") else (set "_BH=%USERPROFILE%\\.bearing")
-python "%_BH%\\bin\\{launcher}" %*
+where py >nul 2>&1 && (
+  py -3 "%~dp0{launcher}" %*
+  exit /b %ERRORLEVEL%
+)
+python "%~dp0{launcher}" %*
 '''
 
 

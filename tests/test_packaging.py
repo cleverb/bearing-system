@@ -511,7 +511,7 @@ class GitHostedInstallTest(BearingTestCase):
         import subprocess
 
         candidates = [
-            os.path.relpath(path, REPO_ROOT)
+            os.path.relpath(path, REPO_ROOT).replace("\\", "/")
             for path in _iter_text_files(PLUGIN_ROOT)
         ]
         result = subprocess.run(
