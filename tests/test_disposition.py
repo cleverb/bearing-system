@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import json
 import unittest
 
@@ -9,6 +10,38 @@ from context import BearingTestCase, TempWorkspace, run_cli
 from bearing.disposition import Judgment, dispose, list_reviewable
 from bearing.mcp_server import McpServer
 from bearing.util import BearingError
+
+
+def _parse_mcp_frames(raw):
+    """Decode NDJSON or Content-Length MCP replies from a byte string."""
+    data = raw if isinstance(raw, (bytes, bytearray)) else raw.encode("utf-8")
+    replies = []
+    i = 0
+    while i < len(data):
+        if data[i : i + 1] in (b"\n", b"\r", b" "):
+            i += 1
+            continue
+        if data[i : i + 1] == b"{":
+            nl = data.find(b"\n", i)
+            chunk = data[i:] if nl < 0 else data[i:nl]
+            replies.append(json.loads(chunk))
+            i = len(data) if nl < 0 else nl + 1
+            continue
+        sep = data.find(b"\r\n\r\n", i)
+        header_end = 4
+        if sep < 0:
+            sep = data.find(b"\n\n", i)
+            header_end = 2
+        if sep < 0:
+            break
+        length = 0
+        for line in data[i:sep].split(b"\n"):
+            if line.lower().startswith(b"content-length:"):
+                length = int(line.split(b":", 1)[1])
+        i = sep + header_end
+        replies.append(json.loads(data[i : i + length]))
+        i += length
+    return replies
 
 
 def _candidate(**fields):
@@ -256,6 +289,10 @@ class McpDispositionTest(BearingTestCase):
             listed = server._call_tool("list_reviewable", {})
             text = listed["content"][0]["text"]
             self.assertIn("CAND-001", text)
+            self.assertEqual(
+                listed["_meta"]["ui"]["resourceUri"], "ui://bearing/reviewable-queue"
+            )
+            self.assertIn("CAND-001", server._queue_html or "")
 
             reviewed = server._call_tool(
                 "review_candidate",
@@ -288,6 +325,115 @@ class McpDispositionTest(BearingTestCase):
             self.assertIn("schema", payload)
             # Candidate unchanged — no hang, no write.
             self.assertIn("Reviewable", ws.read("docs/decisions/shadow/candidates.jsonl"))
+
+    def test_initialize_handshake_answers_cursor_follow_ups(self):
+        with TempWorkspace() as ws:
+            ws.init()
+            stdin = io.StringIO(
+                json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "method": "initialize",
+                        "params": {
+                            "protocolVersion": "2024-11-05",
+                            "capabilities": {},
+                            "clientInfo": {"name": "cursor", "version": "1"},
+                        },
+                    }
+                )
+                + "\n"
+                + json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"})
+                + "\n"
+                + json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
+                + "\n"
+                + json.dumps({"jsonrpc": "2.0", "id": 3, "method": "resources/list"})
+                + "\n"
+                + json.dumps({"jsonrpc": "2.0", "id": 4, "method": "prompts/list"})
+                + "\n"
+            )
+            stdout = io.StringIO()
+            server = McpServer(workspace=ws.path, stdin=stdin, stdout=stdout)
+            self.assertEqual(server.run(), 0)
+            replies = [json.loads(line) for line in stdout.getvalue().splitlines() if line.strip()]
+            by_id = {row["id"]: row for row in replies}
+            self.assertEqual(by_id[1]["result"]["protocolVersion"], "2024-11-05")
+            self.assertIn("resources", by_id[1]["result"]["capabilities"])
+            names = [tool["name"] for tool in by_id[2]["result"]["tools"]]
+            self.assertEqual(names, ["list_reviewable", "review_candidate"])
+            tools_by_name = {tool["name"]: tool for tool in by_id[2]["result"]["tools"]}
+            self.assertEqual(
+                tools_by_name["list_reviewable"]["_meta"]["ui"]["resourceUri"],
+                "ui://bearing/reviewable-queue",
+            )
+            resources = by_id[3]["result"]["resources"]
+            self.assertEqual(len(resources), 1)
+            self.assertEqual(resources[0]["uri"], "ui://bearing/reviewable-queue")
+            self.assertEqual(resources[0]["mimeType"], "text/html;profile=mcp-app")
+            self.assertEqual(by_id[4]["result"], {"prompts": []})
+
+    def test_resources_read_returns_mcp_app_html(self):
+        with TempWorkspace() as ws:
+            ws.init()
+            ws.write(
+                "docs/decisions/shadow/candidates.jsonl",
+                json.dumps(_candidate()) + "\n",
+            )
+            server = McpServer(workspace=ws.path)
+            server._call_tool("list_reviewable", {})
+            result = server._read_resource("ui://bearing/reviewable-queue")
+            content = result["contents"][0]
+            self.assertEqual(content["mimeType"], "text/html;profile=mcp-app")
+            self.assertIn("CAND-001", content["text"])
+            self.assertIn("profile=mcp-app", content["mimeType"])
+
+    def test_content_length_framing_without_trailing_newline(self):
+        """Hosts often send LSP frames whose body has no trailing newline."""
+        with TempWorkspace() as ws:
+            ws.init()
+            initialize = json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "initialize",
+                    "params": {
+                        "protocolVersion": "2025-06-18",
+                        "capabilities": {},
+                        "clientInfo": {"name": "cursor", "version": "1"},
+                    },
+                }
+            ).encode("utf-8")
+            ping = json.dumps(
+                {"jsonrpc": "2.0", "id": 2, "method": "ping"}
+            ).encode("utf-8")
+            payload = (
+                ("Content-Length: %d\r\n\r\n" % len(initialize)).encode("ascii")
+                + initialize
+                + ("Content-Length: %d\r\n\r\n" % len(ping)).encode("ascii")
+                + ping
+            )
+            stdin = io.BytesIO(payload)
+            stdout = io.BytesIO()
+
+            class _BinaryStdio:
+                def __init__(self, buf):
+                    self.buffer = buf
+
+                def flush(self):
+                    self.buffer.flush()
+
+            server = McpServer(
+                workspace=ws.path,
+                stdin=_BinaryStdio(stdin),
+                stdout=_BinaryStdio(stdout),
+            )
+            self.assertEqual(server.run(), 0)
+            replies = _parse_mcp_frames(stdout.getvalue())
+            by_id = {row["id"]: row for row in replies}
+            self.assertEqual(by_id[1]["result"]["protocolVersion"], "2025-06-18")
+            self.assertEqual(by_id[2]["result"], {})
+            self.assertTrue(replies[0].get("jsonrpc"))
+            self.assertIn(b"Content-Length:", stdout.getvalue())
 
 
 if __name__ == "__main__":

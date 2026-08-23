@@ -87,6 +87,7 @@ CANONICAL_FIELDS = (
 # conventional directory paths auto-discovery would find (`./skills/`, etc.),
 # which lets the marketplace UI link to GitHub without changing what installs.
 CURSOR_SKILLS_PATH = "./skills/"
+CURSOR_MCP_PATH = "./mcp.json"
 SHARED_FIELDS = (
     "name",
     "version",
@@ -190,6 +191,9 @@ def plugin_manifests(plugin_root: str, canonical: Dict[str, Any]) -> List[Artifa
             body["hooks"] = "./hooks/cursor.json"
             # Same path auto-discovery would use; required for marketplace GitHub links.
             body["skills"] = CURSOR_SKILLS_PATH
+            # Cursor reads this copy after install, not the repo marketplace catalog.
+            # Without this key, plugin-only and symlink installs never surface MCP.
+            body["mcpServers"] = CURSOR_MCP_PATH
             # Cursor-only: marketplace title. `name` stays the install id.
             body["displayName"] = PRODUCT_DISPLAY_NAME
         out.append(
@@ -247,11 +251,16 @@ def marketplace_manifests(
     entry["category"] = "engineering-governance"
     entry["tags"] = ["adr", "decisions", "architecture", "legacy"]
 
+    author = canonical.get("author") or {}
+    owner: Dict[str, Any] = {
+        "name": author.get("name", "BEARING maintainers"),
+    }
+    if author.get("email"):
+        owner["email"] = author["email"]
+
     catalog: Dict[str, Any] = {
         "name": name,
-        "owner": {
-            "name": (canonical.get("author") or {}).get("name", "BEARING maintainers"),
-        },
+        "owner": owner,
         "metadata": {
             "description": "The BEARING decision system.",
             "version": canonical.get("version", "0.0.0"),
@@ -278,7 +287,7 @@ def marketplace_manifests(
         if directory == ".cursor-plugin":
             cursor_entry = dict(entry)
             cursor_entry["displayName"] = PRODUCT_DISPLAY_NAME
-            cursor_entry["mcpServers"] = "./mcp.json"
+            cursor_entry["mcpServers"] = CURSOR_MCP_PATH
             cursor_entry["skills"] = CURSOR_SKILLS_PATH
             cursor_entry["hooks"] = "./hooks/cursor.json"
             body = dict(catalog)
