@@ -289,10 +289,49 @@ class McpDispositionTest(BearingTestCase):
             listed = server._call_tool("list_reviewable", {})
             text = listed["content"][0]["text"]
             self.assertIn("CAND-001", text)
-            self.assertEqual(
-                listed["_meta"]["ui"]["resourceUri"], "ui://bearing/reviewable-queue"
-            )
+            self.assertNotIn("_meta", listed)
+            self.assertIn("structuredContent", listed)
+            self.assertEqual(listed["structuredContent"]["count"], 1)
+            self.assertIn("CAND-001", listed["structuredContent"]["candidates"][0]["candidate_id"])
             self.assertIn("CAND-001", server._queue_html or "")
+
+            server._host_supports_ui = True
+            listed_ui = server._call_tool("list_reviewable", {})
+            self.assertEqual(
+                listed_ui["_meta"]["ui"]["resourceUri"], "ui://bearing/reviewable-queue"
+            )
+            self.assertNotIn("CAND-001", listed_ui["content"][0]["text"])
+
+    def test_list_reviewable_ui_host_uses_minimal_model_text(self):
+        with TempWorkspace() as ws:
+            ws.init()
+            ws.write(
+                "docs/decisions/shadow/candidates.jsonl",
+                json.dumps(_candidate()) + "\n",
+            )
+            server = McpServer(workspace=ws.path)
+            server._host_supports_ui = True
+            listed = server._call_tool("list_reviewable", {})
+            text = listed["content"][0]["text"]
+            self.assertNotIn("CAND-001", text)
+            self.assertIn("MCP App", text)
+            self.assertIn("do not list", text.lower())
+            self.assertEqual(listed["structuredContent"]["count"], 1)
+            self.assertIn("_meta", listed)
+
+    def test_list_reviewable_fallback_includes_candidate_json(self):
+        with TempWorkspace() as ws:
+            ws.init()
+            ws.write(
+                "docs/decisions/shadow/candidates.jsonl",
+                json.dumps(_candidate()) + "\n",
+            )
+            server = McpServer(workspace=ws.path)
+            server._host_supports_ui = False
+            listed = server._call_tool("list_reviewable", {})
+            text = listed["content"][0]["text"]
+            self.assertIn("CAND-001", text)
+            self.assertNotIn("_meta", listed)
 
             reviewed = server._call_tool(
                 "review_candidate",
@@ -358,7 +397,10 @@ class McpDispositionTest(BearingTestCase):
             replies = [json.loads(line) for line in stdout.getvalue().splitlines() if line.strip()]
             by_id = {row["id"]: row for row in replies}
             self.assertEqual(by_id[1]["result"]["protocolVersion"], "2024-11-05")
-            self.assertIn("resources", by_id[1]["result"]["capabilities"])
+            resources_cap = by_id[1]["result"]["capabilities"]["resources"]
+            self.assertTrue(resources_cap.get("subscribe"))
+            self.assertTrue(resources_cap.get("listChanged"))
+            self.assertTrue(server._host_supports_ui)
             names = [tool["name"] for tool in by_id[2]["result"]["tools"]]
             self.assertEqual(names, ["list_reviewable", "review_candidate"])
             tools_by_name = {tool["name"]: tool for tool in by_id[2]["result"]["tools"]}
@@ -385,7 +427,21 @@ class McpDispositionTest(BearingTestCase):
             content = result["contents"][0]
             self.assertEqual(content["mimeType"], "text/html;profile=mcp-app")
             self.assertIn("CAND-001", content["text"])
+            self.assertIn("list_reviewable", content["text"])
+            self.assertIn("review_candidate", content["text"])
             self.assertIn("profile=mcp-app", content["mimeType"])
+
+    def test_resources_subscribe_and_update_notification(self):
+        with TempWorkspace() as ws:
+            ws.init()
+            ws.write(
+                "docs/decisions/shadow/candidates.jsonl",
+                json.dumps(_candidate()) + "\n",
+            )
+            server = McpServer(workspace=ws.path)
+            server._dispatch("resources/subscribe", {"uri": "ui://bearing/reviewable-queue"})
+            server._call_tool("list_reviewable", {})
+            self.assertIn("ui://bearing/reviewable-queue", server._subscribed)
 
     def test_content_length_framing_without_trailing_newline(self):
         """Hosts often send LSP frames whose body has no trailing newline."""

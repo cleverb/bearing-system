@@ -446,6 +446,82 @@ class ManifestConformanceTest(BearingTestCase):
         self.assertNotIn("${workspaceFolder}", blob)
         self.assertTrue(os.path.isfile(os.path.join(PLUGIN_ROOT, "hooks", "run_mcp.py")))
 
+    def test_plugin_ships_local_mcp_adapter_without_plugin_root(self):
+        path = os.path.join(PLUGIN_ROOT, "mcp.local.json")
+        self.assertTrue(os.path.isfile(path), "plugin/mcp.local.json must ship as the local launch adapter")
+        with open(path, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        server = payload["mcpServers"]["BEARING"]
+        blob = json.dumps(server)
+        self.assertNotIn("${PLUGIN_ROOT}", blob)
+        self.assertNotIn("${workspaceFolder}", blob)
+        self.assertEqual(server.get("command"), "sh")
+        self.assertIn("bearing-plugin/hooks/run_mcp.py", server["args"][1])
+
+    def test_package_local_copies_plugin_and_strips_git(self):
+        scratch = os.path.realpath(tempfile.mkdtemp(prefix="bearing-local-"))
+        self.addCleanup(shutil.rmtree, scratch, True)
+        dest = os.path.join(scratch, "bearing-plugin")
+        os.makedirs(dest)
+        git_dir = os.path.join(dest, ".git")
+        os.makedirs(git_dir)
+        with open(os.path.join(git_dir, "HEAD"), "w", encoding="utf-8") as handle:
+            handle.write("ref: refs/heads/main\n")
+
+        result = run_cli(
+            ["package", "--local", "--dest", dest],
+            workspace=REPO_ROOT,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(os.path.exists(os.path.join(dest, ".git")))
+        self.assertTrue(os.path.isfile(os.path.join(dest, "hooks/run_mcp.py")))
+        self.assertTrue(os.path.isdir(os.path.join(dest, "skills")))
+        self.assertTrue(os.path.isfile(os.path.join(dest, "src/bearing/mcp_server.py")))
+        with open(os.path.join(dest, "mcp.json"), "r", encoding="utf-8") as handle:
+            local = json.load(handle)
+        with open(os.path.join(PLUGIN_ROOT, "mcp.local.json"), "r", encoding="utf-8") as handle:
+            expected = json.load(handle)
+        self.assertEqual(local, expected)
+        self.assertNotIn("${PLUGIN_ROOT}", json.dumps(local))
+
+    def test_package_local_uses_workspace_plugin_when_shim_targets_dest(self):
+        scratch = os.path.realpath(tempfile.mkdtemp(prefix="bearing-local-shim-"))
+        self.addCleanup(shutil.rmtree, scratch, True)
+        dest = os.path.join(scratch, "bearing-plugin")
+        shutil.copytree(
+            PLUGIN_ROOT,
+            dest,
+            ignore=shutil.ignore_patterns(
+                "__pycache__", "*.pyc", "build", "dist", "*.egg-info"
+            ),
+            ignore_dangling_symlinks=True,
+        )
+        sentinel = os.path.join(dest, "src", "bearing", "data", "reviewable-app.html")
+        os.remove(sentinel)
+
+        bearing_home = os.path.join(scratch, ".bearing")
+        os.makedirs(bearing_home, exist_ok=True)
+        with open(os.path.join(bearing_home, "install.json"), "w", encoding="utf-8") as handle:
+            json.dump(
+                {
+                    "plugin_root": dest,
+                    "python": sys.executable,
+                    "version": "0.2.0",
+                },
+                handle,
+            )
+
+        result = run_cli(
+            ["package", "--local", "--dest", dest],
+            workspace=REPO_ROOT,
+            env={
+                "BEARING_HOME": bearing_home,
+                "PYTHONPATH": os.path.join(dest, "src"),
+            },
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue(os.path.isfile(sentinel), "package --local should copy from workspace plugin/")
+
     def test_marketplace_entry_advertises_bearing_display_name_and_mcp(self):
         with open(os.path.join(REPO_ROOT, ".cursor-plugin/marketplace.json"), "r", encoding="utf-8") as handle:
             catalog = json.load(handle)

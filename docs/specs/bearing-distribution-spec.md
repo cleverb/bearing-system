@@ -30,11 +30,15 @@ command remain `bearing` so installation naming does not leak into runtime use.
 
 Five tiers, each catching a failure class the one below it cannot see. The same list is in [`tests/README.md`](../../tests/README.md).
 
-**Tier 0 — iteration.** Point a client at the working tree.
+**Tier 0 — iteration.** Copy the plugin into Cursor's local plugin directory.
 
 ```bash
-ln -s "$(pwd)/plugin" ~/.cursor/plugins/local/bearing
+PYTHONPATH=plugin/src python3 -m bearing package --local
 ```
+
+Reload Cursor after each copy. Marketplace `plugin/mcp.json` uses
+`${PLUGIN_ROOT}`; the local copy gets a separate launch adapter written to dest
+`mcp.json` because Cursor local mode does not expand `${PLUGIN_ROOT}`.
 
 **Tier 1 — manifest validation.** Every client manifest is generated from `plugin/plugin.json`. A hand-edited manifest is drift.
 

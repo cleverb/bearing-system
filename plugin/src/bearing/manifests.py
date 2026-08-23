@@ -34,7 +34,7 @@ from typing import Any, Dict, List, Sequence, Tuple
 
 from .artifacts import Artifact, Skip, generated_dir_notice
 from .paths import PLUGIN_SKILL_NAMES
-from .util import BearingError, dump_json, parse_frontmatter, read_json, read_text
+from .util import BearingError, dump_json, parse_frontmatter, read_json, read_text, write_text
 
 MARKETPLACE_NAME = "bearing"
 # Human-facing product title. Cursor `name` must stay lowercase kebab-case;
@@ -381,15 +381,21 @@ def _display_name(skill_name: str) -> str:
     return " ".join(part.capitalize() for part in skill_name.split("-"))
 
 
-def mcp_manifest(plugin_root: str) -> List[Artifact]:
-    """Ship MCP with the plugin so marketplace install surfaces disposition tools.
+# Cursor local plugins live here. The folder name is a product location, not
+# an operator secret; Cursor does not expand ${PLUGIN_ROOT} in this mode.
+LOCAL_PLUGIN_DIRNAME = "bearing-plugin"
+LOCAL_PLUGIN_HOME_PATH = "$HOME/.cursor/plugins/local/%s" % LOCAL_PLUGIN_DIRNAME
 
-    Uses `${PLUGIN_ROOT}` (Cursor/Agent Plugins built-in), not `${workspaceFolder}`.
-    The latter only applies to a project's `.cursor/mcp.json` and is the wrong
-    variable for plugin-bundled servers — it is what made MCP feel "broken"
-    after a plugin-only install.
-    """
-    payload = {
+
+def default_local_plugin_dest() -> str:
+    return os.path.join(
+        os.path.expanduser("~"), ".cursor", "plugins", "local", LOCAL_PLUGIN_DIRNAME
+    )
+
+
+def marketplace_mcp_payload() -> Dict[str, Any]:
+    """Launch config for marketplace install — requires ${PLUGIN_ROOT}."""
+    return {
         "mcpServers": {
             PRODUCT_DISPLAY_NAME: {
                 "command": "python3",
@@ -398,16 +404,110 @@ def mcp_manifest(plugin_root: str) -> List[Artifact]:
             }
         }
     }
+
+
+def local_mcp_payload() -> Dict[str, Any]:
+    """Launch config for Cursor local plugins — ${PLUGIN_ROOT} is never expanded."""
+    return {
+        "mcpServers": {
+            PRODUCT_DISPLAY_NAME: {
+                "type": "stdio",
+                "command": "sh",
+                "args": [
+                    "-c",
+                    'exec python3 "%s/hooks/run_mcp.py"' % LOCAL_PLUGIN_HOME_PATH,
+                ],
+            }
+        }
+    }
+
+
+def mcp_manifest(plugin_root: str) -> List[Artifact]:
+    """Ship MCP with the plugin so marketplace install surfaces disposition tools.
+
+    Uses `${PLUGIN_ROOT}` (Cursor/Agent Plugins built-in), not `${workspaceFolder}`.
+    The latter only applies to a project's `.cursor/mcp.json` and is the wrong
+    variable for plugin-bundled servers — it is what made MCP feel "broken"
+    after a plugin-only install.
+
+    `mcp.local.json` is the Cursor-local launch adapter. Cursor will not read
+    it in place; `bearing package --local` copies it to dest/mcp.json.
+    """
     return [
         Artifact(
             path=os.path.join(plugin_root, "mcp.json"),
-            content=dump_json(payload),
+            content=dump_json(marketplace_mcp_payload()),
             source="plugin/src/bearing/manifests.py",
             kind="manifest",
             target="cursor",
             scope="package",
-        )
+        ),
+        Artifact(
+            path=os.path.join(plugin_root, "mcp.local.json"),
+            content=dump_json(local_mcp_payload()),
+            source="plugin/src/bearing/manifests.py",
+            kind="manifest",
+            target="cursor-local",
+            scope="package",
+        ),
     ]
+
+
+def _ignore_local_copy(_directory: str, names: List[str]) -> List[str]:
+    ignored = []
+    for name in names:
+        if name in ("__pycache__", ".git", "build", "dist", "plugin") or name.endswith(
+            ".egg-info"
+        ):
+            ignored.append(name)
+    return ignored
+
+
+def sync_local_plugin(plugin_root: str, dest: str) -> str:
+    """Copy `plugin/` to a Cursor local plugin dir and overlay the local MCP adapter.
+
+    The dest is solely a copy target: any `.git` there is deleted. Marketplace
+    `mcp.json` (${PLUGIN_ROOT}) is replaced with the local launch config.
+    """
+    import shutil
+
+    plugin_root = os.path.abspath(plugin_root)
+    dest = os.path.abspath(dest)
+    if dest == plugin_root:
+        raise BearingError(
+            "refusing to install the local plugin onto itself (%s). "
+            "Run from a bearing-system checkout that contains plugin/, or use "
+            "PYTHONPATH=plugin/src python3 -m bearing package --local"
+            % dest
+        )
+    parent = os.path.dirname(dest)
+    os.makedirs(parent, exist_ok=True)
+    staging = dest + ".bearing-staging"
+    if os.path.lexists(staging):
+        if os.path.isdir(staging) and not os.path.islink(staging):
+            shutil.rmtree(staging)
+        else:
+            os.remove(staging)
+    shutil.copytree(
+        plugin_root,
+        staging,
+        ignore=_ignore_local_copy,
+        symlinks=False,
+        ignore_dangling_symlinks=True,
+    )
+    write_text(os.path.join(staging, "mcp.json"), dump_json(local_mcp_payload()))
+    git_dir = os.path.join(staging, ".git")
+    if os.path.isdir(git_dir):
+        shutil.rmtree(git_dir)
+    elif os.path.isfile(git_dir) or os.path.islink(git_dir):
+        os.remove(git_dir)
+    if os.path.lexists(dest):
+        if os.path.isdir(dest) and not os.path.islink(dest):
+            shutil.rmtree(dest)
+        else:
+            os.remove(dest)
+    os.rename(staging, dest)
+    return dest
 
 
 def hooks_manifests(plugin_root: str) -> List[Artifact]:

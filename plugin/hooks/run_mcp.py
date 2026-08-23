@@ -2,8 +2,9 @@
 """Launch the BEARING MCP disposition server from the plugin tree.
 
 Used by plugin/mcp.json so marketplace install surfaces MCP without requiring
-`bearing-mcp` on PATH. Enables the operator-scope CLI shim on start, then
-runs the server in this process (no second interpreter on the stdio pipe).
+`bearing-mcp` on PATH. Cursor owns this stdio session, including MCP Apps
+resource reads — do not wrap another Python child. Operator-scope enablement
+must stay off stdout.
 """
 
 from __future__ import annotations

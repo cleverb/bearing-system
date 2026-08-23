@@ -26,6 +26,6 @@ package-dir = { "" = "src" }
 where = ["src"]
 
 [tool.setuptools.package-data]
-bearing = ["data/*.json", "data/templates/*"]
+bearing = ["data/*.json", "data/*.html", "data/templates/*"]
 # plugin.json, runtime-compatibility.json, and skills/ live beside src/bearing
 # (marketplace layout). setup.py copies them into the installed package.

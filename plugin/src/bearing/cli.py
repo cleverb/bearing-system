@@ -454,10 +454,10 @@ def cmd_package(args: argparse.Namespace) -> int:
     """Maintainer command: regenerate every client manifest from `plugin.json`."""
     from .artifacts import apply as apply_artifacts
     from .manifests import all_package_artifacts, version_consistency_errors
-    from .paths import find_workspace_root, plugin_root
+    from .paths import find_workspace_root, maintainer_plugin_root
 
     workspace = find_workspace_root(getattr(args, "workspace", None))
-    root = plugin_root()
+    root = maintainer_plugin_root(workspace)
 
     problems = version_consistency_errors(root, __version__)
     if problems:
@@ -465,9 +465,13 @@ def cmd_package(args: argparse.Namespace) -> int:
 
     artifacts, skips = all_package_artifacts(workspace, root)
     check_mode = bool(args.check or getattr(args, "release_check", False))
+    if getattr(args, "local", False) and check_mode:
+        raise BearingError("package --local cannot be combined with --check")
     outcome = apply_artifacts(artifacts, workspace, check=check_mode)
 
     suffix = "  --release-check" if getattr(args, "release_check", False) else "  --check" if args.check else ""
+    if getattr(args, "local", False):
+        suffix += "  --local"
     _heading("bearing package%s" % suffix)
     for path in outcome.written:
         print(status_line("ok", "wrote", path))
@@ -497,6 +501,12 @@ def cmd_package(args: argparse.Namespace) -> int:
             print()
             return EXIT_FAIL
         print(status_line("ok", "Tier 4 client conformance", "all supported runtimes qualified"))
+    if getattr(args, "local", False):
+        from .manifests import default_local_plugin_dest, sync_local_plugin
+
+        dest = getattr(args, "dest", None) or default_local_plugin_dest()
+        synced = sync_local_plugin(root, dest)
+        print(status_line("ok", "local plugin", synced))
     print(paint("OK: %d manifest artifact(s) current." % len(artifacts), "ok"))
     print()
     return EXIT_OK
@@ -1230,6 +1240,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--release-check",
         action="store_true",
         help="also require current Tier 4 evidence for every supported runtime",
+    )
+    package.add_argument(
+        "--local",
+        action="store_true",
+        help="copy plugin/ to the Cursor local plugin dir with the local MCP launch adapter",
+    )
+    package.add_argument(
+        "--dest",
+        default=None,
+        help="override dest for --local (default ~/.cursor/plugins/local/bearing-plugin)",
     )
 
     index = add("index", "Regenerate the progressive-disclosure index.", cmd_index)

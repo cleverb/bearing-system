@@ -97,6 +97,14 @@
       "scope": "plugin/bin/**, plugin/hooks/**, plugin/src/bearing/enable.py, plugin/src/bearing/paths.py, plugin/src/bearing/doctor.py, plugin/src/bearing/cli.py",
       "source": "docs/decisions/0012-plugin-install-is-user-distribution.md",
       "trigger": "changing how the CLI is distributed or discovered after a marketplace plugin install"
+    },
+    {
+      "eocr_function": "Contract",
+      "id": "ADR-0013",
+      "lifecycle_state": "Proposed",
+      "scope": "plugin/src/bearing/manifests.py, plugin/src/bearing/cli.py, plugin/mcp.json, plugin/mcp.local.json",
+      "source": "docs/decisions/0013-cursor-local-plugin-mcp-adapter.md",
+      "trigger": "changing how the BEARING plugin is launched in Cursor local mode versus marketplace install"
     }
   ]
 }

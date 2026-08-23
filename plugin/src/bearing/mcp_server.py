@@ -6,32 +6,39 @@ Tools:
   - list_reviewable — queue of surfaced shadow candidates (MCP App board)
   - review_candidate — dispose Promote|Edit|Split|Reject|Defer
 
-`list_reviewable` returns an MCP App (`ui://bearing/reviewable-queue`) so
-hosts that support Apps can render the queue. The board is read-only:
-viewing is not disposition. Promote still requires judgment fields on
-`review_candidate`. Progressive enhancement: JSON text is always returned.
+`list_reviewable` and `review_candidate` share an MCP App
+(`ui://bearing/reviewable-queue`). Hosts that support Apps render a review
+board: the human fills judgment fields in the iframe, then the App calls
+`review_candidate` over postMessage `tools/call`. That is one-click
+*execution* of human judgment, not a substitute for it. Promote still
+requires still_valid, eocr_function, lifecycle_state, and scope.
+
+The App is a listed resource (`text/html;profile=mcp-app`). Candidate data
+lives in `structuredContent` for the App. Model-facing `content` stays minimal
+when the host supports MCP Apps; text-only hosts still receive JSON fallback.
 
 Important: this server does **not** block on MCP elicitation by default.
 Server-initiated `elicitation/create` mid-`tools/call` hangs many Cursor
 builds when the form UI never completes the round-trip, which freezes the
-agent loop and looks like “Skills autocomplete is broken.” Judgment is
-collected as tool arguments (or via `bearing review` / chat) instead.
-Optional `elicit: true` remains for hosts that fully support forms.
+agent loop and looks like “Skills autocomplete is broken.” Optional
+`elicit: true` remains for hosts that fully support forms.
 """
 
 from __future__ import annotations
 
-import html as html_lib
 import json
+import os
 import sys
-from typing import Any, Dict, List, Optional, TextIO
+from typing import Any, Dict, Optional, TextIO
 
 from . import __version__
 from .config import resolve
+from .decisions import EOCR_FUNCTIONS, LIFECYCLE_STATES
 from .disposition import (
     ACTIONS,
     Judgment,
     candidate_brief,
+    defaults_from_candidate,
     dispose,
     elicitation_schema,
     find_candidate,
@@ -40,8 +47,87 @@ from .disposition import (
 from .util import BearingError
 
 PROTOCOL_VERSION = "2025-06-18"
+UI_EXTENSION = "io.modelcontextprotocol/ui"
 REVIEWABLE_UI_URI = "ui://bearing/reviewable-queue"
 REVIEWABLE_UI_MIME = "text/html;profile=mcp-app"
+_BOOT_SCRIPT = '<script type="application/json" id="boot">{}</script>'
+
+
+def _client_supports_ui(params: Dict[str, Any]) -> bool:
+    """True when the host advertises MCP Apps or is a known App-capable client."""
+    caps = params.get("capabilities")
+    if isinstance(caps, dict):
+        extensions = caps.get("extensions")
+        if isinstance(extensions, dict):
+            ui_ext = extensions.get(UI_EXTENSION)
+            if isinstance(ui_ext, dict):
+                mime_types = ui_ext.get("mimeTypes") or []
+                if REVIEWABLE_UI_MIME in mime_types:
+                    return True
+    client = params.get("clientInfo")
+    if isinstance(client, dict):
+        name = str(client.get("name") or "").lower()
+        if "cursor" in name or "claude" in name:
+            return True
+    return False
+
+
+def _ui_meta(uri: str) -> Dict[str, Any]:
+    """MCP Apps tool/result metadata. Dual keys match ext-apps registerAppTool."""
+    return {
+        "anthropic/expandByDefault": True,
+        "ui": {
+            "resourceUri": uri,
+            "visibility": ["model", "app"],
+            "initialState": "expanded",
+            "prefersBorder": True,
+        },
+        "ui/resourceUri": uri,
+    }
+
+
+def _resource_ui_meta() -> Dict[str, Any]:
+    return {"ui": {"prefersBorder": True}}
+
+
+def _queue_summary_rows(structured: Dict[str, Any]) -> list:
+    return [
+        {
+            "candidate_id": row.get("candidate_id"),
+            "subject": row.get("subject"),
+            "candidate_object": row.get("candidate_object"),
+            "candidate_eocr_function": row.get("candidate_eocr_function"),
+            "confidence": row.get("confidence"),
+            "lifecycle_state": row.get("lifecycle_state"),
+        }
+        for row in structured.get("candidates") or []
+    ]
+
+
+def _queue_fallback_text(structured: Dict[str, Any]) -> str:
+    """Full text for hosts that cannot render the MCP App."""
+    return json.dumps(_queue_summary_rows(structured), indent=2, sort_keys=True)
+
+
+def _queue_ui_ack(structured: Dict[str, Any]) -> str:
+    """Minimal model-facing text when the host renders the review board App."""
+    count = structured.get("count")
+    if count is None:
+        count = len(structured.get("candidates") or [])
+    noun = "candidate" if count == 1 else "candidates"
+    return (
+        "Opened the BEARING review board (%d %s). Disposition happens in the "
+        "MCP App only — do not list, table, or summarize candidates in chat."
+        % (count, noun)
+    )
+
+
+def _disposition_ui_ack(candidate_id: str) -> str:
+    return (
+        "Opened the review form for %s in the MCP App. Do not repeat evidence "
+        "or judgment fields in chat."
+        % candidate_id
+    )
 
 
 class McpServer:
@@ -57,6 +143,9 @@ class McpServer:
         self._next_id = 1
         self._initialized = False
         self._use_content_length = False
+        self._host_supports_ui = False
+        self._subscribed: set = set()
+        self._queue_payload: Dict[str, Any] = {}
         self._queue_html: Optional[str] = None
 
     def run(self) -> int:
@@ -118,18 +207,25 @@ class McpServer:
             self._initialized = True
             return None
 
+        if method and str(method).startswith("notifications/"):
+            return None
+
         if msg_id is None:
-            return None  # other notifications
+            return None
 
         try:
             result = self._dispatch(method, params)
             self._write({"jsonrpc": "2.0", "id": msg_id, "result": result})
         except BearingError as exc:
+            text = str(exc)
+            code = -32601 if text.startswith("method not found") else -32000
+            if text.startswith("resource not found"):
+                code = -32002
             self._write(
                 {
                     "jsonrpc": "2.0",
                     "id": msg_id,
-                    "error": {"code": -32000, "message": str(exc)},
+                    "error": {"code": code, "message": text},
                 }
             )
         except Exception as exc:  # pragma: no cover - defensive
@@ -146,6 +242,7 @@ class McpServer:
         if method == "initialize":
             # Echo the client's version when present. A fixed newer version can
             # leave Cursor waiting on initialize, which shows as Skills "loading".
+            self._host_supports_ui = _client_supports_ui(params)
             requested = params.get("protocolVersion") or PROTOCOL_VERSION
             if not isinstance(requested, str) or not requested.strip():
                 requested = PROTOCOL_VERSION
@@ -153,13 +250,18 @@ class McpServer:
                 "protocolVersion": requested.strip(),
                 "capabilities": {
                     "tools": {"listChanged": False},
-                    "resources": {},
+                    "resources": {"subscribe": True, "listChanged": True},
                 },
                 "serverInfo": {"name": "bearing", "version": __version__},
                 "instructions": (
-                    "Dispose shadow candidates via review_candidate with a disposition "
-                    "object (action + judgment fields). Do not rely on form elicitation. "
-                    "Promote requires still_valid, eocr_function, lifecycle_state, scope."
+                    "Call list_reviewable to open the MCP App review board. "
+                    "When the App renders, reply with at most one short sentence "
+                    "acknowledging it is open — never list, table, or summarize "
+                    "candidates in chat. Humans dispose in the App (judgment "
+                    "fields, then Promote/Edit/Split/Reject/Defer). Agents may "
+                    "also pass disposition on review_candidate. Do not rely on "
+                    "form elicitation. Promote requires still_valid, "
+                    "eocr_function, lifecycle_state, scope."
                 ),
             }
         if method == "ping":
@@ -174,6 +276,14 @@ class McpServer:
             return {"resourceTemplates": []}
         if method == "resources/read":
             return self._read_resource(str(params.get("uri") or ""))
+        if method == "resources/subscribe":
+            uri = str(params.get("uri") or "")
+            if uri:
+                self._subscribed.add(uri)
+            return {}
+        if method == "resources/unsubscribe":
+            self._subscribed.discard(str(params.get("uri") or ""))
+            return {}
         if method == "prompts/list":
             return {"prompts": []}
         if method == "tools/call":
@@ -187,9 +297,9 @@ class McpServer:
             {
                 "name": "list_reviewable",
                 "description": (
-                    "List surfaced shadow candidates waiting on human disposition "
-                    "(Promote / Edit / Split / Reject / Defer). Renders an MCP App "
-                    "review board in hosts that support Apps; JSON is always returned."
+                    "Open the MCP App review board for surfaced shadow candidates "
+                    "(Promote / Edit / Split / Reject / Defer). When the App "
+                    "renders, do not repeat the queue in chat."
                 ),
                 "inputSchema": {
                     "type": "object",
@@ -200,15 +310,16 @@ class McpServer:
                         }
                     },
                 },
-                "_meta": {"ui": {"resourceUri": REVIEWABLE_UI_URI}},
+                "_meta": _ui_meta(REVIEWABLE_UI_URI),
             },
             {
                 "name": "review_candidate",
                 "description": (
                     "Review one shadow candidate. Pass disposition "
                     "{action, still_valid, eocr_function, lifecycle_state, scope, ...}. "
-                    "If disposition is omitted, returns the evidence brief and form schema "
-                    "without blocking. Promote requires human judgment fields — not confidence."
+                    "If disposition is omitted, opens the MCP App review form (or returns "
+                    "the evidence brief and schema). Promote requires human judgment "
+                    "fields — not confidence."
                 ),
                 "inputSchema": {
                     "type": "object",
@@ -240,6 +351,7 @@ class McpServer:
                     },
                     "required": ["candidate_id"],
                 },
+                "_meta": _ui_meta(REVIEWABLE_UI_URI),
             },
         ]
 
@@ -251,22 +363,15 @@ class McpServer:
         if name == "list_reviewable":
             if arguments.get("workspace"):
                 self.workspace = str(arguments.get("workspace"))
-            rows = list_reviewable(config.layout)
-            summary = [
-                {
-                    "candidate_id": row.get("candidate_id"),
-                    "subject": row.get("subject"),
-                    "candidate_object": row.get("candidate_object"),
-                    "candidate_eocr_function": row.get("candidate_eocr_function"),
-                    "confidence": row.get("confidence"),
-                    "lifecycle_state": row.get("lifecycle_state"),
-                }
-                for row in rows
-            ]
-            self._queue_html = reviewable_queue_html(rows, workspace=config.workspace)
-            return _tool_text(
-                json.dumps(summary, indent=2, sort_keys=True),
-                ui_resource=REVIEWABLE_UI_URI,
+            structured = self._snapshot_queue(config)
+            if self._host_supports_ui:
+                text = _queue_ui_ack(structured)
+            else:
+                text = _queue_fallback_text(structured)
+            return _tool_result(
+                text,
+                ui_resource=REVIEWABLE_UI_URI if self._host_supports_ui else None,
+                structured=structured,
             )
 
         if name == "review_candidate":
@@ -293,20 +398,40 @@ class McpServer:
                         schema=schema,
                     )
                     if content is None:
-                        return _tool_text(
+                        return _tool_result(
                             "Elicitation declined or cancelled; no changes written."
                         )
                 else:
-                    # Non-blocking path: return what the human/agent must fill in.
-                    return _tool_text(
-                        json.dumps(
+                    structured = self._snapshot_queue(config)
+                    card = _ui_candidate(candidate)
+                    ids = {row.get("candidate_id") for row in structured["candidates"]}
+                    if card.get("candidate_id") not in ids:
+                        structured["candidates"] = [card] + list(structured["candidates"])
+                        structured["count"] = len(structured["candidates"])
+                    structured.update(
+                        {
+                            "status": "needs_disposition",
+                            "message": (
+                                "Fill the MCP App review form, or pass disposition="
+                                "{action, ...} on a follow-up review_candidate call "
+                                "(or use bearing dispose / bearing review)."
+                            ),
+                            "brief": brief,
+                            "schema": schema,
+                            "candidate_id": candidate_id,
+                            "candidate": card,
+                        }
+                    )
+                    self._queue_payload = structured
+                    self._queue_html = _resource_html(structured)
+                    self._notify_resource_updated()
+                    ack = (
+                        _disposition_ui_ack(candidate_id)
+                        if self._host_supports_ui
+                        else json.dumps(
                             {
                                 "status": "needs_disposition",
-                                "message": (
-                                    "Pass disposition={action, ...} on a follow-up "
-                                    "review_candidate call (or use bearing dispose / bearing review). "
-                                    "This tool does not block on a form by default."
-                                ),
+                                "message": structured["message"],
                                 "brief": brief,
                                 "schema": schema,
                                 "candidate_id": candidate_id,
@@ -315,6 +440,11 @@ class McpServer:
                             sort_keys=True,
                         )
                     )
+                    return _tool_result(
+                        ack,
+                        ui_resource=REVIEWABLE_UI_URI if self._host_supports_ui else None,
+                        structured=structured,
+                    )
 
             if not isinstance(content, dict):
                 raise BearingError("disposition must be an object")
@@ -322,41 +452,91 @@ class McpServer:
             if action not in ACTIONS and action.lower() not in {a.lower() for a in ACTIONS}:
                 raise BearingError("form must include action in %s" % ", ".join(ACTIONS))
             result = dispose(config, candidate_id, action, Judgment.from_mapping(content))
-            return _tool_text(json.dumps(result.as_dict(), indent=2, sort_keys=True))
+            payload = result.as_dict()
+            structured = self._snapshot_queue(config)
+            structured.update(
+                {
+                    "status": "disposed",
+                    "result": payload,
+                    "candidate_id": candidate_id,
+                }
+            )
+            self._queue_payload = structured
+            self._queue_html = _resource_html(structured)
+            self._notify_resource_updated()
+            return _tool_result(
+                json.dumps(payload, indent=2, sort_keys=True),
+                ui_resource=REVIEWABLE_UI_URI if self._host_supports_ui else None,
+                structured=structured,
+            )
 
         raise BearingError("unknown tool: %s" % name)
+
+    def _snapshot_queue(self, config) -> Dict[str, Any]:
+        rows = [_ui_candidate(row) for row in list_reviewable(config.layout)]
+        structured = {
+            "workspace": config.workspace,
+            "count": len(rows),
+            "candidates": rows,
+            "enums": {
+                "actions": list(ACTIONS),
+                "eocr_functions": list(EOCR_FUNCTIONS),
+                "lifecycle_states": list(LIFECYCLE_STATES),
+            },
+        }
+        self._queue_payload = structured
+        self._queue_html = _resource_html(structured)
+        self._notify_resource_updated()
+        return structured
 
     def _resource_defs(self) -> list:
         return [
             {
                 "uri": REVIEWABLE_UI_URI,
-                "name": "Reviewable candidates",
-                "description": "Read-only MCP App board of surfaced shadow candidates.",
+                "name": "Reviewable UI Component",
+                "description": "MCP App board of surfaced shadow candidates.",
                 "mimeType": REVIEWABLE_UI_MIME,
+                "_meta": _resource_ui_meta(),
             }
         ]
 
     def _read_resource(self, uri: str) -> Dict[str, Any]:
         if uri != REVIEWABLE_UI_URI:
             raise BearingError("resource not found: %s" % uri)
-        if self._queue_html is None:
+        html = self._queue_html
+        if html is None:
             try:
                 config = resolve(workspace=self.workspace if self.workspace else None)
                 config.require_initialized()
-                self._queue_html = reviewable_queue_html(
-                    list_reviewable(config.layout), workspace=config.workspace
-                )
+                self._snapshot_queue(config)
+                html = self._queue_html
             except Exception as exc:
-                self._queue_html = reviewable_queue_html([], error=str(exc))
+                html = _resource_html({"error": str(exc), "candidates": []})
+                self._queue_html = html
         return {
             "contents": [
                 {
                     "uri": uri,
                     "mimeType": REVIEWABLE_UI_MIME,
-                    "text": self._queue_html,
+                    "text": html or _resource_html(self._queue_payload),
+                    "_meta": _resource_ui_meta(),
                 }
             ]
         }
+
+    def _notify_resource_updated(self) -> None:
+        """Ask the host to re-fetch the App HTML after queue changes."""
+        if self._subscribed and REVIEWABLE_UI_URI not in self._subscribed:
+            return
+        if not self._subscribed:
+            return
+        self._write(
+            {
+                "jsonrpc": "2.0",
+                "method": "notifications/resources/updated",
+                "params": {"uri": REVIEWABLE_UI_URI},
+            }
+        )
 
     def _elicit(self, message: str, schema: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Optional elicitation/create — opt-in only; can hang hosts that never answer."""
@@ -440,91 +620,73 @@ class McpServer:
             self._write_raw(body + b"\n")
 
 
-def _tool_text(text: str, ui_resource: Optional[str] = None) -> Dict[str, Any]:
+def _ui_candidate(row: Dict[str, Any]) -> Dict[str, Any]:
+    """Fields the App needs to show evidence and pre-fill a judgment form."""
+    defaults = defaults_from_candidate(row)
+    evidence = []
+    for item in (row.get("evidence") or [])[:8]:
+        if not isinstance(item, dict):
+            continue
+        excerpt = str(item.get("evidence_excerpt") or "").strip().replace("\n", " ")
+        if len(excerpt) > 220:
+            excerpt = excerpt[:217] + "..."
+        evidence.append(
+            {
+                "evidence_source": item.get("evidence_source") or "unknown",
+                "evidence_excerpt": excerpt,
+            }
+        )
+    return {
+        "candidate_id": row.get("candidate_id"),
+        "subject": row.get("subject"),
+        "candidate_object": row.get("candidate_object"),
+        "candidate_relation": row.get("candidate_relation"),
+        "candidate_eocr_function": row.get("candidate_eocr_function"),
+        "confidence": row.get("confidence"),
+        "lifecycle_state": row.get("lifecycle_state"),
+        "conflicts_with_accepted": row.get("conflicts_with_accepted"),
+        "load_bearing": row.get("load_bearing"),
+        "evidence": evidence,
+        "defaults": {
+            "eocr_function": defaults.eocr_function,
+            "lifecycle_state": defaults.lifecycle_state,
+            "scope": defaults.scope,
+            "title": defaults.title,
+            "trigger": defaults.trigger,
+        },
+    }
+
+
+def _tool_result(
+    text: str,
+    ui_resource: Optional[str] = None,
+    structured: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     payload: Dict[str, Any] = {
         "content": [{"type": "text", "text": text}],
         "isError": False,
     }
     if ui_resource:
-        payload["_meta"] = {"ui": {"resourceUri": ui_resource}}
+        payload["_meta"] = _ui_meta(ui_resource)
+    if structured is not None:
+        payload["structuredContent"] = structured
     return payload
 
 
-def _esc(value: Any) -> str:
-    return html_lib.escape("" if value is None else str(value), quote=True)
+def _resource_html(payload: Optional[Dict[str, Any]] = None) -> str:
+    """App shell with optional boot JSON so a resources/read refresh paints data."""
+    blob = json.dumps(payload or {}, separators=(",", ":")).replace("<", "\\u003c")
+    return _reviewable_html().replace(
+        _BOOT_SCRIPT,
+        '<script type="application/json" id="boot">%s</script>' % blob,
+        1,
+    )
 
 
-def reviewable_queue_html(
-    rows: List[Dict[str, Any]],
-    workspace: str = "",
-    error: str = "",
-) -> str:
-    """Read-only review board. Does not dispose candidates."""
-    cards = []
-    for row in rows:
-        flags = []
-        if row.get("load_bearing"):
-            flags.append("load-bearing")
-        if row.get("conflicts_with_accepted"):
-            flags.append("conflicts %s" % row.get("conflicts_with_accepted"))
-        flag_html = (
-            "".join('<span class="flag">%s</span>' % _esc(item) for item in flags)
-            if flags
-            else ""
-        )
-        cards.append(
-            """
-<article class="card">
-  <header>
-    <code>%s</code>
-    <span class="pill">%s</span>
-    <span class="pill muted">%s</span>
-  </header>
-  <p class="subject">%s</p>
-  <p class="object">%s</p>
-  %s
-</article>"""
-            % (
-                _esc(row.get("candidate_id")),
-                _esc(row.get("confidence") or "—"),
-                _esc(row.get("candidate_eocr_function") or "—"),
-                _esc(row.get("subject")),
-                _esc(row.get("candidate_object")),
-                flag_html,
-            )
-        )
-    body = "".join(cards) if cards else '<p class="empty">No reviewable candidates.</p>'
-    err = ('<p class="error">%s</p>' % _esc(error)) if error else ""
-    return """<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #1e1e1e; color: #e8e8e8; }
-    h1 { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
-    .sub { font-size: 12px; color: #9a9a9a; margin: 0 0 16px; }
-    .card { border: 1px solid #3a3a3a; border-radius: 6px; padding: 12px; margin: 0 0 10px; background: #252525; }
-    header { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
-    code { font-size: 12px; }
-    .pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #007acc; color: #fff; }
-    .pill.muted { background: #3a3a3a; color: #ccc; }
-    .subject { font-size: 13px; margin: 0 0 6px; color: #c8c8c8; }
-    .object { font-size: 13px; margin: 0; line-height: 1.45; }
-    .flag { display: inline-block; font-size: 11px; margin: 8px 8px 0 0; color: #f0c674; }
-    .empty, .error { font-size: 13px; color: #9a9a9a; }
-    .error { color: #e07a7a; }
-    footer { font-size: 11px; color: #7a7a7a; margin-top: 14px; }
-  </style>
-</head>
-<body>
-  <h1>Reviewable decision candidates</h1>
-  <p class="sub">Shadow graph — evidence, not decisions. %s · %d surfaced</p>
-  %s
-  %s
-  <footer>Disposition stays on review_candidate / bearing review. This board does not Promote.</footer>
-</body>
-</html>
-""" % (_esc(workspace) if workspace else "workspace unset", len(rows), err, body)
+def _reviewable_html() -> str:
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "reviewable-app.html")
+    with open(path, encoding="utf-8") as handle:
+        return handle.read()
 
 
 def _log(message: str) -> None:
@@ -534,7 +696,6 @@ def _log(message: str) -> None:
 
 def main(argv: Optional[list] = None) -> int:
     import argparse
-    import os
 
     parser = argparse.ArgumentParser(prog="bearing-mcp", description="BEARING MCP disposition server")
     parser.add_argument(

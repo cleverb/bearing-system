@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #1e1e1e; color: #e8e8e8; }
+    h1 { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
+    .sub { font-size: 12px; color: #9a9a9a; margin: 0 0 12px; }
+    .toolbar { display: flex; gap: 8px; margin: 0 0 12px; }
+    .card { border: 1px solid #3a3a3a; border-radius: 6px; padding: 12px; margin: 0 0 10px; background: #252525; }
+    .card.open { border-color: #007acc; }
+    header { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+    code { font-size: 12px; }
+    .pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #007acc; color: #fff; }
+    .pill.muted { background: #3a3a3a; color: #ccc; }
+    .pill.warn { background: #8a4b12; }
+    .subject { font-size: 13px; margin: 0 0 6px; color: #c8c8c8; }
+    .object, .evidence li { font-size: 13px; margin: 0; line-height: 1.45; }
+    .evidence { margin: 8px 0 0; padding-left: 18px; color: #b8b8b8; }
+    .empty, .error, .ok, .busy { font-size: 13px; color: #9a9a9a; }
+    .error { color: #e07a7a; }
+    .ok { color: #7dcea0; }
+    footer { font-size: 11px; color: #7a7a7a; margin-top: 14px; }
+    button, select, input, textarea {
+      font: inherit; color: #e8e8e8; background: #2d2d2d; border: 1px solid #4a4a4a;
+      border-radius: 4px; padding: 6px 10px;
+    }
+    button { cursor: pointer; background: #007acc; border-color: #007acc; }
+    button.ghost { background: transparent; color: #c8c8c8; }
+    button:disabled { opacity: 0.55; cursor: default; }
+    form { margin-top: 12px; padding-top: 12px; border-top: 1px solid #3a3a3a; display: grid; gap: 8px; }
+    label { display: grid; gap: 4px; font-size: 12px; color: #b0b0b0; }
+    label.row { grid-template-columns: auto 1fr; align-items: center; gap: 8px; }
+    textarea { min-height: 64px; resize: vertical; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .note { font-size: 11px; color: #8a8a8a; }
+  </style>
+</head>
+<body>
+  <h1>Reviewable decision candidates</h1>
+  <p class="sub" id="subtitle">Shadow graph — evidence, not decisions.</p>
+  <div class="toolbar">
+    <button type="button" id="refresh" class="ghost">Refresh queue</button>
+  </div>
+  <p id="banner" class="empty" hidden></p>
+  <div id="board"><p class="empty">Waiting for queue…</p></div>
+  <footer>Promote executes human judgment collected here — it does not approve confidence.</footer>
+  <script type="application/json" id="boot">{}</script>
+  <script>
+    var parentWin = window.parent;
+    var nextId = 1;
+    var pending = {};
+    var state = { candidates: [], enums: {}, workspace: "", openId: "", busy: false };
+
+    function post(msg) {
+      parentWin.postMessage(msg, "*");
+    }
+
+    function tellSize() {
+      var h = Math.max(document.documentElement.scrollHeight || 0, document.body.scrollHeight || 0, 180);
+      post({ jsonrpc: "2.0", method: "ui/notifications/size-changed", params: { height: h } });
+    }
+
+    function esc(value) {
+      return String(value == null ? "" : value)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function rpc(method, params) {
+      return new Promise(function (resolve, reject) {
+        var id = nextId++;
+        var timer = setTimeout(function () {
+          if (!pending[id]) return;
+          delete pending[id];
+          reject({ message: "Host did not answer " + method + ". Use review_candidate in chat or bearing dispose." });
+        }, 20000);
+        pending[id] = function (result, error) {
+          clearTimeout(timer);
+          if (error) reject(error);
+          else resolve(result || {});
+        };
+        post({ jsonrpc: "2.0", id: id, method: method, params: params || {} });
+      });
+    }
+
+    function callTool(name, args) {
+      return rpc("tools/call", { name: name, arguments: args || {} }).then(function (result) {
+        if (result && result.isError) {
+          var text = ((result.content || [])[0] || {}).text || "tool error";
+          throw { message: text };
+        }
+        return result;
+      });
+    }
+
+    function setBanner(kind, text) {
+      var el = document.getElementById("banner");
+      el.hidden = !text;
+      el.className = kind || "empty";
+      el.textContent = text || "";
+    }
+
+    function options(values, selected) {
+      return (values || []).map(function (value) {
+        return '<option value="' + esc(value) + '"' + (value === selected ? " selected" : "") + ">" + esc(value) + "</option>";
+      }).join("");
+    }
+
+    function formHtml(row) {
+      var d = row.defaults || {};
+      var enums = state.enums || {};
+      var actions = enums.actions || ["Promote", "Edit", "Split", "Reject", "Defer"];
+      var eocr = enums.eocr_functions || ["Entry", "Operations", "Contract", "Rationale"];
+      var life = enums.lifecycle_states || ["Proposed", "Accepted", "Deprecated", "Superseded"];
+      return (
+        '<form data-id="' + esc(row.candidate_id) + '">' +
+          '<label>Disposition<select name="action">' + options(actions, "Defer") + "</select></label>" +
+          '<p class="note promote-only">Promote requires your judgment: still valid, EOCR, authored lifecycle, and scope. Confidence is not authority.</p>' +
+          '<label class="row promote-only"><input type="checkbox" name="still_valid"> Still valid organizational intent today</label>' +
+          '<label class="promote-only">EOCR function<select name="eocr_function">' + options(eocr, d.eocr_function) + "</select></label>" +
+          '<label class="promote-only">Authored lifecycle<select name="lifecycle_state">' + options(life, d.lifecycle_state || "Accepted") + "</select></label>" +
+          '<label class="promote-only">Scope<input name="scope" value="' + esc(d.scope || "") + '" placeholder="globs this decision governs"></label>' +
+          '<label class="promote-only">Title<input name="title" value="' + esc(d.title || "") + '"></label>' +
+          '<label class="promote-only">Trigger<textarea name="trigger">' + esc(d.trigger || "") + "</textarea></label>" +
+          '<label class="promote-only">Suggested anchor files<input name="anchor_targets" placeholder="comma-separated paths"></label>' +
+          '<label class="edit-only">Revised candidate object<textarea name="edit_object">' + esc(row.candidate_object || "") + "</textarea></label>" +
+          '<label class="reject-only">Rejection reason<textarea name="rejection_reason"></textarea></label>' +
+          '<label class="defer-only">Defer note<textarea name="defer_note"></textarea></label>' +
+          '<label class="split-only">Split notes<textarea name="split_brief" placeholder="How evidence should become multiple decisions"></textarea></label>' +
+          '<div class="actions">' +
+            '<button type="submit">Submit disposition</button>' +
+            '<button type="button" class="ghost cancel">Cancel</button>' +
+          "</div>" +
+          '<p class="error form-error" hidden></p>' +
+        "</form>"
+      );
+    }
+
+    function cardHtml(row, open) {
+      var evidence = (row.evidence || []).map(function (item) {
+        return "<li>[" + esc(item.evidence_source) + "] " + esc(item.evidence_excerpt) + "</li>";
+      }).join("");
+      var conflict = row.conflicts_with_accepted
+        ? '<span class="pill warn">conflicts</span>'
+        : "";
+      return (
+        '<article class="card' + (open ? " open" : "") + '" data-id="' + esc(row.candidate_id) + '">' +
+          "<header><code>" + esc(row.candidate_id) + "</code>" +
+          '<span class="pill">' + esc(row.confidence || "—") + "</span>" +
+          '<span class="pill muted">' + esc(row.candidate_eocr_function || "—") + "</span>" +
+          conflict + "</header>" +
+          '<p class="subject">' + esc(row.subject) + "</p>" +
+          '<p class="object">' + esc(row.candidate_object) + "</p>" +
+          (evidence ? '<ul class="evidence">' + evidence + "</ul>" : "") +
+          (open ? formHtml(row) : '<div class="actions" style="margin-top:10px"><button type="button" class="review">Review</button></div>') +
+        "</article>"
+      );
+    }
+
+    function toggleFields(form) {
+      var action = (form.querySelector('[name="action"]') || {}).value || "Defer";
+      form.querySelectorAll(".promote-only").forEach(function (el) { el.hidden = action !== "Promote"; });
+      form.querySelectorAll(".edit-only").forEach(function (el) { el.hidden = action !== "Edit"; });
+      form.querySelectorAll(".reject-only").forEach(function (el) { el.hidden = action !== "Reject"; });
+      form.querySelectorAll(".defer-only").forEach(function (el) { el.hidden = action !== "Defer"; });
+      form.querySelectorAll(".split-only").forEach(function (el) { el.hidden = action !== "Split"; });
+      tellSize();
+    }
+
+    function render(payload) {
+      var data = payload || {};
+      if (data.structuredContent) data = data.structuredContent;
+      if (data.candidates) state.candidates = data.candidates;
+      if (data.enums) state.enums = data.enums;
+      if (data.workspace) state.workspace = data.workspace;
+      if (data.status === "needs_disposition" && data.candidate_id) state.openId = data.candidate_id;
+      if (data.status === "disposed") {
+        state.openId = "";
+        setBanner("ok", (data.result && data.result.message) || "Disposition recorded.");
+      }
+      var rows = state.candidates || [];
+      document.getElementById("subtitle").textContent =
+        "Shadow graph — evidence, not decisions. " + (state.workspace || "workspace unset") + " · " + rows.length + " surfaced";
+      var board = document.getElementById("board");
+      if (data.error) {
+        board.innerHTML = '<p class="error">' + esc(data.error) + "</p>";
+        tellSize();
+        return;
+      }
+      if (!rows.length) {
+        board.innerHTML = '<p class="empty">No reviewable candidates.</p>';
+        tellSize();
+        return;
+      }
+      board.innerHTML = rows.map(function (row) {
+        return cardHtml(row, row.candidate_id === state.openId);
+      }).join("");
+      board.querySelectorAll("form").forEach(toggleFields);
+      tellSize();
+    }
+
+    function val(form, name) {
+      var el = form.querySelector('[name="' + name + '"]');
+      if (!el) return "";
+      if (el.type === "checkbox") return el.checked;
+      return el.value;
+    }
+
+    function dispositionFromForm(form) {
+      var action = val(form, "action");
+      var out = { action: action };
+      if (action === "Promote") {
+        out.still_valid = !!val(form, "still_valid");
+        out.eocr_function = val(form, "eocr_function");
+        out.lifecycle_state = val(form, "lifecycle_state");
+        out.scope = val(form, "scope");
+        out.title = val(form, "title");
+        out.trigger = val(form, "trigger");
+        out.anchor_targets = val(form, "anchor_targets");
+        if (!out.still_valid) throw new Error("Promote requires checking still valid today.");
+        if (!String(out.scope || "").trim()) throw new Error("Promote requires a non-empty scope.");
+      } else if (action === "Edit") {
+        out.edit_object = val(form, "edit_object");
+        out.eocr_function = val(form, "eocr_function");
+      } else if (action === "Reject") {
+        out.rejection_reason = val(form, "rejection_reason");
+      } else if (action === "Defer") {
+        out.defer_note = val(form, "defer_note");
+      } else if (action === "Split") {
+        out.split_brief = val(form, "split_brief");
+      }
+      return out;
+    }
+
+    document.getElementById("board").addEventListener("click", function (event) {
+      if (event.target.closest(".review")) {
+        state.openId = event.target.closest(".card").getAttribute("data-id");
+        render({ candidates: state.candidates, enums: state.enums, workspace: state.workspace });
+        return;
+      }
+      if (event.target.closest(".cancel")) {
+        state.openId = "";
+        render({ candidates: state.candidates, enums: state.enums, workspace: state.workspace });
+      }
+    });
+
+    document.getElementById("board").addEventListener("change", function (event) {
+      if (event.target && event.target.name === "action") toggleFields(event.target.form);
+    });
+
+    document.getElementById("board").addEventListener("submit", function (event) {
+      event.preventDefault();
+      var form = event.target;
+      var err = form.querySelector(".form-error");
+      err.hidden = true;
+      var candidateId = form.getAttribute("data-id");
+      var disposition;
+      try {
+        disposition = dispositionFromForm(form);
+      } catch (ex) {
+        err.hidden = false;
+        err.textContent = ex.message || String(ex);
+        tellSize();
+        return;
+      }
+      if (state.busy) return;
+      state.busy = true;
+      form.querySelector('[type="submit"]').disabled = true;
+      setBanner("busy", "Submitting " + disposition.action + "…");
+      callTool("review_candidate", { candidate_id: candidateId, disposition: disposition })
+        .then(function (result) {
+          state.busy = false;
+          render(result);
+        })
+        .catch(function (error) {
+          state.busy = false;
+          form.querySelector('[type="submit"]').disabled = false;
+          err.hidden = false;
+          err.textContent = (error && error.message) || "Disposition failed.";
+          setBanner("error", err.textContent);
+          tellSize();
+        });
+    });
+
+    document.getElementById("refresh").addEventListener("click", function () {
+      if (state.busy) return;
+      setBanner("busy", "Refreshing…");
+      callTool("list_reviewable", {}).then(function (result) {
+        setBanner("", "");
+        render(result);
+      }).catch(function (error) {
+        setBanner("error", (error && error.message) || "Refresh failed.");
+      });
+    });
+
+    window.addEventListener("message", function (event) {
+      var data = event.data;
+      if (!data || data.jsonrpc !== "2.0") return;
+      if (data.id != null && pending[data.id]) {
+        var cb = pending[data.id];
+        delete pending[data.id];
+        cb(data.result || {}, data.error || null);
+        return;
+      }
+      if (data.method === "ui/notifications/tool-result") render(data.params || {});
+    });
+
+    try {
+      var boot = JSON.parse(document.getElementById("boot").textContent || "{}");
+      if (boot.candidates || boot.candidate_id) render(boot);
+    } catch (e) {}
+    post({ jsonrpc: "2.0", method: "ui/notifications/initialized" });
+    tellSize();
+  </script>
+</body>
+</html>

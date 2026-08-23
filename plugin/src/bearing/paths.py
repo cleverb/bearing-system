@@ -128,6 +128,25 @@ def plugin_root() -> str:
     return os.path.dirname(os.path.abspath(__file__))
 
 
+def maintainer_plugin_root(workspace: str) -> str:
+    """Canonical ``plugin/`` tree for maintainer commands such as ``bearing package``.
+
+    When the workspace contains a ``plugin/`` directory with a BEARING manifest,
+    that checkout tree wins over the operator-enabled install copy. Without
+    this, ``bearing package --local`` fails once ``bearing enable`` points
+    ``install.json`` at the local Cursor plugin destination.
+    """
+    checkout = os.path.join(os.path.abspath(workspace), "plugin")
+    manifest_path = os.path.join(checkout, "plugin.json")
+    if os.path.isfile(manifest_path):
+        manifest = read_json(manifest_path, {}) or {}
+        if manifest.get("name") == "bearing":
+            skill = os.path.join(checkout, "skills", "decision-recovery", "SKILL.md")
+            if os.path.isfile(skill):
+                return checkout
+    return plugin_root()
+
+
 def data_dir() -> str:
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 

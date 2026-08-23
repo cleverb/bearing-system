@@ -167,9 +167,14 @@ Open the **target** repository in Cursor (or Claude Code / Codex).
 
 ### Cursor MCP
 
-Marketplace / local-plugin install ships `plugin/mcp.json`. After install, Cursor
-should list an MCP server named **BEARING** under Tools / MCP. It launches via
-`${PLUGIN_ROOT}` — not `${workspaceFolder}`.
+Marketplace install ships `plugin/mcp.json` with `${PLUGIN_ROOT}`. Cursor local
+plugins do **not** expand that variable. Maintainer iteration uses
+`bearing package --local`, which copies `plugin/` to
+`~/.cursor/plugins/local/bearing-plugin` and writes the local launch adapter to
+dest `mcp.json`.
+
+After install, Cursor should list an MCP server named **BEARING** under Tools /
+MCP.
 
 `review_candidate` does **not** block on a form by default (mid-tool elicitation
 hung some Cursor builds and made the agent feel stuck, including Skills
@@ -222,22 +227,29 @@ cd bearing-system
 python3 --version   # 3.9 or newer
 ```
 
-### 2. Point the runtime at this working tree (Tier 0)
+### 2. Install the local Cursor plugin (Tier 0)
 
 ```bash
-mkdir -p ~/.cursor/plugins/local
-ln -s "$(pwd)/plugin" ~/.cursor/plugins/local/bearing
+PYTHONPATH=plugin/src python3 -m bearing package --local
 ```
 
-Reload Cursor. Edits under `plugin/skills/` and `plugin/hooks/` are what the
-client loads. This is the fastest iteration loop. It is not a marketplace
-install: Cursor is reading the checkout, not a copied cache.
+Reload Cursor. The copy at `~/.cursor/plugins/local/bearing-plugin` is solely a
+copy target — not a git checkout. Re-run `bearing package --local` after
+`plugin/` edits (skills, hooks, MCP App, manifests).
+
+This is not a marketplace install: Cursor loads the local copy with a
+`$HOME`-based MCP launch config, not `${PLUGIN_ROOT}`.
 
 For Claude Code, add this clone as a local marketplace (`claude plugin
 marketplace add . --scope local`) and install `bearing@bearing`. That *does*
 copy the tree; reinstall after Skill or hook changes.
 
 ### 3. Run the CLI from the working tree
+
+`bearing package --local` copies this checkout's `plugin/` into
+`~/.cursor/plugins/local/bearing-plugin`. When you run it from the
+`bearing-system` repository root, the checkout's `plugin/` is the source even if
+`bearing enable` already points the PATH shim at the local install copy.
 
 Do **not** rely on a one-time `uv tool install ./plugin` while you are changing
 CLI code. That command snapshots `plugin/` and will serve stale bytecode until

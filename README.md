@@ -84,12 +84,17 @@ Then use the optional onboarding guide—or simply try BEARING during ordinary w
 BEARING dogfoods its own distribution layer rather than shortcutting it. The Skills live in `plugin/skills/`, which is deliberately *not* a discovery path, so you install the plugin locally rather than letting an in-repo copy shadow it:
 
 ```bash
-ln -s "$(pwd)/plugin" ~/.cursor/plugins/local/bearing   # Tier 0: fastest iteration
+PYTHONPATH=plugin/src python3 -m bearing package --local   # Tier 0: Cursor local plugin copy
 python3 -m unittest discover -s tests -v                 # full suite, zero dependencies
-python3 plugin/src/bearing/__main__.py package            # regenerate all manifests
+PYTHONPATH=plugin/src python3 -m bearing package            # regenerate all manifests
 ```
 
-The four testing tiers, from a symlink to a published marketplace, are documented in [the distribution spec](docs/specs/bearing-distribution-spec.md#14-local-testing-to-marketplace-promotion).
+Reload Cursor after `--local`. The copy lands at
+`~/.cursor/plugins/local/bearing-plugin` with a local MCP launch adapter in
+`mcp.json` (Cursor does not expand `${PLUGIN_ROOT}` in local mode). Re-run
+`bearing package --local` after `plugin/` edits.
+
+The four testing tiers, from a local plugin copy to a published marketplace, are documented in [the distribution spec](docs/specs/bearing-distribution-spec.md#14-local-testing-to-marketplace-promotion).
 
 ## License
 

@@ -31,11 +31,14 @@ only exists in a git context, so a fake directory would test a different program
 
 Five tiers, each catching a failure class the one below it cannot see.
 
-**Tier 0 — iteration.** Point a client at the working tree.
+**Tier 0 — iteration.** Copy the plugin into Cursor's local plugin directory.
 
 ```bash
-ln -s "$(pwd)/plugin" ~/.cursor/plugins/local/bearing
+PYTHONPATH=plugin/src python3 -m bearing package --local
 ```
+
+Reload Cursor after each copy. See ADR-0013 for why local and marketplace MCP
+launch configs differ.
 
 **Tier 1 — manifest validation.** Every client manifest is generated from
 `plugin/plugin.json`, so a hand-edited manifest is drift rather than a fix.
