@@ -1,0 +1,153 @@
+{
+  "run_id": "recovery-preview-constrained",
+  "status": "completed",
+  "stage": "write_persist",
+  "stage_index": 6,
+  "stage_count": 6,
+  "stage_label": "Write & Persist",
+  "started_at": "2026-08-23T21:00:00Z",
+  "updated_at": "2026-08-23T21:05:30Z",
+  "elapsed_seconds": 330,
+  "message": "Recovery completed under constrained scope (8 candidates).",
+  "eta": {
+    "remaining_seconds_low": 0,
+    "remaining_seconds_high": 0,
+    "confidence": "medium",
+    "display": "Done"
+  },
+  "scope": {
+    "locations_total": 8,
+    "locations_scanned": 8,
+    "files_indexed": 24,
+    "locations": [
+      {
+        "path": "docs/decisions",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/mcp_server.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/cli.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/config.py",
+        "state": "scanned"
+      },
+      {
+        "path": "AGENTS.md",
+        "state": "scanned"
+      },
+      {
+        "path": "SETUP.md",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/verify.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/lint.py",
+        "state": "scanned"
+      }
+    ]
+  },
+  "current": {
+    "path": "",
+    "activity": "",
+    "kind": "",
+    "items": 0,
+    "depth": 0
+  },
+  "findings": {
+    "candidate_decisions": 8,
+    "evidence_items": 24,
+    "records_prepared": 8,
+    "records_written": 8
+  },
+  "budget": {
+    "mode": "balanced",
+    "time_budget_seconds": 600,
+    "max_candidates": 24,
+    "pressure": 1.0,
+    "status": "normal",
+    "constraint": {
+      "reason": "Capping remaining discovery to 24 candidates",
+      "before": 60,
+      "after": 24
+    }
+  },
+  "rates": {
+    "files_per_minute": 30
+  },
+  "stages": [
+    {
+      "id": "scope_plan",
+      "label": "Scope & Plan"
+    },
+    {
+      "id": "discover",
+      "label": "Discover"
+    },
+    {
+      "id": "extract",
+      "label": "Extract"
+    },
+    {
+      "id": "identify",
+      "label": "Identify"
+    },
+    {
+      "id": "synthesize",
+      "label": "Synthesize"
+    },
+    {
+      "id": "write_persist",
+      "label": "Write & Persist"
+    }
+  ],
+  "recent_activity": [
+    {
+      "type": "found",
+      "at": "2026-08-23T21:00:40Z",
+      "label": "Found candidate: plugin tree is read-only"
+    },
+    {
+      "type": "indexed",
+      "at": "2026-08-23T21:00:55Z",
+      "label": "Indexed mcp_server.py"
+    },
+    {
+      "type": "found",
+      "at": "2026-08-23T21:01:30Z",
+      "label": "Found candidate: stdlib only"
+    },
+    {
+      "type": "scanning",
+      "at": "2026-08-23T21:02:00Z",
+      "label": "Scanning SETUP.md"
+    },
+    {
+      "type": "found",
+      "at": "2026-08-23T21:02:30Z",
+      "label": "Found candidate: repo vs operator facts"
+    },
+    {
+      "type": "info",
+      "at": "2026-08-23T21:03:20Z",
+      "label": "Wrote 3 shadow records"
+    },
+    {
+      "type": "info",
+      "at": "2026-08-23T21:02:40Z",
+      "label": "Scope being constrained: time budget"
+    },
+    {
+      "type": "info",
+      "at": "2026-08-23T21:03:00Z",
+      "label": "Reduced max_candidates 60 \u2192 24"
+    }
+  ]
+}

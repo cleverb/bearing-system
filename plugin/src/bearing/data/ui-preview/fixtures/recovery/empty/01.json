@@ -1,0 +1,98 @@
+{
+  "run_id": "recovery-preview-empty",
+  "status": "running",
+  "stage": "scope_plan",
+  "stage_index": 1,
+  "stage_count": 6,
+  "stage_label": "Scope & Plan",
+  "started_at": "2026-08-23T21:00:00Z",
+  "updated_at": "2026-08-23T21:00:30Z",
+  "elapsed_seconds": 30,
+  "message": "",
+  "eta": {
+    "remaining_seconds_low": 150,
+    "remaining_seconds_high": 290,
+    "confidence": "low",
+    "display": "4m remaining"
+  },
+  "scope": {
+    "locations_total": 4,
+    "locations_scanned": 1,
+    "files_indexed": 2,
+    "locations": [
+      {
+        "path": "docs/decisions",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing",
+        "state": "scanning"
+      },
+      {
+        "path": ".bearing",
+        "state": "pending"
+      },
+      {
+        "path": "tests",
+        "state": "pending"
+      }
+    ]
+  },
+  "current": {
+    "path": "plugin/src/bearing",
+    "activity": "scanning",
+    "kind": "directory",
+    "items": 3,
+    "depth": 1
+  },
+  "findings": {
+    "candidate_decisions": 0,
+    "evidence_items": 0,
+    "records_prepared": 0,
+    "records_written": 0
+  },
+  "budget": {
+    "mode": "balanced",
+    "time_budget_seconds": 600,
+    "max_candidates": 60,
+    "pressure": 0,
+    "status": "normal",
+    "constraint": null
+  },
+  "rates": {
+    "files_per_minute": 15
+  },
+  "stages": [
+    {
+      "id": "scope_plan",
+      "label": "Scope & Plan"
+    },
+    {
+      "id": "discover",
+      "label": "Discover"
+    },
+    {
+      "id": "extract",
+      "label": "Extract"
+    },
+    {
+      "id": "identify",
+      "label": "Identify"
+    },
+    {
+      "id": "synthesize",
+      "label": "Synthesize"
+    },
+    {
+      "id": "write_persist",
+      "label": "Write & Persist"
+    }
+  ],
+  "recent_activity": [
+    {
+      "type": "info",
+      "at": "2026-08-23T21:00:00Z",
+      "label": "Recovery started"
+    }
+  ]
+}

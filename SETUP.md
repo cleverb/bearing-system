@@ -281,7 +281,10 @@ python3 -m unittest discover -s tests
 PYTHONPATH=plugin/src python3 -m bearing doctor
 PYTHONPATH=plugin/src python3 -m bearing render --check
 PYTHONPATH=plugin/src python3 -m bearing package --check
+PYTHONPATH=plugin/src python3 -m bearing ui-preview --open   # MCP App mock host; no init
 ```
+
+Preview Recovery and Reviewable MCP Apps without Cursor via `bearing ui-preview`. Stories live in `plugin/src/bearing/data/ui-preview/catalog.json`. See that directory's README. Do not put preview settings in workspace config.
 
 Generated adapters (`.cursor/`, `.claude/`, `.codex/`, per-client manifests, the
 BEARING block in `AGENTS.md`) are regenerated, never hand-edited. Change the

@@ -1,0 +1,245 @@
+{
+  "run_id": "recovery-preview-dense",
+  "status": "running",
+  "stage": "identify",
+  "stage_index": 4,
+  "stage_count": 6,
+  "stage_label": "Identify",
+  "started_at": "2026-08-23T21:00:00Z",
+  "updated_at": "2026-08-23T21:03:20Z",
+  "elapsed_seconds": 200,
+  "message": "",
+  "eta": {
+    "remaining_seconds_low": 0,
+    "remaining_seconds_high": 120,
+    "confidence": "medium",
+    "display": "2m remaining"
+  },
+  "scope": {
+    "locations_total": 32,
+    "locations_scanned": 20,
+    "files_indexed": 240,
+    "locations": [
+      {
+        "path": "docs/decisions/0001-record-architecture-decisions.md",
+        "state": "scanned"
+      },
+      {
+        "path": "docs/decisions/0002-plugin-tree-is-read-only-at-runtime.md",
+        "state": "scanned"
+      },
+      {
+        "path": "docs/decisions/0003-project-canonical-sources-into-runtime-adapters.md",
+        "state": "scanned"
+      },
+      {
+        "path": "docs/decisions/0004-inference-never-blocks-a-merge.md",
+        "state": "scanned"
+      },
+      {
+        "path": "docs/decisions/0005-standard-library-only-python-39.md",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/cli.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/mcp_server.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/config.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/render.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/verify.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/lint.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/decisions.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/disposition.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/recovery_run.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/skills/decision-recovery/SKILL.md",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/skills/decision-interview/SKILL.md",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/skills/decision-onboarding/SKILL.md",
+        "state": "scanned"
+      },
+      {
+        "path": "tests/test_disposition.py",
+        "state": "scanned"
+      },
+      {
+        "path": "tests/test_recovery_run.py",
+        "state": "scanned"
+      },
+      {
+        "path": "tests/test_mandate.py",
+        "state": "scanned"
+      },
+      {
+        "path": "AGENTS.md",
+        "state": "scanning"
+      },
+      {
+        "path": "SETUP.md",
+        "state": "pending"
+      },
+      {
+        "path": "BEARING.md",
+        "state": "pending"
+      },
+      {
+        "path": "plugin/src/bearing/data/recovery-app.html",
+        "state": "pending"
+      },
+      {
+        "path": "plugin/src/bearing/data/reviewable-app.html",
+        "state": "pending"
+      },
+      {
+        "path": "docs/specs/decision-recovery-skill-spec.md",
+        "state": "pending"
+      },
+      {
+        "path": ".bearing/config.json",
+        "state": "pending"
+      },
+      {
+        "path": "plugin/pyproject.toml",
+        "state": "pending"
+      },
+      {
+        "path": "plugin/src/bearing/paths.py",
+        "state": "pending"
+      },
+      {
+        "path": "plugin/src/bearing/assessment.py",
+        "state": "pending"
+      },
+      {
+        "path": "plugin/src/bearing/health.py",
+        "state": "pending"
+      },
+      {
+        "path": "plugin/src/bearing/index.py",
+        "state": "pending"
+      }
+    ]
+  },
+  "current": {
+    "path": "AGENTS.md",
+    "activity": "extracting",
+    "kind": "file",
+    "items": 44,
+    "depth": 4
+  },
+  "findings": {
+    "candidate_decisions": 28,
+    "evidence_items": 84,
+    "records_prepared": 0,
+    "records_written": 0
+  },
+  "budget": {
+    "mode": "balanced",
+    "time_budget_seconds": 600,
+    "max_candidates": 60,
+    "pressure": 0,
+    "status": "normal",
+    "constraint": null
+  },
+  "rates": {
+    "files_per_minute": 24
+  },
+  "stages": [
+    {
+      "id": "scope_plan",
+      "label": "Scope & Plan"
+    },
+    {
+      "id": "discover",
+      "label": "Discover"
+    },
+    {
+      "id": "extract",
+      "label": "Extract"
+    },
+    {
+      "id": "identify",
+      "label": "Identify"
+    },
+    {
+      "id": "synthesize",
+      "label": "Synthesize"
+    },
+    {
+      "id": "write_persist",
+      "label": "Write & Persist"
+    }
+  ],
+  "recent_activity": [
+    {
+      "type": "indexed",
+      "at": "2026-08-23T21:00:32Z",
+      "label": "Indexed 0002-plugin-tree-is-read-only-at-runtime.md"
+    },
+    {
+      "type": "scanning",
+      "at": "2026-08-23T21:00:36Z",
+      "label": "Scanning docs/decisions/0003-project-canonical-sources-into-runtime-adapters.md"
+    },
+    {
+      "type": "indexed",
+      "at": "2026-08-23T21:00:40Z",
+      "label": "Indexed 0003-project-canonical-sources-into-runtime-adapters.md"
+    },
+    {
+      "type": "scanning",
+      "at": "2026-08-23T21:00:44Z",
+      "label": "Scanning docs/decisions/0004-inference-never-blocks-a-merge.md"
+    },
+    {
+      "type": "found",
+      "at": "2026-08-23T21:00:46Z",
+      "label": "Found candidate in 0004-inference-never-blocks-a-merge.md"
+    },
+    {
+      "type": "indexed",
+      "at": "2026-08-23T21:00:48Z",
+      "label": "Indexed 0004-inference-never-blocks-a-merge.md"
+    },
+    {
+      "type": "scanning",
+      "at": "2026-08-23T21:00:52Z",
+      "label": "Scanning docs/decisions/0005-standard-library-only-python-39.md"
+    },
+    {
+      "type": "indexed",
+      "at": "2026-08-23T21:00:56Z",
+      "label": "Indexed 0005-standard-library-only-python-39.md"
+    }
+  ]
+}

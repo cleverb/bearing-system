@@ -237,6 +237,16 @@ def cmd_preflight(args: argparse.Namespace) -> int:
     return code
 
 
+def cmd_ui_preview(args: argparse.Namespace) -> int:
+    """Serve a local mock MCP host for Recovery and Reviewable Apps.
+
+    Does not require init. Does not write workspace config (ADR-0007).
+    """
+    from .ui_preview import cmd_ui_preview as run
+
+    return run(args)
+
+
 def cmd_assessment(args: argparse.Namespace) -> int:
     """Scorecard. Always exits 0 — unreadiness is not a merge gate.
 
@@ -1239,6 +1249,30 @@ def build_parser() -> argparse.ArgumentParser:
         "--plugin-root",
         default=None,
         help="explicit plugin directory containing plugin.json",
+    )
+
+    ui_preview = add(
+        "ui-preview",
+        "Serve a local mock host for Recovery and Reviewable MCP Apps (no init).",
+        cmd_ui_preview,
+    )
+    ui_preview.add_argument("--port", type=int, default=8765, help="listen port (default 8765)")
+    ui_preview.add_argument("--bind", default="127.0.0.1", help="bind address (default 127.0.0.1)")
+    ui_preview.add_argument("--open", action="store_true", help="open the default browser")
+    ui_preview.add_argument("--list", action="store_true", help="print catalog story ids and exit")
+    ui_preview.add_argument("--story", default=None, help="deep-link the host to this catalog id")
+    ui_preview.add_argument("--catalog", default=None, help="path to catalog.json")
+    ui_preview.add_argument("--fixtures", default=None, help="override fixtures directory")
+    ui_preview.add_argument(
+        "--html-root",
+        default=None,
+        help="directory containing App HTML/SVG (default: packaged data dir)",
+    )
+    ui_preview.add_argument(
+        "--sim-ms",
+        type=int,
+        default=None,
+        help="override recovery simulation interval for this session",
     )
 
     assessment = add(

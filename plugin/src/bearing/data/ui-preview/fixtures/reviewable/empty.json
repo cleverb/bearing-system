@@ -1,0 +1,27 @@
+{
+  "workspace": "/Users/oeist/Sites/bearing-system",
+  "count": 0,
+  "candidates": [],
+  "enums": {
+    "actions": [
+      "Promote",
+      "Edit",
+      "Split",
+      "Reject",
+      "Defer"
+    ],
+    "eocr_functions": [
+      "Entry",
+      "Operations",
+      "Contract",
+      "Rationale"
+    ],
+    "lifecycle_states": [
+      "Proposed",
+      "Accepted",
+      "Deprecated",
+      "Superseded"
+    ]
+  },
+  "status": "ok"
+}

@@ -1,0 +1,113 @@
+{
+  "run_id": "recovery-preview-empty",
+  "status": "running",
+  "stage": "identify",
+  "stage_index": 4,
+  "stage_count": 6,
+  "stage_label": "Identify",
+  "started_at": "2026-08-23T21:00:00Z",
+  "updated_at": "2026-08-23T21:02:00Z",
+  "elapsed_seconds": 120,
+  "message": "",
+  "eta": {
+    "remaining_seconds_low": 60,
+    "remaining_seconds_high": 200,
+    "confidence": "medium",
+    "display": "3m remaining"
+  },
+  "scope": {
+    "locations_total": 4,
+    "locations_scanned": 4,
+    "files_indexed": 8,
+    "locations": [
+      {
+        "path": "docs/decisions",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing",
+        "state": "scanned"
+      },
+      {
+        "path": ".bearing",
+        "state": "scanned"
+      },
+      {
+        "path": "tests",
+        "state": "scanned"
+      }
+    ]
+  },
+  "current": {
+    "path": "tests",
+    "activity": "scanning",
+    "kind": "directory",
+    "items": 3,
+    "depth": 1
+  },
+  "findings": {
+    "candidate_decisions": 0,
+    "evidence_items": 0,
+    "records_prepared": 0,
+    "records_written": 0
+  },
+  "budget": {
+    "mode": "balanced",
+    "time_budget_seconds": 600,
+    "max_candidates": 60,
+    "pressure": 0,
+    "status": "normal",
+    "constraint": null
+  },
+  "rates": {
+    "files_per_minute": 24
+  },
+  "stages": [
+    {
+      "id": "scope_plan",
+      "label": "Scope & Plan"
+    },
+    {
+      "id": "discover",
+      "label": "Discover"
+    },
+    {
+      "id": "extract",
+      "label": "Extract"
+    },
+    {
+      "id": "identify",
+      "label": "Identify"
+    },
+    {
+      "id": "synthesize",
+      "label": "Synthesize"
+    },
+    {
+      "id": "write_persist",
+      "label": "Write & Persist"
+    }
+  ],
+  "recent_activity": [
+    {
+      "type": "info",
+      "at": "2026-08-23T21:00:00Z",
+      "label": "Recovery started"
+    },
+    {
+      "type": "scanning",
+      "at": "2026-08-23T21:00:20Z",
+      "label": "Walking docs/decisions"
+    },
+    {
+      "type": "indexed",
+      "at": "2026-08-23T21:01:20Z",
+      "label": "Indexed 4 locations"
+    },
+    {
+      "type": "info",
+      "at": "2026-08-23T21:03:20Z",
+      "label": "No candidate decisions found"
+    }
+  ]
+}

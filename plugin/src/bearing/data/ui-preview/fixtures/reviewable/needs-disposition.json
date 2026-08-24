@@ -1,0 +1,109 @@
+{
+  "workspace": "/Users/oeist/Sites/bearing-system",
+  "count": 3,
+  "candidates": [
+    {
+      "candidate_id": "CAND-PREVIEW-0001",
+      "subject": "plugin/src/bearing/*.py",
+      "candidate_object": "Plugin tree is read-only at runtime; writes go to .bearing/.",
+      "candidate_relation": "constrains",
+      "candidate_eocr_function": "Contract",
+      "confidence": "HIGH",
+      "lifecycle_state": "Reviewable",
+      "conflicts_with_accepted": null,
+      "load_bearing": true,
+      "evidence": [
+        {
+          "evidence_source": "commit",
+          "evidence_excerpt": "ADR-0002: plugin tree is read-only at runtime."
+        },
+        {
+          "evidence_source": "comment",
+          "evidence_excerpt": "@see ADR-0002 \u2014 writes go to .bearing/, never the plugin tree."
+        }
+      ],
+      "defaults": {
+        "eocr_function": "Contract",
+        "lifecycle_state": "Accepted",
+        "scope": "plugin/src/bearing/*.py",
+        "title": "Plugin tree is read-only at runtime",
+        "trigger": "writing run state, ledgers, transcripts, or skill output"
+      }
+    },
+    {
+      "candidate_id": "CAND-PREVIEW-0002",
+      "subject": "plugin/src/bearing/*.py",
+      "candidate_object": "Standard library only, Python 3.9.",
+      "candidate_relation": "constrains",
+      "candidate_eocr_function": "Contract",
+      "confidence": "MEDIUM",
+      "lifecycle_state": "Reviewable",
+      "conflicts_with_accepted": null,
+      "load_bearing": true,
+      "evidence": [
+        {
+          "evidence_source": "commit",
+          "evidence_excerpt": "No third-party deps in plugin/pyproject.toml."
+        },
+        {
+          "evidence_source": "pr",
+          "evidence_excerpt": "Keep jsonschema in-tree."
+        }
+      ],
+      "defaults": {
+        "eocr_function": "Contract",
+        "lifecycle_state": "Accepted",
+        "scope": "plugin/src/bearing/*.py",
+        "title": "Standard library only",
+        "trigger": "adding a Python dependency"
+      }
+    },
+    {
+      "candidate_id": "CAND-PREVIEW-0003",
+      "subject": "plugin/src/bearing/config.py",
+      "candidate_object": "Repo facts versus operator facts.",
+      "candidate_relation": "constrains",
+      "candidate_eocr_function": "Rationale",
+      "confidence": "LOW",
+      "lifecycle_state": "Reviewable",
+      "conflicts_with_accepted": null,
+      "load_bearing": true,
+      "evidence": [
+        {
+          "evidence_source": "comment",
+          "evidence_excerpt": "Do not put preview keys in workspace config."
+        }
+      ],
+      "defaults": {
+        "eocr_function": "Rationale",
+        "lifecycle_state": "Accepted",
+        "scope": "plugin/src/bearing/config.py",
+        "title": "Repo facts versus operator facts",
+        "trigger": "adding a config key"
+      }
+    }
+  ],
+  "enums": {
+    "actions": [
+      "Promote",
+      "Edit",
+      "Split",
+      "Reject",
+      "Defer"
+    ],
+    "eocr_functions": [
+      "Entry",
+      "Operations",
+      "Contract",
+      "Rationale"
+    ],
+    "lifecycle_states": [
+      "Proposed",
+      "Accepted",
+      "Deprecated",
+      "Superseded"
+    ]
+  },
+  "status": "needs_disposition",
+  "candidate_id": "CAND-PREVIEW-0001"
+}

@@ -1,0 +1,141 @@
+{
+  "run_id": "recovery-preview-few",
+  "status": "completed",
+  "stage": "write_persist",
+  "stage_index": 6,
+  "stage_count": 6,
+  "stage_label": "Write & Persist",
+  "started_at": "2026-08-23T21:00:00Z",
+  "updated_at": "2026-08-23T21:04:20Z",
+  "elapsed_seconds": 260,
+  "message": "Recovery completed (3 candidate decisions found).",
+  "eta": {
+    "remaining_seconds_low": 0,
+    "remaining_seconds_high": 0,
+    "confidence": "high",
+    "display": "Done"
+  },
+  "scope": {
+    "locations_total": 6,
+    "locations_scanned": 6,
+    "files_indexed": 24,
+    "locations": [
+      {
+        "path": "docs/decisions",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/mcp_server.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/cli.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/config.py",
+        "state": "scanned"
+      },
+      {
+        "path": "AGENTS.md",
+        "state": "scanned"
+      },
+      {
+        "path": "SETUP.md",
+        "state": "scanned"
+      }
+    ]
+  },
+  "current": {
+    "path": "",
+    "activity": "",
+    "kind": "",
+    "items": 0,
+    "depth": 0
+  },
+  "findings": {
+    "candidate_decisions": 3,
+    "evidence_items": 9,
+    "records_prepared": 3,
+    "records_written": 3
+  },
+  "budget": {
+    "mode": "balanced",
+    "time_budget_seconds": 600,
+    "max_candidates": 60,
+    "pressure": 0,
+    "status": "normal",
+    "constraint": null
+  },
+  "rates": {
+    "files_per_minute": 30
+  },
+  "stages": [
+    {
+      "id": "scope_plan",
+      "label": "Scope & Plan"
+    },
+    {
+      "id": "discover",
+      "label": "Discover"
+    },
+    {
+      "id": "extract",
+      "label": "Extract"
+    },
+    {
+      "id": "identify",
+      "label": "Identify"
+    },
+    {
+      "id": "synthesize",
+      "label": "Synthesize"
+    },
+    {
+      "id": "write_persist",
+      "label": "Write & Persist"
+    }
+  ],
+  "recent_activity": [
+    {
+      "type": "info",
+      "at": "2026-08-23T21:00:00Z",
+      "label": "Recovery started"
+    },
+    {
+      "type": "scanning",
+      "at": "2026-08-23T21:00:15Z",
+      "label": "Scanning plugin/src/bearing"
+    },
+    {
+      "type": "found",
+      "at": "2026-08-23T21:00:40Z",
+      "label": "Found candidate: plugin tree is read-only"
+    },
+    {
+      "type": "indexed",
+      "at": "2026-08-23T21:00:55Z",
+      "label": "Indexed mcp_server.py"
+    },
+    {
+      "type": "found",
+      "at": "2026-08-23T21:01:30Z",
+      "label": "Found candidate: stdlib only"
+    },
+    {
+      "type": "scanning",
+      "at": "2026-08-23T21:02:00Z",
+      "label": "Scanning SETUP.md"
+    },
+    {
+      "type": "found",
+      "at": "2026-08-23T21:02:30Z",
+      "label": "Found candidate: repo vs operator facts"
+    },
+    {
+      "type": "info",
+      "at": "2026-08-23T21:03:20Z",
+      "label": "Wrote 3 shadow records"
+    }
+  ]
+}

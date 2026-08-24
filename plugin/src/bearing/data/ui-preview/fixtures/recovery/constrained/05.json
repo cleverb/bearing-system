@@ -1,0 +1,143 @@
+{
+  "run_id": "recovery-preview-constrained",
+  "status": "running",
+  "stage": "synthesize",
+  "stage_index": 5,
+  "stage_count": 6,
+  "stage_label": "Synthesize",
+  "started_at": "2026-08-23T21:00:00Z",
+  "updated_at": "2026-08-23T21:04:35Z",
+  "elapsed_seconds": 275,
+  "message": "",
+  "eta": {
+    "remaining_seconds_low": 0,
+    "remaining_seconds_high": 45,
+    "confidence": "medium",
+    "display": "1m remaining"
+  },
+  "scope": {
+    "locations_total": 8,
+    "locations_scanned": 5,
+    "files_indexed": 15,
+    "locations": [
+      {
+        "path": "docs/decisions",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/mcp_server.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/cli.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/config.py",
+        "state": "scanned"
+      },
+      {
+        "path": "AGENTS.md",
+        "state": "scanned"
+      },
+      {
+        "path": "SETUP.md",
+        "state": "scanning"
+      },
+      {
+        "path": "plugin/src/bearing/verify.py",
+        "state": "pending"
+      },
+      {
+        "path": "plugin/src/bearing/lint.py",
+        "state": "pending"
+      }
+    ]
+  },
+  "current": {
+    "path": "SETUP.md",
+    "activity": "scanning",
+    "kind": "file",
+    "items": 5,
+    "depth": 2
+  },
+  "findings": {
+    "candidate_decisions": 6,
+    "evidence_items": 18,
+    "records_prepared": 0,
+    "records_written": 0
+  },
+  "budget": {
+    "mode": "balanced",
+    "time_budget_seconds": 600,
+    "max_candidates": 24,
+    "pressure": 0.9,
+    "status": "constraining",
+    "constraint": {
+      "reason": "Capping remaining discovery to 24 candidates",
+      "before": 60,
+      "after": 24
+    }
+  },
+  "rates": {
+    "files_per_minute": 27
+  },
+  "stages": [
+    {
+      "id": "scope_plan",
+      "label": "Scope & Plan"
+    },
+    {
+      "id": "discover",
+      "label": "Discover"
+    },
+    {
+      "id": "extract",
+      "label": "Extract"
+    },
+    {
+      "id": "identify",
+      "label": "Identify"
+    },
+    {
+      "id": "synthesize",
+      "label": "Synthesize"
+    },
+    {
+      "id": "write_persist",
+      "label": "Write & Persist"
+    }
+  ],
+  "recent_activity": [
+    {
+      "type": "info",
+      "at": "2026-08-23T21:00:00Z",
+      "label": "Recovery started"
+    },
+    {
+      "type": "scanning",
+      "at": "2026-08-23T21:00:15Z",
+      "label": "Scanning plugin/src/bearing"
+    },
+    {
+      "type": "found",
+      "at": "2026-08-23T21:00:40Z",
+      "label": "Found candidate: plugin tree is read-only"
+    },
+    {
+      "type": "indexed",
+      "at": "2026-08-23T21:00:55Z",
+      "label": "Indexed mcp_server.py"
+    },
+    {
+      "type": "found",
+      "at": "2026-08-23T21:01:30Z",
+      "label": "Found candidate: stdlib only"
+    },
+    {
+      "type": "scanning",
+      "at": "2026-08-23T21:02:00Z",
+      "label": "Scanning SETUP.md"
+    }
+  ]
+}

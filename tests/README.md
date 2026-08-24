@@ -27,6 +27,7 @@ only exists in a git context, so a fake directory would test a different program
 | `test_mandate.py` | Authority rules, model-tier advisories, honest cost accounting, optional profile helpers, and the conformance suite itself |
 | `test_disposition.py` | Shadow promotion/reject/defer and MCP Apps (recovery tally + review board, UI vs JSON fallback) |
 | `test_recovery_run.py` | `.bearing/runs/recovery/` snapshot merge, event ring, ETA, CLI `recovery-status` |
+| `test_ui_preview.py` | MCP App preview catalog, fixture validation, HTML injection, `bearing ui-preview --list` |
 | `test_v02.py` | Effective-workspace, scope, runtime evidence, hook, lock-authority, health, measurement, detector, and workflow-inspection contracts |
 
 ## Local testing to marketplace promotion

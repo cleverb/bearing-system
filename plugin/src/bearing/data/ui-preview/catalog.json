@@ -1,0 +1,181 @@
+{
+  "version": 1,
+  "defaults": {
+    "viewport": { "width": 720, "label": "mcp-app" },
+    "breakpoints": [720, 820],
+    "simulation": { "interval_ms": 5000, "loop": true }
+  },
+  "stories": [
+    {
+      "id": "recovery-run-empty",
+      "app": "recovery",
+      "title": "Recovery: empty run",
+      "simulation": {
+        "interval_ms": 5000,
+        "loop": true,
+        "frames": [
+          "fixtures/recovery/empty/01.json",
+          "fixtures/recovery/empty/02.json",
+          "fixtures/recovery/empty/03.json",
+          "fixtures/recovery/empty/04.json",
+          "fixtures/recovery/empty/05.json",
+          "fixtures/recovery/empty/06.json",
+          "fixtures/recovery/empty/07-completed.json"
+        ]
+      },
+      "notes": "Completes with zero candidate decisions. Sparse feed; empty-feed copy early; completed metrics stay at 0."
+    },
+    {
+      "id": "recovery-run-few",
+      "app": "recovery",
+      "title": "Recovery: few decisions",
+      "simulation": {
+        "interval_ms": 5000,
+        "loop": true,
+        "frames": [
+          "fixtures/recovery/few/01.json",
+          "fixtures/recovery/few/02.json",
+          "fixtures/recovery/few/03.json",
+          "fixtures/recovery/few/04.json",
+          "fixtures/recovery/few/05.json",
+          "fixtures/recovery/few/06.json",
+          "fixtures/recovery/few/07-completed.json"
+        ]
+      },
+      "notes": "Ordinary watch. 2–4 decisions appear by Identify/Synthesize. Mixed scanned/scanning/pending cells."
+    },
+    {
+      "id": "recovery-run-dense",
+      "app": "recovery",
+      "title": "Recovery: dense grid",
+      "simulation": {
+        "interval_ms": 5000,
+        "loop": true,
+        "frames": [
+          "fixtures/recovery/dense/01.json",
+          "fixtures/recovery/dense/02.json",
+          "fixtures/recovery/dense/03.json",
+          "fixtures/recovery/dense/04.json",
+          "fixtures/recovery/dense/05.json",
+          "fixtures/recovery/dense/06.json",
+          "fixtures/recovery/dense/07-completed.json"
+        ]
+      },
+      "notes": "32-cell location cap, long wrapping paths, long feed (scan/found/idx/info)."
+    },
+    {
+      "id": "recovery-run-constrained",
+      "app": "recovery",
+      "title": "Recovery: constrained budget",
+      "simulation": {
+        "interval_ms": 5000,
+        "loop": true,
+        "frames": [
+          "fixtures/recovery/constrained/01.json",
+          "fixtures/recovery/constrained/02.json",
+          "fixtures/recovery/constrained/03.json",
+          "fixtures/recovery/constrained/04.json",
+          "fixtures/recovery/constrained/05.json",
+          "fixtures/recovery/constrained/06.json",
+          "fixtures/recovery/constrained/07-completed.json"
+        ]
+      },
+      "notes": "Mid/late budget.status = constraining (amber banner + Est. Time), then complete under reduced scope."
+    },
+    {
+      "id": "recovery-run-failed",
+      "app": "recovery",
+      "title": "Recovery: failed run",
+      "simulation": {
+        "interval_ms": 5000,
+        "loop": true,
+        "frames": [
+          "fixtures/recovery/failed/01.json",
+          "fixtures/recovery/failed/02.json",
+          "fixtures/recovery/failed/03.json",
+          "fixtures/recovery/failed/04.json",
+          "fixtures/recovery/failed/05-failed.json"
+        ]
+      },
+      "notes": "Terminal status: failed with message; spinner off; poll stops."
+    },
+    {
+      "id": "recovery-idle",
+      "app": "recovery",
+      "title": "Recovery: idle / empty feed",
+      "fixture": "fixtures/recovery/frozen/idle.json",
+      "notes": "Frozen. Empty feed copy, no locations, running but idle."
+    },
+    {
+      "id": "recovery-constrained",
+      "app": "recovery",
+      "title": "Recovery: frozen constrained",
+      "fixture": "fixtures/recovery/frozen/constrained.json",
+      "notes": "Frozen mid-run with amber constraint banner."
+    },
+    {
+      "id": "recovery-failed",
+      "app": "recovery",
+      "title": "Recovery: frozen failed",
+      "fixture": "fixtures/recovery/frozen/failed.json",
+      "notes": "Frozen failed terminal frame."
+    },
+    {
+      "id": "recovery-few-midscan",
+      "app": "recovery",
+      "title": "Recovery: frozen mid-scan (few)",
+      "fixture": "fixtures/recovery/frozen/few-midscan.json",
+      "notes": "Frozen Identify-stage frame from the few-decisions run."
+    },
+    {
+      "id": "review-empty",
+      "app": "reviewable",
+      "title": "Review: empty queue",
+      "fixture": "fixtures/reviewable/empty.json",
+      "view": "hub",
+      "notes": "Zero candidates; hub/queue empty copy; refresh still works."
+    },
+    {
+      "id": "review-few",
+      "app": "reviewable",
+      "title": "Review: few candidates",
+      "fixture": "fixtures/reviewable/few.json",
+      "view": "hub",
+      "notes": "Three candidates, mixed EOCR/confidence, uneven evidence tabs. Happy-path Promote with scope filled."
+    },
+    {
+      "id": "review-dense",
+      "app": "reviewable",
+      "title": "Review: dense queue",
+      "fixture": "fixtures/reviewable/dense.json",
+      "view": "queue",
+      "notes": "12+ candidates: pagination, search, function/confidence filters, long titles."
+    },
+    {
+      "id": "review-needs-disposition",
+      "app": "reviewable",
+      "title": "Review: needs disposition",
+      "fixture": "fixtures/reviewable/needs-disposition.json",
+      "view": "evidence",
+      "candidate_id": "CAND-PREVIEW-0001",
+      "notes": "Boots status: needs_disposition on one id (evidence first)."
+    },
+    {
+      "id": "review-promote-invalid",
+      "app": "reviewable",
+      "title": "Review: Promote validation errors",
+      "fixture": "fixtures/reviewable/promote-invalid.json",
+      "view": "disposition",
+      "candidate_id": "CAND-PREVIEW-0001",
+      "notes": "Defaults omit scope / still-valid so client Promote errors and the banner show."
+    },
+    {
+      "id": "review-dispositions",
+      "app": "reviewable",
+      "title": "Review: Reject / Defer / Edit / Split",
+      "fixture": "fixtures/reviewable/dispositions.json",
+      "view": "disposition",
+      "notes": "Small set for conditional textareas and the done view after Promote increments Newly Approved."
+    }
+  ]
+}
