@@ -1,27 +1,26 @@
-"""Minimal stdio MCP server for candidate disposition.
+"""Minimal stdio MCP server for candidate disposition and recovery tally.
 
 No third-party MCP SDK — the CLI stays dependency-free (ADR-0005).
 
+@see ADR-0014 — recovery tally projects `.bearing/runs/recovery/`; the model is
+not the heartbeat.
+@see ADR-0005 — standard library only.
+
 Tools:
+  - open_recovery — Decision Recovery tally App (projects `.bearing/runs/recovery/`)
+  - report_recovery — semantic checkpoints only (start/complete/fail/constrained)
   - list_reviewable — queue of surfaced shadow candidates (MCP App board)
   - review_candidate — dispose Promote|Edit|Split|Reject|Defer
 
-`list_reviewable` and `review_candidate` share an MCP App
-(`ui://bearing/reviewable-queue`). Hosts that support Apps render a review
-board: the human fills judgment fields in the iframe, then the App calls
-`review_candidate` over postMessage `tools/call`. That is one-click
-*execution* of human judgment, not a substitute for it. Promote still
-requires still_valid, eocr_function, lifecycle_state, and scope.
+`open_recovery` attaches `ui://bearing/recovery-tally`. Live numbers come from
+`bearing://runs/recovery/current`, which the App polls. The model is not the
+heartbeat (ADR-0014).
 
-The App is a listed resource (`text/html;profile=mcp-app`). Candidate data
-lives in `structuredContent` for the App. Model-facing `content` stays minimal
-when the host supports MCP Apps; text-only hosts still receive JSON fallback.
+`list_reviewable` and `review_candidate` share `ui://bearing/reviewable-queue`.
+Hosts that support Apps render the review wizard; text-only hosts still receive
+JSON fallback.
 
 Important: this server does **not** block on MCP elicitation by default.
-Server-initiated `elicitation/create` mid-`tools/call` hangs many Cursor
-builds when the form UI never completes the round-trip, which freezes the
-agent loop and looks like “Skills autocomplete is broken.” Optional
-`elicit: true` remains for hosts that fully support forms.
 """
 
 from __future__ import annotations
@@ -44,13 +43,25 @@ from .disposition import (
     find_candidate,
     list_reviewable,
 )
+from .recovery_run import (
+    CHECKPOINT_KINDS,
+    checkpoint_sentence,
+    complete_run,
+    fail_run,
+    patch_run,
+    snapshot as recovery_snapshot,
+    start_run,
+)
 from .util import BearingError
 
 PROTOCOL_VERSION = "2025-06-18"
 UI_EXTENSION = "io.modelcontextprotocol/ui"
 REVIEWABLE_UI_URI = "ui://bearing/reviewable-queue"
+RECOVERY_UI_URI = "ui://bearing/recovery-tally"
+RECOVERY_STATUS_URI = "bearing://runs/recovery/current"
 REVIEWABLE_UI_MIME = "text/html;profile=mcp-app"
 _BOOT_SCRIPT = '<script type="application/json" id="boot">{}</script>'
+_ICON_MARK = "<!-- BEARING:ICONS -->"
 
 
 def _client_supports_ui(params: Dict[str, Any]) -> bool:
@@ -147,6 +158,8 @@ class McpServer:
         self._subscribed: set = set()
         self._queue_payload: Dict[str, Any] = {}
         self._queue_html: Optional[str] = None
+        self._recovery_html: Optional[str] = None
+        self._recovery_payload: Dict[str, Any] = {}
 
     def run(self) -> int:
         while True:
@@ -254,14 +267,14 @@ class McpServer:
                 },
                 "serverInfo": {"name": "bearing", "version": __version__},
                 "instructions": (
-                    "Call list_reviewable to open the MCP App review board. "
-                    "When the App renders, reply with at most one short sentence "
-                    "acknowledging it is open — never list, table, or summarize "
-                    "candidates in chat. Humans dispose in the App (judgment "
-                    "fields, then Promote/Edit/Split/Reject/Defer). Agents may "
-                    "also pass disposition on review_candidate. Do not rely on "
-                    "form elicitation. Promote requires still_valid, "
-                    "eocr_function, lifecycle_state, scope."
+                    "Call open_recovery to open the Decision Recovery tally. "
+                    "Write progress with bearing recovery-status (or report_recovery "
+                    "for start/complete/fail/constrained only). Do not dump tallies "
+                    "in chat. When recovery completes, call list_reviewable immediately. "
+                    "When the Review App renders, reply with at most one short sentence "
+                    "— never list, table, or summarize candidates in chat. Humans dispose "
+                    "in the App. Promote requires still_valid, eocr_function, "
+                    "lifecycle_state, scope."
                 ),
             }
         if method == "ping":
@@ -294,6 +307,53 @@ class McpServer:
 
     def _tool_defs(self) -> list:
         return [
+            {
+                "name": "open_recovery",
+                "description": (
+                    "Open the Decision Recovery tally App. Creates or resumes "
+                    ".bearing/runs/recovery telemetry. Do not dump counters in chat."
+                ),
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "workspace": {
+                            "type": "string",
+                            "description": "Optional workspace root.",
+                        },
+                        "resume": {
+                            "type": "boolean",
+                            "description": "If true, do not start a new run when one already exists.",
+                            "default": True,
+                        },
+                    },
+                },
+                "_meta": _ui_meta(RECOVERY_UI_URI),
+            },
+            {
+                "name": "report_recovery",
+                "description": (
+                    "Semantic recovery checkpoint only (start, complete, fail, "
+                    "constrained, scope_established). Not a per-file heartbeat. "
+                    "On complete, call list_reviewable next."
+                ),
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "kind": {
+                            "type": "string",
+                            "description": "start | complete | fail | constrained | scope_established",
+                        },
+                        "patch": {
+                            "type": "object",
+                            "description": "Optional status.json merge (counters, budget, current focus).",
+                        },
+                        "message": {"type": "string"},
+                        "workspace": {"type": "string"},
+                    },
+                    "required": ["kind"],
+                },
+                "_meta": _ui_meta(RECOVERY_UI_URI),
+            },
             {
                 "name": "list_reviewable",
                 "description": (
@@ -359,10 +419,73 @@ class McpServer:
         workspace = arguments.get("workspace") or self.workspace
         config = resolve(workspace=workspace if workspace else None)
         config.require_initialized()
+        if arguments.get("workspace"):
+            self.workspace = str(arguments.get("workspace"))
+
+        if name == "open_recovery":
+            structured = self._snapshot_recovery(config, resume=arguments.get("resume", True) is not False)
+            if self._host_supports_ui:
+                text = _recovery_ui_ack(structured)
+            else:
+                text = _recovery_fallback_text(structured)
+            return _tool_result(
+                text,
+                ui_resource=RECOVERY_UI_URI if self._host_supports_ui else None,
+                structured=structured,
+            )
+
+        if name == "report_recovery":
+            kind = str(arguments.get("kind") or "").strip().lower()
+            if kind not in CHECKPOINT_KINDS:
+                raise BearingError("kind must be one of %s" % ", ".join(CHECKPOINT_KINDS))
+            patch = arguments.get("patch") if isinstance(arguments.get("patch"), dict) else {}
+            message = str(arguments.get("message") or "").strip()
+            if kind == "start":
+                structured = start_run(config, patch)
+            elif kind == "complete":
+                if patch:
+                    patch_run(config, patch)
+                structured = complete_run(config, message or "Recovery completed")
+            elif kind == "fail":
+                if patch:
+                    patch_run(config, patch)
+                structured = fail_run(config, message or "Recovery failed")
+            else:
+                if message and "budget" not in patch:
+                    patch = dict(patch)
+                    budget = dict(patch.get("budget") or {})
+                    budget["status"] = "constraining"
+                    constraint = dict(budget.get("constraint") or {})
+                    constraint.setdefault("reason", message)
+                    budget["constraint"] = constraint
+                    patch["budget"] = budget
+                structured = patch_run(
+                    config,
+                    patch,
+                    {"type": kind, "label": message or kind.replace("_", " ")},
+                )
+            self._store_recovery(structured)
+            if self._host_supports_ui:
+                text = checkpoint_sentence(kind, structured)
+            else:
+                text = json.dumps(
+                    {
+                        "kind": kind,
+                        "message": checkpoint_sentence(kind, structured),
+                        "run_id": structured.get("run_id"),
+                        "status": structured.get("status"),
+                        "findings": structured.get("findings"),
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+            return _tool_result(
+                text,
+                ui_resource=RECOVERY_UI_URI if self._host_supports_ui else None,
+                structured=structured,
+            )
 
         if name == "list_reviewable":
-            if arguments.get("workspace"):
-                self.workspace = str(arguments.get("workspace"))
             structured = self._snapshot_queue(config)
             if self._host_supports_ui:
                 text = _queue_ui_ack(structured)
@@ -423,8 +546,8 @@ class McpServer:
                         }
                     )
                     self._queue_payload = structured
-                    self._queue_html = _resource_html(structured)
-                    self._notify_resource_updated()
+                    self._queue_html = _resource_html("reviewable", structured)
+                    self._notify_resource_updated(REVIEWABLE_UI_URI)
                     ack = (
                         _disposition_ui_ack(candidate_id)
                         if self._host_supports_ui
@@ -462,8 +585,8 @@ class McpServer:
                 }
             )
             self._queue_payload = structured
-            self._queue_html = _resource_html(structured)
-            self._notify_resource_updated()
+            self._queue_html = _resource_html("reviewable", structured)
+            self._notify_resource_updated(REVIEWABLE_UI_URI)
             return _tool_result(
                 json.dumps(payload, indent=2, sort_keys=True),
                 ui_resource=REVIEWABLE_UI_URI if self._host_supports_ui else None,
@@ -485,22 +608,92 @@ class McpServer:
             },
         }
         self._queue_payload = structured
-        self._queue_html = _resource_html(structured)
-        self._notify_resource_updated()
+        self._queue_html = _resource_html("reviewable", structured)
+        self._notify_resource_updated(REVIEWABLE_UI_URI)
+        return structured
+
+    def _snapshot_recovery(self, config, resume: bool = True) -> Dict[str, Any]:
+        from .recovery_run import current_run_id
+
+        if resume and current_run_id(config):
+            structured = recovery_snapshot(config)
+        else:
+            structured = start_run(config)
+        return self._store_recovery(structured)
+
+    def _store_recovery(self, structured: Dict[str, Any]) -> Dict[str, Any]:
+        self._recovery_payload = structured
+        self._recovery_html = _resource_html("recovery", structured)
+        self._notify_resource_updated(RECOVERY_UI_URI)
+        self._notify_resource_updated(RECOVERY_STATUS_URI)
         return structured
 
     def _resource_defs(self) -> list:
         return [
+            {
+                "uri": RECOVERY_UI_URI,
+                "name": "Decision Recovery tally",
+                "description": "MCP App projecting .bearing/runs/recovery telemetry.",
+                "mimeType": REVIEWABLE_UI_MIME,
+                "_meta": _resource_ui_meta(),
+            },
+            {
+                "uri": RECOVERY_STATUS_URI,
+                "name": "Current recovery status",
+                "description": "JSON snapshot plus last activity events for the Recovery App to poll.",
+                "mimeType": "application/json",
+            },
             {
                 "uri": REVIEWABLE_UI_URI,
                 "name": "Reviewable UI Component",
                 "description": "MCP App board of surfaced shadow candidates.",
                 "mimeType": REVIEWABLE_UI_MIME,
                 "_meta": _resource_ui_meta(),
-            }
+            },
         ]
 
     def _read_resource(self, uri: str) -> Dict[str, Any]:
+        if uri == RECOVERY_STATUS_URI:
+            payload = self._recovery_payload
+            if not payload:
+                try:
+                    config = resolve(workspace=self.workspace if self.workspace else None)
+                    config.require_initialized()
+                    payload = recovery_snapshot(config)
+                    self._recovery_payload = payload
+                except Exception as exc:
+                    payload = {"error": str(exc), "status": "running", "recent_activity": []}
+            body = json.dumps(payload, separators=(",", ":"))
+            return {
+                "contents": [
+                    {
+                        "uri": uri,
+                        "mimeType": "application/json",
+                        "text": body,
+                    }
+                ]
+            }
+        if uri == RECOVERY_UI_URI:
+            html = self._recovery_html
+            if html is None:
+                try:
+                    config = resolve(workspace=self.workspace if self.workspace else None)
+                    config.require_initialized()
+                    self._snapshot_recovery(config)
+                    html = self._recovery_html
+                except Exception as exc:
+                    html = _resource_html("recovery", {"error": str(exc)})
+                    self._recovery_html = html
+            return {
+                "contents": [
+                    {
+                        "uri": uri,
+                        "mimeType": REVIEWABLE_UI_MIME,
+                        "text": html or _resource_html("recovery", self._recovery_payload),
+                        "_meta": _resource_ui_meta(),
+                    }
+                ]
+            }
         if uri != REVIEWABLE_UI_URI:
             raise BearingError("resource not found: %s" % uri)
         html = self._queue_html
@@ -511,22 +704,22 @@ class McpServer:
                 self._snapshot_queue(config)
                 html = self._queue_html
             except Exception as exc:
-                html = _resource_html({"error": str(exc), "candidates": []})
+                html = _resource_html("reviewable", {"error": str(exc), "candidates": []})
                 self._queue_html = html
         return {
             "contents": [
                 {
                     "uri": uri,
                     "mimeType": REVIEWABLE_UI_MIME,
-                    "text": html or _resource_html(self._queue_payload),
+                    "text": html or _resource_html("reviewable", self._queue_payload),
                     "_meta": _resource_ui_meta(),
                 }
             ]
         }
 
-    def _notify_resource_updated(self) -> None:
-        """Ask the host to re-fetch the App HTML after queue changes."""
-        if self._subscribed and REVIEWABLE_UI_URI not in self._subscribed:
+    def _notify_resource_updated(self, uri: str) -> None:
+        """Ask the host to re-fetch App HTML or status JSON after changes."""
+        if self._subscribed and uri not in self._subscribed:
             return
         if not self._subscribed:
             return
@@ -534,7 +727,7 @@ class McpServer:
             {
                 "jsonrpc": "2.0",
                 "method": "notifications/resources/updated",
-                "params": {"uri": REVIEWABLE_UI_URI},
+                "params": {"uri": uri},
             }
         )
 
@@ -624,7 +817,7 @@ def _ui_candidate(row: Dict[str, Any]) -> Dict[str, Any]:
     """Fields the App needs to show evidence and pre-fill a judgment form."""
     defaults = defaults_from_candidate(row)
     evidence = []
-    for item in (row.get("evidence") or [])[:8]:
+    for item in (row.get("evidence") or [])[:16]:
         if not isinstance(item, dict):
             continue
         excerpt = str(item.get("evidence_excerpt") or "").strip().replace("\n", " ")
@@ -673,18 +866,52 @@ def _tool_result(
     return payload
 
 
-def _resource_html(payload: Optional[Dict[str, Any]] = None) -> str:
-    """App shell with optional boot JSON so a resources/read refresh paints data."""
+def _recovery_ui_ack(structured: Dict[str, Any]) -> str:
+    run_id = structured.get("run_id") or "current run"
+    return (
+        "Opened the Decision Recovery tally (%s). Progress lives in run-state; "
+        "do not repeat counters in chat. When complete, call list_reviewable."
+        % run_id
+    )
+
+
+def _recovery_fallback_text(structured: Dict[str, Any]) -> str:
+    compact = {
+        "run_id": structured.get("run_id"),
+        "status": structured.get("status"),
+        "stage": structured.get("stage"),
+        "stage_label": structured.get("stage_label"),
+        "findings": structured.get("findings"),
+        "eta": structured.get("eta"),
+        "budget": {
+            "status": (structured.get("budget") or {}).get("status"),
+            "mode": (structured.get("budget") or {}).get("mode"),
+        },
+        "current": structured.get("current"),
+    }
+    return json.dumps(compact, indent=2, sort_keys=True)
+
+
+def _resource_html(kind: str, payload: Optional[Dict[str, Any]] = None) -> str:
+    """App shell with boot JSON and an inline SVG sprite (CSP-safe)."""
     blob = json.dumps(payload or {}, separators=(",", ":")).replace("<", "\\u003c")
-    return _reviewable_html().replace(
+    html = _app_html(kind).replace(
         _BOOT_SCRIPT,
         '<script type="application/json" id="boot">%s</script>' % blob,
         1,
     )
+    return html.replace(_ICON_MARK, _icon_sprite(), 1)
 
 
-def _reviewable_html() -> str:
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "reviewable-app.html")
+def _app_html(kind: str) -> str:
+    name = "recovery-app.html" if kind == "recovery" else "reviewable-app.html"
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", name)
+    with open(path, encoding="utf-8") as handle:
+        return handle.read()
+
+
+def _icon_sprite() -> str:
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "mcp-icons.svg")
     with open(path, encoding="utf-8") as handle:
         return handle.read()
 

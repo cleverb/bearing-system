@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import unittest
 
 from context import BearingTestCase, TempWorkspace, run_cli
@@ -402,16 +403,21 @@ class McpDispositionTest(BearingTestCase):
             self.assertTrue(resources_cap.get("listChanged"))
             self.assertTrue(server._host_supports_ui)
             names = [tool["name"] for tool in by_id[2]["result"]["tools"]]
-            self.assertEqual(names, ["list_reviewable", "review_candidate"])
+            self.assertEqual(
+                names,
+                ["open_recovery", "report_recovery", "list_reviewable", "review_candidate"],
+            )
             tools_by_name = {tool["name"]: tool for tool in by_id[2]["result"]["tools"]}
             self.assertEqual(
                 tools_by_name["list_reviewable"]["_meta"]["ui"]["resourceUri"],
                 "ui://bearing/reviewable-queue",
             )
             resources = by_id[3]["result"]["resources"]
-            self.assertEqual(len(resources), 1)
-            self.assertEqual(resources[0]["uri"], "ui://bearing/reviewable-queue")
-            self.assertEqual(resources[0]["mimeType"], "text/html;profile=mcp-app")
+            self.assertEqual(len(resources), 3)
+            uris = [row["uri"] for row in resources]
+            self.assertIn("ui://bearing/reviewable-queue", uris)
+            self.assertIn("ui://bearing/recovery-tally", uris)
+            self.assertIn("bearing://runs/recovery/current", uris)
             self.assertEqual(by_id[4]["result"], {"prompts": []})
 
     def test_resources_read_returns_mcp_app_html(self):
@@ -429,7 +435,71 @@ class McpDispositionTest(BearingTestCase):
             self.assertIn("CAND-001", content["text"])
             self.assertIn("list_reviewable", content["text"])
             self.assertIn("review_candidate", content["text"])
+            self.assertIn("Edit this candidate", content["text"])
+            self.assertIn("icon-arrow-left", content["text"])
             self.assertIn("profile=mcp-app", content["mimeType"])
+            self.assertIn('id="icon-spinner"', content["text"])
+            self.assertNotIn('href="http', content["text"])
+            self.assertNotIn('src="http', content["text"])
+
+    def test_reviewable_app_javascript_parses(self):
+        import re
+        import shutil
+        import subprocess
+        import tempfile
+
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("node is required to syntax-check the MCP App")
+        from bearing.mcp_server import _app_html
+
+        html = _app_html("reviewable")
+        scripts = re.findall(r"<script>(.*?)</script>", html, re.S)
+        self.assertTrue(scripts, "reviewable app is missing its UI script")
+        with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False) as handle:
+            handle.write(scripts[0])
+            path = handle.name
+        try:
+            result = subprocess.run([node, "--check", path], capture_output=True, text=True)
+        finally:
+            os.remove(path)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_open_recovery_ui_vs_fallback(self):
+        with TempWorkspace() as ws:
+            ws.init()
+            server = McpServer(workspace=ws.path)
+            listed = server._call_tool("open_recovery", {})
+            self.assertIn("run_id", listed["structuredContent"])
+            self.assertIn("recovery-", listed["content"][0]["text"])
+            self.assertNotIn("_meta", listed)
+            server._host_supports_ui = True
+            ui = server._call_tool("open_recovery", {"resume": True})
+            self.assertIn("ui://bearing/recovery-tally", ui["_meta"]["ui"]["resourceUri"])
+            self.assertNotIn('"candidate_decisions"', ui["content"][0]["text"])
+            status = server._read_resource("bearing://runs/recovery/current")
+            body = json.loads(status["contents"][0]["text"])
+            self.assertEqual(body["status"], "running")
+            html = server._read_resource("ui://bearing/recovery-tally")["contents"][0]["text"]
+            self.assertIn("Decision Recovery", html)
+            self.assertIn('id="icon-folder"', html)
+            self.assertIn("icon-spin", html)
+
+    def test_report_recovery_complete_then_list_hides_ids_on_ui_host(self):
+        with TempWorkspace() as ws:
+            ws.init()
+            ws.write(
+                "docs/decisions/shadow/candidates.jsonl",
+                json.dumps(_candidate()) + "\n",
+            )
+            server = McpServer(workspace=ws.path)
+            server._host_supports_ui = True
+            server._call_tool("open_recovery", {})
+            done = server._call_tool("report_recovery", {"kind": "complete"})
+            self.assertIn("list_reviewable", done["content"][0]["text"])
+            listed = server._call_tool("list_reviewable", {})
+            self.assertNotIn("CAND-001", listed["content"][0]["text"])
+            self.assertEqual(listed["structuredContent"]["count"], 1)
 
     def test_resources_subscribe_and_update_notification(self):
         with TempWorkspace() as ws:

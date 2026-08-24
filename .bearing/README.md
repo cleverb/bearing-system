@@ -13,7 +13,7 @@ This directory exists at the workspace root rather than inside `docs/decisions/`
 - **`ledger/cost.jsonl`** — committed, append-only. Run history feeding acceptance rate, cost per promoted candidate, and the kill switch. Committed because the trend matters across contributors and CI, not just on one laptop.
 - **`ledger/pass-fail-criteria.md`** — committed. The pilot bar, written before any pilot ticket runs. `bearing report --pilot` fails if this file was modified after the first pilot run, which is the only real defense against a threshold that gets adjusted to fit the results.
 - **`eval/{gold,dark,negative}/`** — committed. Evaluation content specific to this repository.
-- **`runs/`** — gitignored. Per-run logs and partial results.
+- **`runs/`** — gitignored. Per-run logs and partial results. Decision Recovery writes `runs/recovery/<run-id>/status.json` (snapshot) and `events.jsonl` (append-only activity). The Recovery MCP App projects this state; it is not a second source of decision authority.
 - **`cache/`** — gitignored. Corpus fingerprints and idempotency keys. Rebuildable; deleting it costs a re-scan, not correctness.
 
 ## What is deliberately *not* here

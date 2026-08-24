@@ -2,6 +2,7 @@
 
 @see ADR-0008 — judgment belongs to Skills; this file is mechanical. Recovery
 has no extractor binary.
+@see ADR-0014 — `recovery-status` writes `.bearing/runs/recovery/` telemetry.
 @see ADR-0005 — standard library argparse, no third-party CLI framework.
 @see ADR-0009 — assessment is informational; this file must not fail the process.
 
@@ -953,6 +954,37 @@ def cmd_observe(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def cmd_recovery_status(args: argparse.Namespace) -> int:
+    """Mechanical writer for recovery run-state. Not an extractor (ADR-0008)."""
+    from .recovery_run import (
+        complete_run,
+        fail_run,
+        parse_json_arg,
+        patch_run,
+        snapshot,
+        start_run,
+    )
+
+    config = _load(args)
+    action = args.recovery_action
+    patch = parse_json_arg(args.from_json) if args.from_json else None
+    event = parse_json_arg(args.event) if args.event else None
+    if action == "start":
+        data = start_run(config, patch)
+    elif action == "patch":
+        data = patch_run(config, patch, event)
+    elif action == "complete":
+        data = complete_run(config, args.reason or "Recovery completed")
+    elif action == "fail":
+        data = fail_run(config, args.reason or "Recovery failed")
+    else:
+        data = snapshot(config)
+        if not data.get("run_id"):
+            raise BearingError("no recovery run in .bearing/runs/recovery/")
+    _emit(data, True)
+    return EXIT_OK
+
+
 def cmd_transcripts(args: argparse.Namespace) -> int:
     config = _load(args)
     if config.layout.transcript_retention == "none":
@@ -1309,6 +1341,32 @@ def build_parser() -> argparse.ArgumentParser:
     observe_cmd.add_argument("--case", required=True)
     observe_cmd.add_argument("--observed", required=True)
     observe_cmd.add_argument("--json", action="store_true")
+
+    recovery_status = add(
+        "recovery-status",
+        "Write or read Decision Recovery run telemetry under .bearing/runs/recovery/.",
+        cmd_recovery_status,
+    )
+    recovery_status.add_argument(
+        "recovery_action",
+        choices=("start", "patch", "complete", "fail", "show"),
+        help="start a run, merge a snapshot, mark complete/fail, or print current status",
+    )
+    recovery_status.add_argument(
+        "--from-json",
+        default=None,
+        help="JSON object, file path, or - for stdin (start/patch)",
+    )
+    recovery_status.add_argument(
+        "--event",
+        default=None,
+        help="JSON event object to append on patch",
+    )
+    recovery_status.add_argument(
+        "--reason",
+        default=None,
+        help="message for complete/fail",
+    )
 
     add("transcripts", "Print the resolved interview-transcript path.", cmd_transcripts)
 

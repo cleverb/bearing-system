@@ -31,14 +31,18 @@ a live PR gate.
 
 When this Skill is asked to perform a recovery pass:
 
-1. Bound the corpus to the area and evidence relevant to the request.
-2. Extract evidence without inventing intent. Tag the possible EOCR function.
-3. Cluster evidence that appears to concern the same decision. Preserve
+1. Open the Recovery tally (`open_recovery` / `bearing recovery-status start`)
+   and keep `.bearing/runs/recovery/` current as you work. Do not animate the
+   UI through per-file model tool calls.
+2. Bound the corpus to the area and evidence relevant to the request.
+3. Extract evidence without inventing intent. Tag the possible EOCR function.
+4. Cluster evidence that appears to concern the same decision. Preserve
    conflicts instead of choosing a side.
-4. Record confidence and its evidence basis. Confidence is about evidence,
+5. Record confidence and its evidence basis. Confidence is about evidence,
    never organizational authority.
-5. Write schema-valid candidates to the configured shadow graph and run
+6. Write schema-valid candidates to the configured shadow graph and run
    `bearing lint`.
+7. Complete the run and call `list_reviewable` immediately.
 
 Detailed scoring, cost logging, idempotency, evaluation sets, and budget limits
 are available when an operator wants a repeatable batch. They are optional
@@ -57,8 +61,9 @@ candidate promotes it. Promotion remains a separate human judgment about scope,
 validity, lifecycle state, and EOCR function.
 
 Execute that judgment with `bearing review`, `bearing dispose`, or MCP
-`review_candidate` (`bearing-mcp`). One-click *execution* after the human sets
-those fields is allowed; auto-promote from confidence is not.
+`review_candidate` (`bearing-mcp`). After a recovery pass, call
+`list_reviewable` so the Review App can open. One-click *execution* after
+the human sets those fields is allowed; auto-promote from confidence is not.
 
 ## Hard boundaries
 

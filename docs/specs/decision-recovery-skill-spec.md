@@ -75,13 +75,16 @@ Every candidate must still satisfy the schema before it is committed.
 
 The `decision-recovery` Skill provides a bounded agent-executed workflow:
 
-1. choose relevant evidence and scope;
-2. extract without inventing organizational intent;
-3. cluster related evidence while preserving conflicts;
-4. record confidence and provenance;
-5. check rejected fingerprints;
-6. append schema-valid shadow candidates; and
-7. run `bearing lint`.
+1. open the Recovery tally and write `.bearing/runs/recovery/` telemetry as
+   archaeology proceeds (the App polls; the model is not the heartbeat);
+2. choose relevant evidence and scope;
+3. extract without inventing organizational intent;
+4. cluster related evidence while preserving conflicts;
+5. record confidence and provenance;
+6. check rejected fingerprints;
+7. append schema-valid shadow candidates;
+8. run `bearing lint`;
+9. complete the run and open Decision Review via `list_reviewable`.
 
 This is a reasonable default, not the architecture of every deployment.
 Operators may use another workflow if it preserves the candidate schema and
@@ -105,8 +108,9 @@ updates the shadow queue. Auto-promoting because confidence is HIGH — or a
 bare Approve that copies the candidate unchanged into Accepted EOCR — is not.
 
 Operators clear the queue with `bearing review`, `bearing dispose`, or the
-`bearing-mcp` stdio server (`list_reviewable` / `review_candidate` with form
-elicitation in Cursor).
+`bearing-mcp` stdio server (`open_recovery`, `report_recovery`,
+`list_reviewable` / `review_candidate`). Hosts that cannot render MCP Apps
+receive JSON fallback; Promote still requires human judgment fields.
 
 ## Optional operational controls
 

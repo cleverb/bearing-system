@@ -312,6 +312,11 @@ class Layout:
         return self._path(self.bearing, "runs")
 
     @property
+    def recovery_runs(self) -> str:
+        """`.bearing/runs/recovery/` — gitignored telemetry (ADR-0014)."""
+        return self._path(self.runs, "recovery")
+
+    @property
     def cache(self) -> str:
         return self._path(self.bearing, "cache")
 

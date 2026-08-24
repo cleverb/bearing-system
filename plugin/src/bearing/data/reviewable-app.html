@@ -3,76 +3,147 @@
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #1e1e1e; color: #e8e8e8; }
-    h1 { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
-    .sub { font-size: 12px; color: #9a9a9a; margin: 0 0 12px; }
-    .toolbar { display: flex; gap: 8px; margin: 0 0 12px; }
-    .card { border: 1px solid #3a3a3a; border-radius: 6px; padding: 12px; margin: 0 0 10px; background: #252525; }
-    .card.open { border-color: #007acc; }
-    header { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
-    code { font-size: 12px; }
-    .pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #007acc; color: #fff; }
-    .pill.muted { background: #3a3a3a; color: #ccc; }
-    .pill.warn { background: #8a4b12; }
-    .subject { font-size: 13px; margin: 0 0 6px; color: #c8c8c8; }
-    .object, .evidence li { font-size: 13px; margin: 0; line-height: 1.45; }
-    .evidence { margin: 8px 0 0; padding-left: 18px; color: #b8b8b8; }
-    .empty, .error, .ok, .busy { font-size: 13px; color: #9a9a9a; }
-    .error { color: #e07a7a; }
-    .ok { color: #7dcea0; }
-    footer { font-size: 11px; color: #7a7a7a; margin-top: 14px; }
-    button, select, input, textarea {
-      font: inherit; color: #e8e8e8; background: #2d2d2d; border: 1px solid #4a4a4a;
-      border-radius: 4px; padding: 6px 10px;
+    :root {
+      --bg: #121212; --panel: #1b1b1b; --card: #202020; --line: #333;
+      --text: #f4f4f4; --muted: #9a9a9a; --dim: #6f6f6f;
+      --blue: #3b82f6; --green: #34d399; --orange: #fb923c;
     }
-    button { cursor: pointer; background: #007acc; border-color: #007acc; }
-    button.ghost { background: transparent; color: #c8c8c8; }
-    button:disabled { opacity: 0.55; cursor: default; }
-    form { margin-top: 12px; padding-top: 12px; border-top: 1px solid #3a3a3a; display: grid; gap: 8px; }
-    label { display: grid; gap: 4px; font-size: 12px; color: #b0b0b0; }
-    label.row { grid-template-columns: auto 1fr; align-items: center; gap: 8px; }
-    textarea { min-height: 64px; resize: vertical; }
-    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
-    .note { font-size: 11px; color: #8a8a8a; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 16px 18px 14px;
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: var(--bg); color: var(--text);
+    }
+    h1 { font-size: 26px; margin: 0; letter-spacing: -0.03em; }
+    .sub { color: var(--muted); font-size: 13px; margin: 4px 0 0; }
+    .top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+    button, select, input, textarea {
+      font: inherit; color: var(--text); background: #2a2a2a; border: 1px solid #444;
+      border-radius: 8px; padding: 8px 12px;
+    }
+    button { cursor: pointer; }
+    button.primary { background: var(--blue); border-color: var(--blue); }
+    button.ghost { background: transparent; }
+    button:disabled { opacity: 0.45; cursor: default; }
+    .icon { width: 16px; height: 16px; display: inline-block; vertical-align: -3px; }
+    .icon-spin { animation: mcp-spin 0.85s linear infinite; transform-origin: center; }
+    @keyframes mcp-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .row { display: flex; gap: 10px; align-items: center; }
+    .spread { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .hub-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+    .stat {
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px;
+      display: flex; justify-content: space-between; gap: 8px;
+    }
+    .stat .n { font-size: 36px; font-weight: 700; letter-spacing: -0.04em; }
+    .stat .k { color: var(--muted); font-size: 13px; }
+    .bar { height: 6px; background: #2a2a2a; border-radius: 99px; overflow: hidden; margin-top: 10px; }
+    .bar > i { display: block; height: 100%; background: var(--blue); }
+    .bar.orange > i { background: var(--orange); }
+    .bar.green > i { background: var(--green); }
+    .section { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+    .qrow {
+      display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #2a2a2a; font-size: 13px;
+    }
+    .qrow:last-child { border-bottom: 0; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+    .pill { font-size: 11px; padding: 2px 8px; border-radius: 99px; background: #3b82f6; color: #fff; font-weight: 650; }
+    .pill.low { background: #166534; }
+    .pill.high { background: #9a3412; }
+    .pill.muted { background: #3a3a3a; color: #ddd; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer;
+    }
+    .card.sel { border-color: var(--blue); }
+    .card p { margin: 6px 0 0; font-size: 13px; color: #ddd; }
+    .meta { color: var(--dim); font-size: 12px; margin-top: 8px; display: flex; gap: 12px; }
+    .search { flex: 1; display: flex; align-items: center; gap: 8px; background: #2a2a2a; border: 1px solid #444; border-radius: 8px; padding: 0 10px; }
+    .search input { border: 0; background: transparent; width: 100%; outline: none; }
+    .pager { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+    .dots { display: flex; gap: 6px; }
+    .dots i { width: 7px; height: 7px; border-radius: 50%; background: #444; display: block; }
+    .dots i.on { background: #fff; }
+    .tabs { display: flex; gap: 16px; border-bottom: 1px solid #333; margin: 12px 0; }
+    .tabs button { background: none; border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: var(--muted); padding: 8px 0; }
+    .tabs button.on { color: var(--text); border-bottom-color: var(--text); }
+    .ev { font-size: 13px; color: #ccc; line-height: 1.45; margin: 0 0 8px; }
+    label { display: grid; gap: 6px; font-size: 13px; color: #cfcfcf; margin-bottom: 12px; }
+    .hint { color: var(--dim); font-size: 12px; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .radio { display: flex; gap: 10px; padding: 10px; border-radius: 10px; cursor: pointer; align-items: flex-start; }
+    .radio.on { background: #13251e; }
+    .radio input { margin-top: 3px; }
+    .radio small { color: var(--muted); display: block; }
+    .actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; }
+    .error { color: #f87171; font-size: 13px; }
+    .ok { color: var(--green); }
+    .nexts button { width: 100%; text-align: left; background: transparent; border: 0; border-bottom: 1px solid #2a2a2a; border-radius: 0; padding: 12px 4px; display: flex; justify-content: space-between; }
+    .folder { color: #fde68a; font-weight: 600; }
+    .path-prefix { color: inherit; }
+    .icon-back { transform: scaleX(-1); transform-origin: center; }
+    @media (max-width: 720px) {
+      .hub-cards, .split { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
-  <h1>Reviewable decision candidates</h1>
-  <p class="sub" id="subtitle">Shadow graph — evidence, not decisions.</p>
-  <div class="toolbar">
-    <button type="button" id="refresh" class="ghost">Refresh queue</button>
-  </div>
-  <p id="banner" class="empty" hidden></p>
-  <div id="board"><p class="empty">Waiting for queue…</p></div>
-  <footer>Promote executes human judgment collected here — it does not approve confidence.</footer>
+  <!-- BEARING:ICONS -->
+  <header class="top">
+    <div>
+      <h1>Decision Review</h1>
+      <p class="sub" id="subtitle">Human governance on agentic decisions.</p>
+    </div>
+    <button type="button" class="ghost" id="close-x" title="Back to hub" hidden>
+      <svg class="icon"><use href="#icon-close"/></svg>
+    </button>
+  </header>
+  <p id="banner" class="error hidden"></p>
+  <div id="view"></div>
   <script type="application/json" id="boot">{}</script>
   <script>
     var parentWin = window.parent;
     var nextId = 1;
     var pending = {};
-    var state = { candidates: [], enums: {}, workspace: "", openId: "", busy: false };
+    var state = {
+      view: "hub",
+      candidates: [],
+      enums: {},
+      workspace: "",
+      queuePage: 0,
+      selectedId: "",
+      evidenceTab: "evidence",
+      evidencePage: 0,
+      q: { impact: "Reliability", failure: "", tradeoffs: "" },
+      search: "",
+      filterFn: "",
+      filterConf: "",
+      sessionApproved: 0,
+      lastResult: null,
+      busy: false,
+      draft: {}
+    };
+    var PAGE = 3;
 
-    function post(msg) {
-      parentWin.postMessage(msg, "*");
-    }
-
+    function post(msg) { parentWin.postMessage(msg, "*"); }
     function tellSize() {
-      var h = Math.max(document.documentElement.scrollHeight || 0, document.body.scrollHeight || 0, 180);
+      var h = Math.max(
+        document.documentElement.scrollHeight || 0,
+        document.body.scrollHeight || 0,
+        420
+      );
       post({ jsonrpc: "2.0", method: "ui/notifications/size-changed", params: { height: h } });
     }
-
     function esc(value) {
       return String(value == null ? "" : value)
         .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
-
     function rpc(method, params) {
       return new Promise(function (resolve, reject) {
         var id = nextId++;
         var timer = setTimeout(function () {
           if (!pending[id]) return;
           delete pending[id];
-          reject({ message: "Host did not answer " + method + ". Use review_candidate in chat or bearing dispose." });
+          reject({ message: "Host did not answer " + method + "." });
         }, 20000);
         pending[id] = function (result, error) {
           clearTimeout(timer);
@@ -82,217 +153,411 @@
         post({ jsonrpc: "2.0", id: id, method: method, params: params || {} });
       });
     }
-
     function callTool(name, args) {
       return rpc("tools/call", { name: name, arguments: args || {} }).then(function (result) {
         if (result && result.isError) {
-          var text = ((result.content || [])[0] || {}).text || "tool error";
-          throw { message: text };
+          throw { message: ((result.content || [])[0] || {}).text || "tool error" };
         }
         return result;
       });
     }
-
-    function setBanner(kind, text) {
-      var el = document.getElementById("banner");
-      el.hidden = !text;
-      el.className = kind || "empty";
-      el.textContent = text || "";
+    function icon(id, cls) {
+      return '<svg class="icon ' + (cls || "") + '"><use href="#' + id + '"/></svg>';
+    }
+    function pillConf(c) {
+      var v = String(c || "").toUpperCase();
+      var cls = v === "LOW" ? "low" : v === "HIGH" ? "high" : "";
+      return '<span class="pill ' + cls + '">' + esc(v || "—") + "</span>";
+    }
+    function selected() {
+      for (var i = 0; i < state.candidates.length; i++) {
+        if (state.candidates[i].candidate_id === state.selectedId) return state.candidates[i];
+      }
+      return state.candidates[0] || null;
+    }
+    function filtered() {
+      return (state.candidates || []).filter(function (row) {
+        if (state.search) {
+          var blob = (row.candidate_id + " " + row.subject + " " + row.candidate_object).toLowerCase();
+          if (blob.indexOf(state.search.toLowerCase()) < 0) return false;
+        }
+        if (state.filterFn && row.candidate_eocr_function !== state.filterFn) return false;
+        if (state.filterConf && row.confidence !== state.filterConf) return false;
+        return true;
+      });
+    }
+    function pages(n, size) { return Math.max(1, Math.ceil(n / size)); }
+    function dots(page, total) {
+      var html = '<div class="dots">';
+      for (var i = 0; i < total; i++) html += "<i class=\"" + (i === page ? "on" : "") + "\"></i>";
+      return html + "</div>";
+    }
+    function pager(page, total, prev, next) {
+      return '<div class="pager"><button type="button" class="ghost" data-act="' + prev + '"' + (page <= 0 ? " disabled" : "") + ">" +
+        icon("icon-arrow-left") + " Previous</button>" + dots(page, total) +
+        '<button type="button" class="primary" data-act="' + next + '"' + (page >= total - 1 ? " disabled" : "") + ">Next " + icon("icon-arrow") + "</button></div>";
     }
 
-    function options(values, selected) {
-      return (values || []).map(function (value) {
-        return '<option value="' + esc(value) + '"' + (value === selected ? " selected" : "") + ">" + esc(value) + "</option>";
+    function homeRelativePath(raw) {
+      var path = String(raw || "").replace(/\\/g, "/");
+      if (!path) return "";
+      var unix = path.match(/^\/(?:Users|home)\/[^/]+\//);
+      if (unix) return "~/" + path.slice(unix[0].length);
+      var win = path.match(/^[A-Za-z]:\/Users\/[^/]+\//i);
+      if (win) return "~/" + path.slice(win[0].length);
+      return path;
+    }
+
+    function workspaceSubtitle(path, count) {
+      var display = homeRelativePath(path) || "workspace";
+      var parts = display.split("/");
+      var name = parts.pop() || display;
+      var prefix = parts.length ? parts.join("/") + "/" : "";
+      return '<span class="path-prefix">' + esc(prefix) + '</span><span class="folder">' +
+        esc(name) + "</span> · " + count + " surfaced";
+    }
+
+    function viewHub() {
+      var remaining = state.candidates.length;
+      var approved = state.sessionApproved;
+      var reviewed = approved;
+      var total = remaining + reviewed || 1;
+      var pct = Math.round((reviewed / total) * 100);
+      var snap = state.candidates.slice(0, 4).map(function (row) {
+        return '<div class="qrow">' + icon("icon-file") + "<code>" + esc(row.candidate_id) + "</code>" +
+          pillConf(row.confidence) + '<span class="pill muted">' + esc(row.candidate_eocr_function || "") +
+          "</span><span style=\"margin-left:auto;color:#6f6f6f\">" + esc(row.lifecycle_state || "") + "</span></div>";
       }).join("");
+      return '<div class="hub-cards">' +
+        '<article class="stat"><div><div class="k">Shadow Candidates</div><div class="n">' + remaining +
+        '</div><div class="k">Requires review</div><div class="bar orange"><i style="width:' + Math.min(100, remaining * 12) + '%"></i></div></div>' +
+        icon("icon-file") + "</article>" +
+        '<article class="stat"><div><div class="k">Newly Approved</div><div class="n">' + approved +
+        '</div><div class="k">This session</div><div class="bar green"><i style="width:' + Math.min(100, approved * 20 + 10) + '%"></i></div></div>' +
+        icon("icon-check-circle") + "</article></div>" +
+        '<div class="section"><div class="spread"><strong>Review Progress</strong><span class="hint">Today</span></div>' +
+        '<div class="bar" style="height:10px;margin:12px 0"><i style="width:' + pct + '%"></i></div>' +
+        '<div class="spread hint"><span>' + reviewed + " / " + (remaining + reviewed) + " decisions reviewed</span><span>" + pct + "%</span></div></div>" +
+        '<div class="section"><strong>Queue Snapshot</strong>' + (snap || "<p class=\"hint\">No reviewable candidates.</p>") + "</div>" +
+        '<div class="spread"><button type="button" class="primary" data-act="queue">View Review Queue ' + icon("icon-arrow") +
+        '</button><span class="hint">' + icon("icon-refresh") + " Refresh from tools/call</span></div>";
     }
 
-    function formHtml(row) {
+    function viewQueue() {
+      var rows = filtered();
+      var totalPages = pages(rows.length, PAGE);
+      if (state.queuePage >= totalPages) state.queuePage = totalPages - 1;
+      var slice = rows.slice(state.queuePage * PAGE, state.queuePage * PAGE + PAGE);
+      var cards = slice.map(function (row) {
+        var sel = row.candidate_id === state.selectedId ? " sel" : "";
+        return '<article class="card' + sel + '" data-id="' + esc(row.candidate_id) + '">' +
+          '<div class="spread"><code>' + esc(row.candidate_id) + "</code><span>" + pillConf(row.confidence) +
+          ' <span class="pill muted">' + esc(row.candidate_eocr_function || "") + "</span></span></div>" +
+          "<p>" + esc(row.candidate_object || row.subject || "") + "</p>" +
+          '<div class="meta"><span>' + esc(row.lifecycle_state || "") + "</span><span>" + icon("icon-clock") +
+          " reviewable</span><span>" + icon("icon-file") + " " + esc(row.subject || "") + "</span></div></article>";
+      }).join("") || "<p class=\"hint\">No matching candidates.</p>";
+      var fns = ["", "Entry", "Operations", "Contract", "Rationale"];
+      var confs = ["", "HIGH", "MEDIUM", "LOW"];
+      return '<div class="row" style="margin-bottom:12px"><div class="search">' + icon("icon-search") +
+        '<input id="qsearch" placeholder="Search candidates..." value="' + esc(state.search) + '"></div>' +
+        '<select id="qfn">' + fns.map(function (v) {
+          return "<option" + (state.filterFn === v ? " selected" : "") + ">" + (v || "All Functions") + "</option>";
+        }).join("") + "</select>" +
+        '<select id="qconf">' + confs.map(function (v) {
+          return "<option" + (state.filterConf === v ? " selected" : "") + ">" + (v || "All Confidence") + "</option>";
+        }).join("") + "</select></div>" + cards +
+        pager(state.queuePage, totalPages, "qprev", "qnext") +
+        '<div class="spread hint"><span>Showing ' + (rows.length ? (state.queuePage * PAGE + 1) : 0) + " to " +
+        Math.min(rows.length, state.queuePage * PAGE + PAGE) + " of " + rows.length +
+        '</span><button type="button" class="ghost" data-act="refresh">' + icon("icon-refresh") + "</button></div>";
+    }
+
+    function classifyEvidence(row) {
+      var ev = row.evidence || [];
+      var comments = ev.filter(function (e) { return /comment/i.test(e.evidence_source || ""); });
+      var adrs = ev.filter(function (e) { return /adr|decision/i.test(e.evidence_source || ""); });
+      return { evidence: ev, comments: comments, adrs: adrs };
+    }
+
+    function viewEvidence() {
+      var row = selected();
+      if (!row) return "<p class=\"hint\">Select a candidate first.</p>";
+      var groups = classifyEvidence(row);
+      var tab = state.evidenceTab;
+      var list = groups[tab] || groups.evidence;
+      var items = list.map(function (item) {
+        return '<p class="ev">[' + esc(item.evidence_source) + "] " + esc(item.evidence_excerpt) + "</p>";
+      }).join("") || "<p class=\"hint\">None in this tab.</p>";
+      return '<div class="section"><div class="spread"><code>' + esc(row.candidate_id) + "</code><span>" +
+        pillConf(row.confidence) + ' <span class="pill muted">' + esc(row.candidate_eocr_function) + "</span></span></div>" +
+        '<p class="hint">' + esc(row.subject || "") + "</p><p>" + esc(row.candidate_object || "") + "</p>" +
+        '<div class="tabs">' +
+        '<button type="button" class="' + (tab === "evidence" ? "on" : "") + '" data-act="tab-evidence">Evidence (' + groups.evidence.length + ")</button>" +
+        '<button type="button" class="' + (tab === "comments" ? "on" : "") + '" data-act="tab-comments">Code Comments (' + groups.comments.length + ")</button>" +
+        '<button type="button" class="' + (tab === "adrs" ? "on" : "") + '" data-act="tab-adrs">Related ADRs (' + groups.adrs.length + ")</button>" +
+        "</div>" + items + "</div>" +
+        '<div class="actions"><button type="button" class="ghost" data-act="queue">' + icon("icon-arrow-left") +
+        " Back to queue</button><button type=\"button\" class=\"primary\" data-act=\"edit-start\">" +
+        icon("icon-edit") + " Edit this candidate " + icon("icon-arrow") + "</button></div>";
+    }
+
+    function viewQuestions() {
+      var row = selected() || {};
       var d = row.defaults || {};
-      var enums = state.enums || {};
-      var actions = enums.actions || ["Promote", "Edit", "Split", "Reject", "Defer"];
-      var eocr = enums.eocr_functions || ["Entry", "Operations", "Contract", "Rationale"];
-      var life = enums.lifecycle_states || ["Proposed", "Accepted", "Deprecated", "Superseded"];
-      return (
-        '<form data-id="' + esc(row.candidate_id) + '">' +
-          '<label>Disposition<select name="action">' + options(actions, "Defer") + "</select></label>" +
-          '<p class="note promote-only">Promote requires your judgment: still valid, EOCR, authored lifecycle, and scope. Confidence is not authority.</p>' +
-          '<label class="row promote-only"><input type="checkbox" name="still_valid"> Still valid organizational intent today</label>' +
-          '<label class="promote-only">EOCR function<select name="eocr_function">' + options(eocr, d.eocr_function) + "</select></label>" +
-          '<label class="promote-only">Authored lifecycle<select name="lifecycle_state">' + options(life, d.lifecycle_state || "Accepted") + "</select></label>" +
-          '<label class="promote-only">Scope<input name="scope" value="' + esc(d.scope || "") + '" placeholder="globs this decision governs"></label>' +
-          '<label class="promote-only">Title<input name="title" value="' + esc(d.title || "") + '"></label>' +
-          '<label class="promote-only">Trigger<textarea name="trigger">' + esc(d.trigger || "") + "</textarea></label>" +
-          '<label class="promote-only">Suggested anchor files<input name="anchor_targets" placeholder="comma-separated paths"></label>' +
-          '<label class="edit-only">Revised candidate object<textarea name="edit_object">' + esc(row.candidate_object || "") + "</textarea></label>" +
-          '<label class="reject-only">Rejection reason<textarea name="rejection_reason"></textarea></label>' +
-          '<label class="defer-only">Defer note<textarea name="defer_note"></textarea></label>' +
-          '<label class="split-only">Split notes<textarea name="split_brief" placeholder="How evidence should become multiple decisions"></textarea></label>' +
-          '<div class="actions">' +
-            '<button type="submit">Submit disposition</button>' +
-            '<button type="button" class="ghost cancel">Cancel</button>' +
-          "</div>" +
-          '<p class="error form-error" hidden></p>' +
-        "</form>"
-      );
+      if (!state.q.failure) state.q.failure = d.trigger || "";
+      return '<div class="section"><div class="spread"><strong>Clarifying Questions</strong><span class="pill muted">AI-suggested</span></div>' +
+        '<label>What is the intended impact of this decision?<select id="q-impact">' +
+        ["Reliability", "Security", "Performance", "DX"].map(function (v) {
+          return "<option" + (state.q.impact === v ? " selected" : "") + ">" + v + "</option>";
+        }).join("") + '</select><span class="hint">e.g., Reliability, Security, Performance, DX</span></label>' +
+        '<label>What failure mode does this decision prevent?<input id="q-fail" value="' + esc(state.q.failure) +
+        '"><span class="hint">Maps to the Promote trigger field.</span></label>' +
+        '<label>What are the key trade-offs?<input id="q-trade" value="' + esc(state.q.tradeoffs) +
+        '"><span class="hint">Folded into the candidate object on Edit, or trigger on Promote.</span></label></div>' +
+        '<div class="actions"><button type="button" class="ghost" data-act="back-ev">' + icon("icon-arrow-left") +
+        " Back</button><button type=\"button\" class=\"ghost\" data-act=\"draft\">" + icon("icon-save") +
+        " Save Draft</button><button type=\"button\" class=\"primary\" data-act=\"go-disp\">Continue " +
+        icon("icon-arrow") + "</button></div>";
     }
 
-    function cardHtml(row, open) {
-      var evidence = (row.evidence || []).map(function (item) {
-        return "<li>[" + esc(item.evidence_source) + "] " + esc(item.evidence_excerpt) + "</li>";
+    function viewDisposition() {
+      var row = selected() || {};
+      var d = row.defaults || {};
+      var draft = state.draft;
+      var action = draft.action || "Promote";
+      var eocr = (state.enums.eocr_functions || ["Entry", "Operations", "Contract", "Rationale"]);
+      var life = (state.enums.lifecycle_states || ["Proposed", "Accepted", "Deprecated", "Superseded"]);
+      var radios = [
+        ["Promote", "Accept", "Endorsed for inclusion in ADRs"],
+        ["Defer", "Defer", "Revisit after more information"],
+        ["Reject", "Reject", "Should not be promoted or re-surfaced as-is"],
+        ["Edit", "Edit", "Revise the candidate object"],
+        ["Split", "Split", "Evidence should become multiple decisions"]
+      ].map(function (item) {
+        var on = action === item[0] ? " on" : "";
+        return '<label class="radio' + on + '"><input type="radio" name="action" value="' + item[0] + '"' +
+          (action === item[0] ? " checked" : "") + "><div><strong>" + item[1] + "</strong><small>" + item[2] + "</small></div></label>";
       }).join("");
-      var conflict = row.conflicts_with_accepted
-        ? '<span class="pill warn">conflicts</span>'
-        : "";
-      return (
-        '<article class="card' + (open ? " open" : "") + '" data-id="' + esc(row.candidate_id) + '">' +
-          "<header><code>" + esc(row.candidate_id) + "</code>" +
-          '<span class="pill">' + esc(row.confidence || "—") + "</span>" +
-          '<span class="pill muted">' + esc(row.candidate_eocr_function || "—") + "</span>" +
-          conflict + "</header>" +
-          '<p class="subject">' + esc(row.subject) + "</p>" +
-          '<p class="object">' + esc(row.candidate_object) + "</p>" +
-          (evidence ? '<ul class="evidence">' + evidence + "</ul>" : "") +
-          (open ? formHtml(row) : '<div class="actions" style="margin-top:10px"><button type="button" class="review">Review</button></div>') +
-        "</article>"
-      );
+      return '<div class="section split"><div><strong>Select Disposition</strong>' + radios + "</div><div>" +
+        "<strong>Additional Details</strong>" +
+        '<label>EOCR Function<select id="d-eocr">' + eocr.map(function (v) {
+          return "<option" + ((draft.eocr_function || d.eocr_function) === v ? " selected" : "") + ">" + v + "</option>";
+        }).join("") + "</select></label>" +
+        '<label>Still valid organizational intent?<select id="d-valid"><option value="yes"' +
+        (draft.still_valid !== false ? " selected" : "") + '>Yes</option><option value="no">No</option></select>' +
+        '<span class="hint">Required for Promote.</span></label>' +
+        '<label>Authored lifecycle<select id="d-life">' + life.map(function (v) {
+          return "<option" + ((draft.lifecycle_state || d.lifecycle_state || "Accepted") === v ? " selected" : "") + ">" + v + "</option>";
+        }).join("") + "</select><span class=\"hint\">Deprecated / Superseded are lifecycle on Promote, not separate actions.</span></label>" +
+        '<label>Scope<input id="d-scope" value="' + esc(draft.scope || d.scope || "") + '"></label>' +
+        '<label>Title (editable)<textarea id="d-title">' + esc(draft.title || d.title || row.candidate_object || "") + "</textarea></label>" +
+        '<label>Trigger<textarea id="d-trigger">' + esc(draft.trigger || state.q.failure || d.trigger || "") + "</textarea></label>" +
+        '<label class="' + (action === "Edit" ? "" : "hidden") + '" id="edit-wrap">Revised candidate object<textarea id="d-edit">' +
+        esc(draft.edit_object || row.candidate_object || "") + "</textarea></label>" +
+        '<label class="' + (action === "Reject" ? "" : "hidden") + '" id="rej-wrap">Rejection reason<textarea id="d-rej">' +
+        esc(draft.rejection_reason || "") + "</textarea></label>" +
+        '<label class="' + (action === "Defer" ? "" : "hidden") + '" id="def-wrap">Defer note<textarea id="d-def">' +
+        esc(draft.defer_note || "") + "</textarea></label>" +
+        '<label class="' + (action === "Split" ? "" : "hidden") + '" id="spl-wrap">Split notes<textarea id="d-spl">' +
+        esc(draft.split_brief || "") + "</textarea></label>" +
+        "</div></div>" +
+        '<div class="actions"><button type="button" class="ghost" data-act="back-q">' + icon("icon-arrow-left") +
+        " Back</button><label class=\"row\" style=\"margin:0\"><input type=\"checkbox\" id=\"d-adr\" checked> Create ADR record</label>" +
+        '<button type="button" class="primary" data-act="submit">Submit Disposition</button></div>';
     }
 
-    function toggleFields(form) {
-      var action = (form.querySelector('[name="action"]') || {}).value || "Defer";
-      form.querySelectorAll(".promote-only").forEach(function (el) { el.hidden = action !== "Promote"; });
-      form.querySelectorAll(".edit-only").forEach(function (el) { el.hidden = action !== "Edit"; });
-      form.querySelectorAll(".reject-only").forEach(function (el) { el.hidden = action !== "Reject"; });
-      form.querySelectorAll(".defer-only").forEach(function (el) { el.hidden = action !== "Defer"; });
-      form.querySelectorAll(".split-only").forEach(function (el) { el.hidden = action !== "Split"; });
+    function viewDone() {
+      var res = state.lastResult || {};
+      var remaining = state.candidates.length;
+      var ring = remaining + state.sessionApproved;
+      var pct = ring ? Math.round((state.sessionApproved / ring) * 100) : 0;
+      return '<div class="section"><strong>Decision record updated</strong><p class="hint">' +
+        esc(res.message || "Disposition recorded.") + "</p></div>" +
+        '<div class="hub-cards" style="grid-template-columns:1fr 1fr 1fr">' +
+        '<article class="stat"><div><div class="k">Shadow Candidates</div><div class="n">' + remaining + '</div><div class="k">Remaining</div></div></article>' +
+        '<article class="stat"><div><div class="k">Newly Approved</div><div class="n">' + state.sessionApproved + '</div><div class="k">This session</div></div></article>' +
+        '<article class="stat"><div><div class="k">Review Progress</div><div class="n">' + state.sessionApproved + " / " + ring +
+        '</div><div class="k">' + pct + "%</div></div>" + icon("icon-ring") + "</article></div>" +
+        '<div class="section nexts"><strong>What\'s Next?</strong>' +
+        '<button type="button" data-act="queue">' + icon("icon-file") + " Review the next candidate in queue " + icon("icon-chevron") + "</button>" +
+        '<button type="button" data-act="hub">' + icon("icon-records") + " View all decision records " + icon("icon-chevron") + "</button>" +
+        '<button type="button" data-act="hub">' + icon("icon-spark") + " Start a new decision interview " + icon("icon-chevron") + "</button></div>" +
+        '<button type="button" class="ghost" style="width:100%" data-act="queue">Back to Queue</button>';
+    }
+
+    function paint() {
+      document.getElementById("close-x").hidden = state.view === "hub";
+      var sub = document.getElementById("subtitle");
+      if (state.view === "hub") {
+        sub.textContent = "Human governance on agentic decisions.";
+      } else {
+        sub.innerHTML = workspaceSubtitle(state.workspace, state.candidates.length);
+      }
+      var html = "";
+      if (state.view === "hub") html = viewHub();
+      else if (state.view === "queue") html = viewQueue();
+      else if (state.view === "evidence") html = viewEvidence();
+      else if (state.view === "questions") html = viewQuestions();
+      else if (state.view === "disposition") html = viewDisposition();
+      else html = viewDone();
+      document.getElementById("view").innerHTML = html;
       tellSize();
     }
 
-    function render(payload) {
+    function ingest(payload) {
       var data = payload || {};
+      if (data.params && (data.params.structuredContent || data.params.candidates)) {
+        data = data.params;
+      }
       if (data.structuredContent) data = data.structuredContent;
+      else if (data.result && data.result.structuredContent) data = data.result.structuredContent;
       if (data.candidates) state.candidates = data.candidates;
       if (data.enums) state.enums = data.enums;
       if (data.workspace) state.workspace = data.workspace;
-      if (data.status === "needs_disposition" && data.candidate_id) state.openId = data.candidate_id;
-      if (data.status === "disposed") {
-        state.openId = "";
-        setBanner("ok", (data.result && data.result.message) || "Disposition recorded.");
+      if (data.status === "needs_disposition" && data.candidate_id) {
+        state.selectedId = data.candidate_id;
+        state.view = "evidence";
+      } else if (data.status === "disposed") {
+        state.lastResult = data.result || {};
+        if ((data.result || {}).action === "Promote") state.sessionApproved += 1;
+        state.view = "done";
+      } else if (state.view === "hub" && (state.candidates || []).length) {
+        state.view = "queue";
       }
-      var rows = state.candidates || [];
-      document.getElementById("subtitle").textContent =
-        "Shadow graph — evidence, not decisions. " + (state.workspace || "workspace unset") + " · " + rows.length + " surfaced";
-      var board = document.getElementById("board");
-      if (data.error) {
-        board.innerHTML = '<p class="error">' + esc(data.error) + "</p>";
-        tellSize();
-        return;
-      }
-      if (!rows.length) {
-        board.innerHTML = '<p class="empty">No reviewable candidates.</p>';
-        tellSize();
-        return;
-      }
-      board.innerHTML = rows.map(function (row) {
-        return cardHtml(row, row.candidate_id === state.openId);
-      }).join("");
-      board.querySelectorAll("form").forEach(toggleFields);
-      tellSize();
+      paint();
     }
 
-    function val(form, name) {
-      var el = form.querySelector('[name="' + name + '"]');
-      if (!el) return "";
-      if (el.type === "checkbox") return el.checked;
-      return el.value;
+    function collectDraft() {
+      var actionEl = document.querySelector('input[name="action"]:checked');
+      state.draft.action = actionEl ? actionEl.value : "Promote";
+      var ge = function (id) { var el = document.getElementById(id); return el ? el.value : ""; };
+      state.draft.eocr_function = ge("d-eocr");
+      state.draft.still_valid = ge("d-valid") === "yes";
+      state.draft.lifecycle_state = ge("d-life");
+      state.draft.scope = ge("d-scope");
+      state.draft.title = ge("d-title");
+      state.draft.trigger = ge("d-trigger");
+      state.draft.edit_object = ge("d-edit");
+      state.draft.rejection_reason = ge("d-rej");
+      state.draft.defer_note = ge("d-def");
+      state.draft.split_brief = ge("d-spl");
+      var fail = document.getElementById("q-fail");
+      var trade = document.getElementById("q-trade");
+      var impact = document.getElementById("q-impact");
+      if (fail) state.q.failure = fail.value;
+      if (trade) state.q.tradeoffs = trade.value;
+      if (impact) state.q.impact = impact.value;
     }
 
-    function dispositionFromForm(form) {
-      var action = val(form, "action");
+    function dispositionFromDraft() {
+      var d = state.draft;
+      var action = d.action || "Promote";
       var out = { action: action };
       if (action === "Promote") {
-        out.still_valid = !!val(form, "still_valid");
-        out.eocr_function = val(form, "eocr_function");
-        out.lifecycle_state = val(form, "lifecycle_state");
-        out.scope = val(form, "scope");
-        out.title = val(form, "title");
-        out.trigger = val(form, "trigger");
-        out.anchor_targets = val(form, "anchor_targets");
-        if (!out.still_valid) throw new Error("Promote requires checking still valid today.");
+        out.still_valid = !!d.still_valid;
+        out.eocr_function = d.eocr_function;
+        out.lifecycle_state = d.lifecycle_state;
+        out.scope = d.scope;
+        out.title = d.title;
+        var trigger = d.trigger || state.q.failure || "";
+        if (state.q.tradeoffs) trigger = (trigger ? trigger + " Trade-offs: " : "") + state.q.tradeoffs;
+        out.trigger = trigger;
+        if (!out.still_valid) throw new Error("Promote requires affirming still valid today.");
         if (!String(out.scope || "").trim()) throw new Error("Promote requires a non-empty scope.");
       } else if (action === "Edit") {
-        out.edit_object = val(form, "edit_object");
-        out.eocr_function = val(form, "eocr_function");
+        out.edit_object = d.edit_object;
+        out.eocr_function = d.eocr_function;
       } else if (action === "Reject") {
-        out.rejection_reason = val(form, "rejection_reason");
+        out.rejection_reason = d.rejection_reason;
       } else if (action === "Defer") {
-        out.defer_note = val(form, "defer_note");
+        out.defer_note = d.defer_note;
       } else if (action === "Split") {
-        out.split_brief = val(form, "split_brief");
+        out.split_brief = d.split_brief;
       }
       return out;
     }
 
-    document.getElementById("board").addEventListener("click", function (event) {
-      if (event.target.closest(".review")) {
-        state.openId = event.target.closest(".card").getAttribute("data-id");
-        render({ candidates: state.candidates, enums: state.enums, workspace: state.workspace });
+    document.getElementById("view").addEventListener("click", function (event) {
+      var act = event.target.closest("[data-act]");
+      var card = event.target.closest(".card");
+      if (card && state.view === "queue") {
+        state.selectedId = card.getAttribute("data-id");
+        state.view = "evidence";
+        state.evidencePage = 0;
+        paint();
         return;
       }
-      if (event.target.closest(".cancel")) {
-        state.openId = "";
-        render({ candidates: state.candidates, enums: state.enums, workspace: state.workspace });
-      }
-    });
-
-    document.getElementById("board").addEventListener("change", function (event) {
-      if (event.target && event.target.name === "action") toggleFields(event.target.form);
-    });
-
-    document.getElementById("board").addEventListener("submit", function (event) {
-      event.preventDefault();
-      var form = event.target;
-      var err = form.querySelector(".form-error");
-      err.hidden = true;
-      var candidateId = form.getAttribute("data-id");
-      var disposition;
-      try {
-        disposition = dispositionFromForm(form);
-      } catch (ex) {
-        err.hidden = false;
-        err.textContent = ex.message || String(ex);
-        tellSize();
-        return;
-      }
-      if (state.busy) return;
-      state.busy = true;
-      form.querySelector('[type="submit"]').disabled = true;
-      setBanner("busy", "Submitting " + disposition.action + "…");
-      callTool("review_candidate", { candidate_id: candidateId, disposition: disposition })
-        .then(function (result) {
-          state.busy = false;
-          render(result);
-        })
-        .catch(function (error) {
-          state.busy = false;
-          form.querySelector('[type="submit"]').disabled = false;
-          err.hidden = false;
-          err.textContent = (error && error.message) || "Disposition failed.";
-          setBanner("error", err.textContent);
-          tellSize();
+      if (!act) return;
+      var name = act.getAttribute("data-act");
+      if (name === "queue") { state.view = "queue"; paint(); }
+      if (name === "hub") { state.view = "hub"; paint(); }
+      if (name === "qprev") { state.queuePage = Math.max(0, state.queuePage - 1); paint(); }
+      if (name === "qnext") { state.queuePage += 1; paint(); }
+      if (name === "tab-evidence") { state.evidenceTab = "evidence"; paint(); }
+      if (name === "tab-comments") { state.evidenceTab = "comments"; paint(); }
+      if (name === "tab-adrs") { state.evidenceTab = "adrs"; paint(); }
+      if (name === "edit-start") { state.view = "questions"; paint(); }
+      if (name === "back-ev") { collectDraft(); state.view = "evidence"; paint(); }
+      if (name === "go-disp" || name === "draft") { collectDraft(); state.view = "disposition"; paint(); }
+      if (name === "back-q") { collectDraft(); state.view = "questions"; paint(); }
+      if (name === "refresh") {
+        callTool("list_reviewable", {}).then(ingest).catch(function (err) {
+          document.getElementById("banner").textContent = err.message || "Refresh failed";
+          document.getElementById("banner").classList.remove("hidden");
         });
+      }
+      if (name === "submit") {
+        collectDraft();
+        var banner = document.getElementById("banner");
+        try {
+          var disposition = dispositionFromDraft();
+        } catch (ex) {
+          banner.textContent = ex.message || String(ex);
+          banner.classList.remove("hidden");
+          tellSize();
+          return;
+        }
+        var row = selected();
+        if (!row || state.busy) return;
+        state.busy = true;
+        banner.classList.add("hidden");
+        callTool("review_candidate", { candidate_id: row.candidate_id, disposition: disposition })
+          .then(function (result) {
+            state.busy = false;
+            ingest(result);
+          })
+          .catch(function (error) {
+            state.busy = false;
+            banner.textContent = (error && error.message) || "Disposition failed.";
+            banner.classList.remove("hidden");
+            tellSize();
+          });
+      }
     });
-
-    document.getElementById("refresh").addEventListener("click", function () {
-      if (state.busy) return;
-      setBanner("busy", "Refreshing…");
-      callTool("list_reviewable", {}).then(function (result) {
-        setBanner("", "");
-        render(result);
-      }).catch(function (error) {
-        setBanner("error", (error && error.message) || "Refresh failed.");
-      });
+    document.getElementById("view").addEventListener("change", function (event) {
+      if (event.target && event.target.id === "qfn") {
+        state.filterFn = event.target.value === "All Functions" ? "" : event.target.value;
+        state.queuePage = 0; paint();
+      }
+      if (event.target && event.target.id === "qconf") {
+        state.filterConf = event.target.value === "All Confidence" ? "" : event.target.value;
+        state.queuePage = 0; paint();
+      }
+      if (event.target && event.target.name === "action") {
+        collectDraft();
+        paint();
+      }
     });
-
+    document.getElementById("view").addEventListener("input", function (event) {
+      if (event.target && event.target.id === "qsearch") {
+        state.search = event.target.value;
+      }
+    });
+    document.getElementById("close-x").addEventListener("click", function () {
+      state.view = "hub";
+      paint();
+    });
     window.addEventListener("message", function (event) {
       var data = event.data;
       if (!data || data.jsonrpc !== "2.0") return;
@@ -302,13 +567,13 @@
         cb(data.result || {}, data.error || null);
         return;
       }
-      if (data.method === "ui/notifications/tool-result") render(data.params || {});
+      if (data.method === "ui/notifications/tool-result") ingest(data.params || {});
     });
-
     try {
       var boot = JSON.parse(document.getElementById("boot").textContent || "{}");
-      if (boot.candidates || boot.candidate_id) render(boot);
-    } catch (e) {}
+      if (boot.candidates || boot.candidate_id) ingest(boot);
+      else paint();
+    } catch (e) { paint(); }
     post({ jsonrpc: "2.0", method: "ui/notifications/initialized" });
     tellSize();
   </script>

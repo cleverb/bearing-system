@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Decision Recovery run status",
+  "type": "object",
+  "required": ["run_id", "status", "stage", "stage_index", "stage_count"],
+  "properties": {
+    "run_id": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["running", "completed", "failed"] },
+    "stage": { "type": "string", "minLength": 1 },
+    "stage_index": { "type": "integer", "minimum": 1 },
+    "stage_count": { "type": "integer", "minimum": 1 },
+    "stage_label": { "type": "string" },
+    "started_at": { "type": "string" },
+    "updated_at": { "type": "string" },
+    "elapsed_seconds": { "type": "number", "minimum": 0 },
+    "message": { "type": "string" },
+    "eta": {
+      "type": "object",
+      "properties": {
+        "remaining_seconds_low": { "type": "integer", "minimum": 0 },
+        "remaining_seconds_high": { "type": "integer", "minimum": 0 },
+        "confidence": { "enum": ["low", "medium", "high"] },
+        "display": { "type": "string" }
+      }
+    },
+    "scope": { "type": "object" },
+    "current": { "type": "object" },
+    "findings": { "type": "object" },
+    "budget": { "type": "object" },
+    "rates": { "type": "object" }
+  }
+}

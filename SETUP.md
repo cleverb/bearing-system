@@ -161,9 +161,11 @@ Open the **target** repository in Cursor (or Claude Code / Codex).
 - Asking the agent to load `docs/decisions/index.json` (or your configured index)
   should surface Accepted Contracts for governed files.
 - To clear the shadow review queue in Cursor, use the **BEARING** MCP tools
-  (`list_reviewable`, `review_candidate`) or run `bearing review` /
+  (`open_recovery`, `list_reviewable`, `review_candidate`) or run `bearing review` /
   `bearing dispose`. Promote requires human judgment fields (scope, present
-  validity, lifecycle, EOCR); confidence alone never promotes.
+  validity, lifecycle, EOCR); confidence alone never promotes. Recovery progress
+  is written with `bearing recovery-status` (or `report_recovery` checkpoints)
+  into `.bearing/runs/recovery/`; the tally App polls that state.
 
 ### Cursor MCP
 
@@ -195,7 +197,7 @@ cp plugin/src/bearing/data/templates/mcp.json.example /path/to/repo/.cursor/mcp.
 `${workspaceFolder}` is only for that **project** `.cursor/mcp.json` path. Do <!-- bearing:ignore-paths: optional project MCP override, not this checkout -->
 not expect it inside the plugin-bundled MCP config.
 
-Tools: `list_reviewable`, `review_candidate`.
+Tools: `open_recovery`, `report_recovery`, `list_reviewable`, `review_candidate`.
 
 Cursor is **session-advisory**: the workspace-open hook injects context when the
 workspace opens. Do not treat that as proof the agent knew a file path *before*
