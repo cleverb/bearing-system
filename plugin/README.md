@@ -10,6 +10,7 @@ plugin/
 ├── .cursor-plugin/          # generated — Cursor manifest
 ├── .claude-plugin/          # generated — Claude Code manifest
 ├── .codex-plugin/           # generated — Codex manifest
+├── .mcp.json                # generated — Codex MCP adapter
 ├── hooks/hooks.json         # generated — Claude PreToolUse injection
 ├── hooks/cursor.json        # generated — Cursor workspaceOpen projection
 ├── hooks/context_injection.py

@@ -62,7 +62,7 @@ for required in \
   "bin/bearing-mcp" \
   "src/bearing/cli.py" \
   "src/bearing/data/config.default.json" \
-  "src/bearing/data/config.schema.json" \
+  "src/bearing/data/templates/schemas/config.schema.json" \
   "src/bearing/data/pricing.default.json" \
   "skills/decision-recovery/SKILL.md" \
   "skills/decision-recovery/schemas/candidate.schema.json"

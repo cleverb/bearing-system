@@ -2,6 +2,8 @@
 
 @see ADR-0008 — judgment belongs to Skills; this file is mechanical. Recovery
 has no extractor binary.
+@see ADR-0014 — `recovery-status` writes `.bearing/runs/recovery/` telemetry.
+@see ADR-0015 — `package --local` also copies to the Codex personal marketplace.
 @see ADR-0005 — standard library argparse, no third-party CLI framework.
 @see ADR-0009 — assessment is informational; this file must not fail the process.
 
@@ -236,6 +238,16 @@ def cmd_preflight(args: argparse.Namespace) -> int:
     return code
 
 
+def cmd_ui_preview(args: argparse.Namespace) -> int:
+    """Serve a local mock MCP host for Recovery and Reviewable Apps.
+
+    Does not require init. Does not write workspace config (ADR-0007).
+    """
+    from .ui_preview import cmd_ui_preview as run
+
+    return run(args)
+
+
 def cmd_assessment(args: argparse.Namespace) -> int:
     """Scorecard. Always exits 0 — unreadiness is not a merge gate.
 
@@ -451,13 +463,17 @@ def _migrate_projection_locks(workspace, repo_lock_path, check, lock_path_fn, re
 
 
 def cmd_package(args: argparse.Namespace) -> int:
-    """Maintainer command: regenerate every client manifest from `plugin.json`."""
+    """Maintainer command: regenerate every client manifest from `plugin.json`.
+
+    @see ADR-0013 — Cursor `--local` overlays mcp.local.json.
+    @see ADR-0015 — the same flag copies to the Codex personal marketplace.
+    """
     from .artifacts import apply as apply_artifacts
     from .manifests import all_package_artifacts, version_consistency_errors
-    from .paths import find_workspace_root, plugin_root
+    from .paths import find_workspace_root, maintainer_plugin_root
 
     workspace = find_workspace_root(getattr(args, "workspace", None))
-    root = plugin_root()
+    root = maintainer_plugin_root(workspace)
 
     problems = version_consistency_errors(root, __version__)
     if problems:
@@ -465,9 +481,13 @@ def cmd_package(args: argparse.Namespace) -> int:
 
     artifacts, skips = all_package_artifacts(workspace, root)
     check_mode = bool(args.check or getattr(args, "release_check", False))
+    if getattr(args, "local", False) and check_mode:
+        raise BearingError("package --local cannot be combined with --check")
     outcome = apply_artifacts(artifacts, workspace, check=check_mode)
 
     suffix = "  --release-check" if getattr(args, "release_check", False) else "  --check" if args.check else ""
+    if getattr(args, "local", False):
+        suffix += "  --local"
     _heading("bearing package%s" % suffix)
     for path in outcome.written:
         print(status_line("ok", "wrote", path))
@@ -497,6 +517,32 @@ def cmd_package(args: argparse.Namespace) -> int:
             print()
             return EXIT_FAIL
         print(status_line("ok", "Tier 4 client conformance", "all supported runtimes qualified"))
+    if getattr(args, "local", False):
+        from .manifests import (
+            default_codex_local_plugin_dest,
+            default_codex_marketplace_path,
+            default_local_plugin_dest,
+            sync_codex_local_plugin,
+            sync_local_plugin,
+            upsert_codex_personal_marketplace,
+        )
+
+        dest = getattr(args, "dest", None) or default_local_plugin_dest()
+        synced = sync_local_plugin(root, dest)
+        print(status_line("ok", "local plugin", synced))
+        codex_dest = getattr(args, "codex_dest", None) or default_codex_local_plugin_dest()
+        codex_synced = sync_codex_local_plugin(root, codex_dest)
+        print(status_line("ok", "codex plugin", codex_synced))
+        marketplace = (
+            getattr(args, "codex_marketplace", None) or default_codex_marketplace_path()
+        )
+        catalog = upsert_codex_personal_marketplace(marketplace, codex_dest)
+        print(status_line("ok", "codex marketplace", catalog))
+        print(
+            "Restart Codex and install bearing from your personal marketplace once; "
+            "confirm with `codex plugin list --json`. Re-run `bearing package --local` "
+            "and restart Codex after plugin/ edits."
+        )
     print(paint("OK: %d manifest artifact(s) current." % len(artifacts), "ok"))
     print()
     return EXIT_OK
@@ -889,13 +935,13 @@ def cmd_schema(args: argparse.Namespace) -> int:
     resolve outside the plugin root. Resolving from the root works whether BEARING
     is installed, vendored, or run from a checkout.
     """
-    from .paths import data_dir, plugin_root
+    from .paths import plugin_root, schema_path
 
     if args.name == "config":
         # Config's schema lives with the CLI's packaged data rather than with a
         # skill, and its `$schema` URL is not resolvable offline, so an editor or
         # a CI step needs a real path.
-        path = os.path.join(data_dir(), "config.schema.json")
+        path = schema_path("config.schema.json")
     else:
         path = os.path.join(
             plugin_root(),
@@ -940,6 +986,37 @@ def cmd_observe(args: argparse.Namespace) -> int:
     config = _load(args)
     row = observe(config, args.set, args.case, args.observed)
     _emit(row, args.json)
+    return EXIT_OK
+
+
+def cmd_recovery_status(args: argparse.Namespace) -> int:
+    """Mechanical writer for recovery run-state. Not an extractor (ADR-0008)."""
+    from .recovery_run import (
+        complete_run,
+        fail_run,
+        parse_json_arg,
+        patch_run,
+        snapshot,
+        start_run,
+    )
+
+    config = _load(args)
+    action = args.recovery_action
+    patch = parse_json_arg(args.from_json) if args.from_json else None
+    event = parse_json_arg(args.event) if args.event else None
+    if action == "start":
+        data = start_run(config, patch)
+    elif action == "patch":
+        data = patch_run(config, patch, event)
+    elif action == "complete":
+        data = complete_run(config, args.reason or "Recovery completed")
+    elif action == "fail":
+        data = fail_run(config, args.reason or "Recovery failed")
+    else:
+        data = snapshot(config)
+        if not data.get("run_id"):
+            raise BearingError("no recovery run in .bearing/runs/recovery/")
+    _emit(data, True)
     return EXIT_OK
 
 
@@ -1199,6 +1276,30 @@ def build_parser() -> argparse.ArgumentParser:
         help="explicit plugin directory containing plugin.json",
     )
 
+    ui_preview = add(
+        "ui-preview",
+        "Serve a local mock host for Recovery and Reviewable MCP Apps (no init).",
+        cmd_ui_preview,
+    )
+    ui_preview.add_argument("--port", type=int, default=8765, help="listen port (default 8765)")
+    ui_preview.add_argument("--bind", default="127.0.0.1", help="bind address (default 127.0.0.1)")
+    ui_preview.add_argument("--open", action="store_true", help="open the default browser")
+    ui_preview.add_argument("--list", action="store_true", help="print catalog story ids and exit")
+    ui_preview.add_argument("--story", default=None, help="deep-link the host to this catalog id")
+    ui_preview.add_argument("--catalog", default=None, help="path to catalog.json")
+    ui_preview.add_argument("--fixtures", default=None, help="override fixtures directory")
+    ui_preview.add_argument(
+        "--html-root",
+        default=None,
+        help="directory containing App HTML/SVG (default: packaged data dir)",
+    )
+    ui_preview.add_argument(
+        "--sim-ms",
+        type=int,
+        default=None,
+        help="override recovery simulation interval for this session",
+    )
+
     assessment = add(
         "assessment",
         "Score agentic decision readiness (informational; always exits 0).",
@@ -1230,6 +1331,26 @@ def build_parser() -> argparse.ArgumentParser:
         "--release-check",
         action="store_true",
         help="also require current Tier 4 evidence for every supported runtime",
+    )
+    package.add_argument(
+        "--local",
+        action="store_true",
+        help="copy plugin/ to Cursor local and Codex personal plugin dirs",
+    )
+    package.add_argument(
+        "--dest",
+        default=None,
+        help="override Cursor dest for --local (default ~/.cursor/plugins/local/bearing-plugin)",
+    )
+    package.add_argument(
+        "--codex-dest",
+        default=None,
+        help="override Codex dest for --local (default ~/.codex/plugins/bearing)",
+    )
+    package.add_argument(
+        "--codex-marketplace",
+        default=None,
+        help="override Codex personal marketplace path (default ~/.agents/plugins/marketplace.json)",
     )
 
     index = add("index", "Regenerate the progressive-disclosure index.", cmd_index)
@@ -1289,6 +1410,32 @@ def build_parser() -> argparse.ArgumentParser:
     observe_cmd.add_argument("--case", required=True)
     observe_cmd.add_argument("--observed", required=True)
     observe_cmd.add_argument("--json", action="store_true")
+
+    recovery_status = add(
+        "recovery-status",
+        "Write or read Decision Recovery run telemetry under .bearing/runs/recovery/.",
+        cmd_recovery_status,
+    )
+    recovery_status.add_argument(
+        "recovery_action",
+        choices=("start", "patch", "complete", "fail", "show"),
+        help="start a run, merge a snapshot, mark complete/fail, or print current status",
+    )
+    recovery_status.add_argument(
+        "--from-json",
+        default=None,
+        help="JSON object, file path, or - for stdin (start/patch)",
+    )
+    recovery_status.add_argument(
+        "--event",
+        default=None,
+        help="JSON event object to append on patch",
+    )
+    recovery_status.add_argument(
+        "--reason",
+        default=None,
+        help="message for complete/fail",
+    )
 
     add("transcripts", "Print the resolved interview-transcript path.", cmd_transcripts)
 

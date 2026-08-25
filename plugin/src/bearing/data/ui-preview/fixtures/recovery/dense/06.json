@@ -1,0 +1,245 @@
+{
+  "run_id": "recovery-preview-dense",
+  "status": "running",
+  "stage": "write_persist",
+  "stage_index": 6,
+  "stage_count": 6,
+  "stage_label": "Write & Persist",
+  "started_at": "2026-08-23T21:00:00Z",
+  "updated_at": "2026-08-23T21:05:00Z",
+  "elapsed_seconds": 300,
+  "message": "",
+  "eta": {
+    "remaining_seconds_low": 0,
+    "remaining_seconds_high": 20,
+    "confidence": "medium",
+    "display": "1m remaining"
+  },
+  "scope": {
+    "locations_total": 32,
+    "locations_scanned": 28,
+    "files_indexed": 336,
+    "locations": [
+      {
+        "path": "docs/decisions/0001-record-architecture-decisions.md",
+        "state": "scanned"
+      },
+      {
+        "path": "docs/decisions/0002-plugin-tree-is-read-only-at-runtime.md",
+        "state": "scanned"
+      },
+      {
+        "path": "docs/decisions/0003-project-canonical-sources-into-runtime-adapters.md",
+        "state": "scanned"
+      },
+      {
+        "path": "docs/decisions/0004-inference-never-blocks-a-merge.md",
+        "state": "scanned"
+      },
+      {
+        "path": "docs/decisions/0005-standard-library-only-python-39.md",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/cli.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/mcp_server.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/config.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/render.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/verify.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/lint.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/decisions.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/disposition.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/recovery_run.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/skills/decision-recovery/SKILL.md",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/skills/decision-interview/SKILL.md",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/skills/decision-onboarding/SKILL.md",
+        "state": "scanned"
+      },
+      {
+        "path": "tests/test_disposition.py",
+        "state": "scanned"
+      },
+      {
+        "path": "tests/test_recovery_run.py",
+        "state": "scanned"
+      },
+      {
+        "path": "tests/test_mandate.py",
+        "state": "scanned"
+      },
+      {
+        "path": "AGENTS.md",
+        "state": "scanned"
+      },
+      {
+        "path": "SETUP.md",
+        "state": "scanned"
+      },
+      {
+        "path": "BEARING.md",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/data/recovery-app.html",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/data/reviewable-app.html",
+        "state": "scanned"
+      },
+      {
+        "path": "docs/specs/decision-recovery-skill-spec.md",
+        "state": "scanned"
+      },
+      {
+        "path": ".bearing/config.json",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/pyproject.toml",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/paths.py",
+        "state": "scanning"
+      },
+      {
+        "path": "plugin/src/bearing/assessment.py",
+        "state": "pending"
+      },
+      {
+        "path": "plugin/src/bearing/health.py",
+        "state": "pending"
+      },
+      {
+        "path": "plugin/src/bearing/index.py",
+        "state": "pending"
+      }
+    ]
+  },
+  "current": {
+    "path": "plugin/src/bearing/paths.py",
+    "activity": "extracting",
+    "kind": "file",
+    "items": 46,
+    "depth": 4
+  },
+  "findings": {
+    "candidate_decisions": 28,
+    "evidence_items": 84,
+    "records_prepared": 20,
+    "records_written": 19
+  },
+  "budget": {
+    "mode": "balanced",
+    "time_budget_seconds": 600,
+    "max_candidates": 60,
+    "pressure": 0,
+    "status": "normal",
+    "constraint": null
+  },
+  "rates": {
+    "files_per_minute": 30
+  },
+  "stages": [
+    {
+      "id": "scope_plan",
+      "label": "Scope & Plan"
+    },
+    {
+      "id": "discover",
+      "label": "Discover"
+    },
+    {
+      "id": "extract",
+      "label": "Extract"
+    },
+    {
+      "id": "identify",
+      "label": "Identify"
+    },
+    {
+      "id": "synthesize",
+      "label": "Synthesize"
+    },
+    {
+      "id": "write_persist",
+      "label": "Write & Persist"
+    }
+  ],
+  "recent_activity": [
+    {
+      "type": "scanning",
+      "at": "2026-08-23T21:00:52Z",
+      "label": "Scanning docs/decisions/0005-standard-library-only-python-39.md"
+    },
+    {
+      "type": "indexed",
+      "at": "2026-08-23T21:00:56Z",
+      "label": "Indexed 0005-standard-library-only-python-39.md"
+    },
+    {
+      "type": "scanning",
+      "at": "2026-08-23T21:01:00Z",
+      "label": "Scanning plugin/src/bearing/cli.py"
+    },
+    {
+      "type": "found",
+      "at": "2026-08-23T21:01:02Z",
+      "label": "Found candidate in cli.py"
+    },
+    {
+      "type": "indexed",
+      "at": "2026-08-23T21:01:04Z",
+      "label": "Indexed cli.py"
+    },
+    {
+      "type": "scanning",
+      "at": "2026-08-23T21:01:08Z",
+      "label": "Scanning plugin/src/bearing/mcp_server.py"
+    },
+    {
+      "type": "indexed",
+      "at": "2026-08-23T21:01:12Z",
+      "label": "Indexed mcp_server.py"
+    },
+    {
+      "type": "scanning",
+      "at": "2026-08-23T21:01:16Z",
+      "label": "Scanning plugin/src/bearing/config.py"
+    }
+  ]
+}

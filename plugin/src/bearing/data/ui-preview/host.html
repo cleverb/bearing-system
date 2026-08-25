@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>BEARING MCP App preview</title>
+  <style>
+    :root {
+      --bg: #0e0e0e; --panel: #171717; --line: #2c2c2c; --text: #eee;
+      --muted: #9a9a9a; --blue: #3b82f6;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+      font: 13px/1.4 ui-sans-serif, system-ui, sans-serif; }
+    .shell { display: grid; grid-template-columns: 280px 1fr; height: 100%; }
+    aside { border-right: 1px solid var(--line); overflow: auto; padding: 14px 12px 24px; }
+    h1 { font-size: 15px; margin: 0 0 4px; }
+    .lead { color: var(--muted); margin: 0 0 14px; font-size: 12px; }
+    .group { color: var(--muted); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; margin: 12px 0 6px; }
+    button.story { display: block; width: 100%; text-align: left; background: transparent;
+      border: 1px solid transparent; color: var(--text); padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+    button.story:hover { background: #1f1f1f; }
+    button.story.on { border-color: var(--blue); background: #152238; }
+    button.story small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+    main { display: flex; flex-direction: column; min-width: 0; }
+    .chrome { display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      padding: 10px 12px; border-bottom: 1px solid var(--line); }
+    .chrome button, .chrome select, .chrome label { font: inherit; color: var(--text);
+      background: #222; border: 1px solid #444; border-radius: 8px; padding: 6px 10px; }
+    .chrome button { cursor: pointer; }
+    .chrome .note { color: var(--muted); font-size: 12px; flex: 1; min-width: 180px; }
+    .stage { padding: 12px; flex: 1; overflow: auto; }
+    iframe { width: 720px; max-width: 100%; height: 620px; border: 1px solid var(--line);
+      border-radius: 12px; background: #121212; display: block; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      <h1>MCP App preview</h1>
+      <p class="lead">Catalog-driven mock host. Production App HTML. The recovery clock lives in this parent, not the iframe.</p>
+      <div id="stories"></div>
+    </aside>
+    <main>
+      <div class="chrome" id="chrome"></div>
+      <div class="stage"><iframe id="frame" title="MCP App"></iframe></div>
+    </main>
+  </div>
+  <script>
+    var catalog = null;
+    var config = {};
+    var story = null;
+    var frames = [];
+    var frameIndex = 0;
+    var playing = false;
+    var timer = null;
+    var speed = 1;
+    var reviewState = null;
+    var failNext = false;
+    var loopHold = false;
+    var STATUS_URI = "bearing://runs/recovery/current";
+    var iframe = document.getElementById("frame");
+
+    function qs(name) {
+      return new URLSearchParams(location.search).get(name);
+    }
+    function clone(value) { return JSON.parse(JSON.stringify(value)); }
+    function currentRecovery() {
+      if (!frames.length) return {};
+      var i = Math.max(0, Math.min(frameIndex, frames.length - 1));
+      return clone(frames[i]);
+    }
+    function intervalMs() {
+      var base = 5000;
+      if (catalog && catalog.defaults && catalog.defaults.simulation) {
+        base = Number(catalog.defaults.simulation.interval_ms || base);
+      }
+      if (story && story.simulation && story.simulation.interval_ms) {
+        base = Number(story.simulation.interval_ms);
+      }
+      if (config.sim_ms) base = Number(config.sim_ms);
+      return Math.max(250, Math.round(base / speed));
+    }
+    function loops() {
+      if (!story || !story.simulation) return false;
+      return story.simulation.loop !== false;
+    }
+    function toolResult(structured, text, isError) {
+      return {
+        content: [{ type: "text", text: text || "ok" }],
+        isError: !!isError,
+        structuredContent: structured
+      };
+    }
+    function resourceContents(payload) {
+      return {
+        contents: [{
+          uri: STATUS_URI,
+          mimeType: "application/json",
+          text: JSON.stringify(payload)
+        }]
+      };
+    }
+    function handleRpc(method, params) {
+      params = params || {};
+      if (method === "resources/read") return resourceContents(currentRecovery());
+      if (method === "tools/call") return callTool(String(params.name || ""), params.arguments || {});
+      throw new Error("method not found: " + method);
+    }
+    function callTool(name, args) {
+      if (failNext) {
+        failNext = false;
+        renderChrome();
+        return toolResult({ error: "preview forced tools/call failure" }, "preview forced tools/call failure", true);
+      }
+      if (name === "list_reviewable") {
+        var listed = clone(reviewState || { candidates: [] });
+        listed.count = (listed.candidates || []).length;
+        listed.status = listed.status || "ok";
+        return toolResult(listed, "listed");
+      }
+      if (name === "review_candidate") return reviewCandidate(args || {});
+      throw new Error("unknown tool: " + name);
+    }
+    function reviewCandidate(args) {
+      var id = String(args.candidate_id || "");
+      var candidates = (reviewState && reviewState.candidates) || [];
+      var match = null;
+      for (var i = 0; i < candidates.length; i++) {
+        if (candidates[i].candidate_id === id) match = candidates[i];
+      }
+      if (!match) return toolResult({ error: "unknown candidate" }, "unknown candidate", true);
+      var disp = args.disposition;
+      if (!disp || !disp.action) {
+        var pending = clone(reviewState);
+        pending.status = "needs_disposition";
+        pending.candidate_id = id;
+        pending.candidate = clone(match);
+        return toolResult(pending, "needs disposition");
+      }
+      if (disp.action === "Promote") {
+        if (!disp.still_valid) {
+          return toolResult({ error: "Promote requires affirming still valid today." }, "Promote requires affirming still valid today.", true);
+        }
+        if (!String(disp.scope || "").trim()) {
+          return toolResult({ error: "Promote requires a non-empty scope." }, "Promote requires a non-empty scope.", true);
+        }
+        reviewState.session_approved = (reviewState.session_approved || 0) + 1;
+      }
+      reviewState.candidates = candidates.filter(function (row) { return row.candidate_id !== id; });
+      var done = clone(reviewState);
+      done.status = "disposed";
+      done.candidate_id = id;
+      done.count = done.candidates.length;
+      done.result = {
+        action: disp.action,
+        candidate_id: id,
+        message: "Preview recorded " + disp.action + " (no files written)."
+      };
+      return toolResult(done, "disposed");
+    }
+    function postToApp(msg) {
+      if (iframe.contentWindow) iframe.contentWindow.postMessage(msg, "*");
+    }
+    function pushRecovery() {
+      postToApp({ jsonrpc: "2.0", method: "ui/notifications/tool-result", params: currentRecovery() });
+    }
+    function stopTimer() {
+      if (timer) { clearTimeout(timer); timer = null; }
+    }
+    function schedule() {
+      stopTimer();
+      if (!playing || !story || !story.simulation) return;
+      timer = setTimeout(tick, intervalMs());
+    }
+    function tick() {
+      if (!playing) return;
+      var last = frames.length - 1;
+      if (frameIndex >= last) {
+        if (loops()) {
+          if (!loopHold) {
+            loopHold = true;
+            renderChrome();
+            schedule();
+            return;
+          }
+          loopHold = false;
+          frameIndex = 0;
+          pushRecovery();
+        } else {
+          playing = false;
+          renderChrome();
+          return;
+        }
+      } else {
+        frameIndex += 1;
+        pushRecovery();
+      }
+      renderChrome();
+      schedule();
+    }
+    function loadFrames(done) {
+      frames = [];
+      frameIndex = 0;
+      loopHold = false;
+      var sim = story.simulation;
+      if (sim && sim.frames && sim.frames.length) {
+        var pending = sim.frames.length;
+        frames = new Array(sim.frames.length);
+        sim.frames.forEach(function (rel, idx) {
+          fetch("/" + rel).then(function (r) { return r.json(); }).then(function (data) {
+            frames[idx] = data;
+            pending -= 1;
+            if (!pending) done();
+          });
+        });
+        return;
+      }
+      if (story.fixture) {
+        fetch("/" + story.fixture).then(function (r) { return r.json(); }).then(function (data) {
+          frames = [data];
+          done();
+        });
+        return;
+      }
+      done();
+    }
+    function mountApp() {
+      var kind = story.app === "reviewable" ? "reviewable" : "recovery";
+      iframe.src = "/app/" + kind + ".html?story=" + encodeURIComponent(story.id) + "&_=" + Date.now();
+    }
+    function selectStory(id, keepClock) {
+      var next = null;
+      (catalog.stories || []).forEach(function (row) { if (row.id === id) next = row; });
+      if (!next) return;
+      var keep = keepClock && story && story.id === id;
+      var saved = frameIndex;
+      var wasPlaying = playing;
+      story = next;
+      loadFrames(function () {
+        if (keep) frameIndex = Math.max(0, Math.min(saved, frames.length - 1));
+        else { frameIndex = 0; playing = false; stopTimer(); }
+        if (story.app === "reviewable") reviewState = clone(frames[0] || { candidates: [] });
+        renderStories();
+        renderChrome();
+        mountApp();
+        if (keep && wasPlaying && story.simulation) { playing = true; schedule(); }
+        history.replaceState(null, "", "?story=" + encodeURIComponent(story.id));
+      });
+    }
+    function renderStories() {
+      var html = "";
+      var lastApp = "";
+      (catalog.stories || []).forEach(function (row) {
+        if (row.app !== lastApp) {
+          html += '<div class="group">' + (row.app === "recovery" ? "Recovery" : "Review") + "</div>";
+          lastApp = row.app;
+        }
+        html += '<button type="button" class="story' + (story && story.id === row.id ? " on" : "") +
+          '" data-id="' + row.id + '">' + (row.title || row.id) + "<small>" + row.id + "</small></button>";
+      });
+      document.getElementById("stories").innerHTML = html;
+    }
+    function renderChrome() {
+      if (!story) return;
+      var sim = !!story.simulation;
+      var html = '<span class="note">' + (story.notes || "") + "</span>";
+      if (sim) {
+        html += '<button type="button" data-act="play">' + (playing ? "Pause" : "Play") + "</button>";
+        html += '<button type="button" data-act="step">Step</button>';
+        html += '<button type="button" data-act="reset">Reset</button>';
+        html += '<select id="speed"><option value="0.5">0.5x</option><option value="1">1x</option>' +
+          '<option value="2">2x</option><option value="4">4x</option></select>';
+        html += '<span class="note">frame ' + (frames.length ? frameIndex + 1 : 0) + "/" + frames.length +
+          (loopHold ? " (hold complete)" : "") + "</span>";
+        html += '<button type="button" data-act="reload">Reload iframe</button>';
+      } else {
+        html += '<button type="button" data-act="reload">Reload iframe</button>';
+      }
+      if (story.app === "reviewable") {
+        html += '<label><input type="checkbox" id="fail"' + (failNext ? " checked" : "") +
+          "> fail next tools/call</label>";
+      }
+      html += '<label>viewport <select id="width"><option value="720">720</option>' +
+        '<option value="820">820</option></select></label>';
+      document.getElementById("chrome").innerHTML = html;
+      var speedEl = document.getElementById("speed");
+      if (speedEl) speedEl.value = String(speed);
+    }
+    document.getElementById("stories").addEventListener("click", function (event) {
+      var btn = event.target.closest("[data-id]");
+      if (btn) selectStory(btn.getAttribute("data-id"), false);
+    });
+    document.getElementById("chrome").addEventListener("click", function (event) {
+      var act = event.target.getAttribute && event.target.getAttribute("data-act");
+      if (act === "play") {
+        playing = !playing;
+        if (playing) schedule(); else stopTimer();
+        renderChrome();
+      }
+      if (act === "step") {
+        playing = false; stopTimer();
+        if (frameIndex < frames.length - 1) frameIndex += 1;
+        pushRecovery();
+        renderChrome();
+      }
+      if (act === "reset") {
+        playing = false; stopTimer(); loopHold = false; frameIndex = 0;
+        pushRecovery();
+        mountApp();
+        renderChrome();
+      }
+      if (act === "reload") mountApp();
+    });
+    document.getElementById("chrome").addEventListener("change", function (event) {
+      if (event.target.id === "speed") {
+        speed = Number(event.target.value || 1);
+        if (playing) schedule();
+      }
+      if (event.target.id === "width") iframe.style.width = event.target.value + "px";
+      if (event.target.id === "fail") failNext = event.target.checked;
+    });
+    window.addEventListener("message", function (event) {
+      var data = event.data;
+      if (!data || data.jsonrpc !== "2.0") return;
+      if (data.id == null) return;
+      try {
+        var result = handleRpc(data.method, data.params || {});
+        postToApp({ jsonrpc: "2.0", id: data.id, result: result });
+      } catch (err) {
+        postToApp({ jsonrpc: "2.0", id: data.id, error: { code: -32000, message: err.message || String(err) } });
+      }
+    });
+    Promise.all([
+      fetch("/catalog.json").then(function (r) { return r.json(); }),
+      fetch("/preview-config.json").then(function (r) { return r.json(); })
+    ]).then(function (pair) {
+      catalog = pair[0];
+      config = pair[1] || {};
+      STATUS_URI = config.status_uri || STATUS_URI;
+      var start = qs("story") || config.story || catalog.stories[0].id;
+      selectStory(start, false);
+    });
+  </script>
+</body>
+</html>

@@ -41,7 +41,9 @@ class JsonSchemaSubsetTest(BearingTestCase):
         self.assertTrue(validate({"role": "frontier"}, schema))
 
     def test_packaged_config_schema_accepts_defaults(self):
-        schema = read_json(os.path.join(SRC_ROOT, "bearing", "data", "config.schema.json"))
+        schema = read_json(
+            os.path.join(SRC_ROOT, "bearing", "data", "templates", "schemas", "config.schema.json")
+        )
         defaults = read_json(os.path.join(SRC_ROOT, "bearing", "data", "config.default.json"))
         self.assertEqual(validate(defaults, schema), [])
 

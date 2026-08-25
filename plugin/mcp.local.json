@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "BEARING": {
+      "args": [
+        "-c",
+        "exec python3 \"$HOME/.cursor/plugins/local/bearing-plugin/hooks/run_mcp.py\""
+      ],
+      "command": "sh",
+      "type": "stdio"
+    }
+  }
+}

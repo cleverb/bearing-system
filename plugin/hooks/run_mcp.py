@@ -2,13 +2,14 @@
 """Launch the BEARING MCP disposition server from the plugin tree.
 
 Used by plugin/mcp.json so marketplace install surfaces MCP without requiring
-`bearing-mcp` on PATH. Enables the operator-scope CLI shim on start.
+`bearing-mcp` on PATH. Cursor owns this stdio session, including MCP Apps
+resource reads — do not wrap another Python child. Operator-scope enablement
+must stay off stdout.
 """
 
 from __future__ import annotations
 
 import os
-import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -24,12 +25,18 @@ def _enable() -> None:
 
 
 def main() -> int:
-    _enable()
-    launcher = os.path.join(PLUGIN_ROOT, "bin", "bearing-mcp")
-    return subprocess.call(
-        [sys.executable, launcher] + sys.argv[1:],
-        cwd=PLUGIN_ROOT,
-    )
+    try:
+        _enable()
+    except Exception as exc:
+        sys.stderr.write("bearing-mcp: enable skipped: %s\n" % exc)
+        sys.stderr.flush()
+        if SRC not in sys.path:
+            sys.path.insert(0, SRC)
+
+    os.environ["PYTHONUNBUFFERED"] = "1"
+    from bearing.mcp_server import main as mcp_main
+
+    return mcp_main(sys.argv[1:])
 
 
 if __name__ == "__main__":

@@ -25,17 +25,25 @@ only exists in a git context, so a fake directory would test a different program
 | `test_render.py` | Projection determinism, drift detection, configurable targets, recorded skips, and delimited-block management |
 | `test_packaging.py` | Plugin-root containment and the installed-copy behaviour described below |
 | `test_mandate.py` | Authority rules, model-tier advisories, honest cost accounting, optional profile helpers, and the conformance suite itself |
+| `test_disposition.py` | Shadow promotion/reject/defer and MCP Apps (recovery tally + review board, UI vs JSON fallback) |
+| `test_recovery_run.py` | `.bearing/runs/recovery/` snapshot merge, event ring, ETA, CLI `recovery-status` |
+| `test_ui_preview.py` | MCP App preview catalog, fixture validation, HTML injection, `bearing ui-preview --list` |
 | `test_v02.py` | Effective-workspace, scope, runtime evidence, hook, lock-authority, health, measurement, detector, and workflow-inspection contracts |
 
 ## Local testing to marketplace promotion
 
 Five tiers, each catching a failure class the one below it cannot see.
 
-**Tier 0 — iteration.** Point a client at the working tree.
+**Tier 0 — iteration.** Copy the plugin into Cursor's local plugin directory
+and Codex's personal plugin source directory.
 
 ```bash
-ln -s "$(pwd)/plugin" ~/.cursor/plugins/local/bearing
+PYTHONPATH=plugin/src python3 -m bearing package --local
 ```
+
+Reload Cursor after each copy. See ADR-0013 for why Cursor local and
+marketplace MCP launch configs differ. See ADR-0015 for the Codex personal
+marketplace copy (`~/.codex/plugins/bearing`, not `plugins/local`).
 
 **Tier 1 — manifest validation.** Every client manifest is generated from
 `plugin/plugin.json`, so a hand-edited manifest is drift rather than a fix.

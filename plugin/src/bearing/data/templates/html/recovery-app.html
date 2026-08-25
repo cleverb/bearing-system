@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <!-- BEARING:APP-CSS -->
+  <style>
+    :root { --font-title: var(--font-display); --pad-body: 18px 20px 16px; --panel: #1c1c1c; --card: #222; --dim: #6e6e6e; --text: #f2f2f2; }
+    header.top { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); }
+    .live { display: flex; align-items: center; gap: var(--space-2); color: var(--muted); font-size: var(--font-md); }
+    .live .icon-spin { display: none; }
+    .live.is-running .icon-spin { display: inline-block; }
+    .dot { width: var(--space-2); height: var(--space-2); border-radius: 50%; background: var(--ok); }
+    .metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--space-3); margin: var(--space-7) 0 var(--space-5); }
+    .metric { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: var(--pad-card); }
+    .metric .k { color: var(--muted); font-size: var(--font-sm); }
+    .metric .v { font-size: var(--font-metric); font-weight: var(--weight-bold); margin: var(--space-1) 0 2px; letter-spacing: var(--tracking-tight); }
+    .metric .h { color: var(--muted); font-size: var(--font-sm); }
+    .metric .bar { height: 4px; margin-top: var(--space-2); }
+    .pipeline {
+      background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg);
+      padding: var(--space-6) var(--space-7) var(--space-7);
+    }
+    .pipeline h2 { font-size: var(--font-md); color: var(--muted); font-weight: var(--weight-semibold); margin: 0 0 var(--space-5); }
+    .steps { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-1); }
+    .step { flex: 1; text-align: center; position: relative; color: var(--dim); font-size: var(--font-xs); }
+    .step .n {
+      width: 28px; height: 28px; border-radius: 50%; margin: 0 auto var(--space-2);
+      border: 2px dashed var(--border-input); display: flex; align-items: center; justify-content: center;
+      font-weight: var(--weight-bold); background: var(--bg); color: var(--dim);
+    }
+    .step.on .n { background: var(--accent); border: none; color: #fff; }
+    .step.done .n { background: var(--step-done-bg); border: 2px solid var(--ok); color: var(--ok); }
+    .step.on { color: var(--text); font-weight: var(--weight-semibold); }
+    .cols { display: grid; grid-template-columns: 1.15fr 1fr; gap: var(--space-4); margin-top: var(--space-4); }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: var(--space-5); min-height: 220px; }
+    .panel h2 { font-size: var(--font-body); margin: 0 0 var(--space-4); }
+    .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: var(--space-2); }
+    .cell {
+      aspect-ratio: 1; border-radius: var(--radius-sm); border: 1px dashed var(--cell-pending-border);
+      color: var(--cell-pending); display: flex; align-items: center; justify-content: center;
+    }
+    .cell.scanned { color: var(--scanned-fg); border-style: solid; border-color: var(--scanned-border); background: var(--scanned-bg); }
+    .cell.scanning { color: var(--scanning-fg); border-style: solid; border-color: var(--scanning-border); background: var(--scanning-bg); }
+    .cell.skipped { color: var(--skipped-fg); border-color: var(--skipped-border); }
+    .legend { display: flex; gap: var(--space-5); margin-top: var(--space-4); color: var(--muted); font-size: var(--font-sm); }
+    .legend span { display: flex; align-items: center; gap: 6px; }
+    .sw { width: var(--space-3); height: var(--space-3); border-radius: 3px; background: var(--swatch); }
+    .sw.scanned { background: var(--ok); }
+    .sw.scanning { background: var(--accent); }
+    .sw.skipped { background: var(--warn); }
+    .feed { list-style: none; margin: 0; padding: 0; font-size: var(--font-md); }
+    .feed li { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-2) 0; border-bottom: 1px solid var(--surface-bar); color: #d4d4d4; }
+    .badge { font-size: var(--font-xs); padding: 2px var(--space-2); border-radius: var(--radius-pill); font-weight: var(--weight-bold); }
+    .badge.scan { background: var(--badge-scan-bg); color: var(--badge-scan-fg); }
+    .badge.found { background: var(--badge-found-bg); color: var(--badge-found-fg); }
+    .badge.idx { background: var(--badge-idx-bg); color: var(--badge-idx-fg); }
+    .badge.info { background: var(--badge-info-bg); color: var(--badge-info-fg); }
+    .time { color: var(--dim); font-variant-numeric: tabular-nums; min-width: 64px; }
+    .focus {
+      margin-top: var(--space-4); background: var(--focus-bg); border: 1px solid var(--line);
+      border-radius: var(--radius-lg); padding: var(--pad-card);
+      display: flex; justify-content: space-between; gap: var(--space-4); align-items: center;
+    }
+    .focus-label { display: flex; gap: var(--space-2); align-items: center; color: var(--muted); font-size: var(--font-sm); }
+    .focus .path { font-family: var(--font-mono); font-size: var(--font-md); }
+    .strategy { display: flex; align-items: center; gap: var(--space-2); color: var(--muted); font-size: var(--font-md); }
+    .constraint {
+      display: none; margin: 0 0 var(--space-4); padding: var(--space-3) var(--space-4);
+      border-radius: var(--radius-md); border: 1px solid var(--constraint-border);
+      background: var(--constraint-bg); color: var(--constraint-fg); font-size: var(--font-md);
+    }
+    .constraint.show { display: flex; gap: var(--space-2); align-items: flex-start; }
+    .done-banner { display: none; margin-top: var(--space-3); color: var(--ok); font-size: var(--font-md); }
+    .done-banner.is-visible { display: block; }
+    @media (max-width: 820px) {
+      .metrics { grid-template-columns: 1fr 1fr; }
+      .cols { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <!-- BEARING:ICONS -->
+  <header class="top">
+    <div>
+      <h1>Decision Recovery</h1>
+      <p class="sub" id="subtitle">Archaeology in progress.</p>
+    </div>
+    <div class="live" id="live">
+      <span class="dot" id="live-dot"></span>
+      <svg class="icon icon-spin" id="live-spin" width="14" height="14" aria-hidden="true"><use href="#icon-spinner"/></svg>
+      <span id="live-label">Auto-updates every 5s</span>
+    </div>
+  </header>
+  <div class="constraint" id="constraint">
+    <svg class="icon"><use href="#icon-alert"/></svg>
+    <div>
+      <strong>Scope being constrained.</strong>
+      <span id="constraint-text"></span>
+    </div>
+  </div>
+  <section class="metrics" id="metrics"></section>
+  <section class="pipeline">
+    <h2>Recovery Pipeline</h2>
+    <div class="steps" id="steps"></div>
+  </section>
+  <section class="cols">
+    <div class="panel">
+      <h2>Where We’re Looking</h2>
+      <div class="grid" id="grid"></div>
+      <div class="legend">
+        <span><i class="sw scanned"></i> Scanned</span>
+        <span><i class="sw scanning"></i> Scanning</span>
+        <span><i class="sw"></i> Pending</span>
+        <span><i class="sw skipped"></i> Skipped</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Activity Feed <span class="feed-updated" id="last-update"></span></h2>
+      <ul class="feed" id="feed"></ul>
+    </div>
+  </section>
+  <div class="focus">
+    <div>
+      <div class="focus-label">
+        <svg class="icon"><use href="#icon-search"/></svg> Current Focus
+      </div>
+      <div class="path" id="focus-path">—</div>
+      <div class="meta" id="focus-meta"></div>
+    </div>
+    <div class="strategy">
+      <svg class="icon-lg"><use href="#icon-scales"/></svg>
+      <span id="strategy">Strategy: Balanced</span>
+    </div>
+  </div>
+  <p class="done-banner" id="done">Recovery complete. Waiting for Decision Review to open…</p>
+
+  <template id="tpl-metric">
+    <article class="metric">
+      <div class="k"></div>
+      <div class="v"></div>
+      <div class="h"></div>
+      <div class="bar hidden"><i></i></div>
+    </article>
+  </template>
+  <template id="tpl-step">
+    <div class="step">
+      <div class="n"></div>
+      <span class="step-label"></span>
+    </div>
+  </template>
+  <template id="tpl-cell">
+    <div class="cell">
+      <svg class="icon"><use href="#icon-folder"/></svg>
+    </div>
+  </template>
+  <template id="tpl-feed-item">
+    <li>
+      <span class="time"></span>
+      <span class="badge"></span>
+      <span class="feed-label"></span>
+    </li>
+  </template>
+  <template id="tpl-feed-empty">
+    <li class="error">Waiting for activity…</li>
+  </template>
+
+  <script type="application/json" id="boot">{}</script>
+  <!-- BEARING:TPL-JS -->
+  <script>
+    var parentWin = window.parent;
+    var nextId = 1;
+    var pending = {};
+    var timer = null;
+    var STATUS_URI = "bearing://runs/recovery/current";
+    var metricNodes = [];
+    var stepNodes = [];
+
+    function post(msg) { parentWin.postMessage(msg, "*"); }
+    function tellSize() {
+      var h = Math.max(document.documentElement.scrollHeight || 0, document.body.scrollHeight || 0, 420);
+      post({ jsonrpc: "2.0", method: "ui/notifications/size-changed", params: { height: h } });
+    }
+    function rpc(method, params) {
+      return new Promise(function (resolve, reject) {
+        var id = nextId++;
+        var wait = setTimeout(function () {
+          if (!pending[id]) return;
+          delete pending[id];
+          reject({ message: "Host did not answer " + method });
+        }, 12000);
+        pending[id] = function (result, error) {
+          clearTimeout(wait);
+          if (error) reject(error);
+          else resolve(result || {});
+        };
+        post({ jsonrpc: "2.0", id: id, method: method, params: params || {} });
+      });
+    }
+    function pct(a, b) {
+      if (!b) return 0;
+      return Math.max(0, Math.min(100, Math.round((a / b) * 100)));
+    }
+    function metricEl(root) {
+      return root.querySelector ? (root.querySelector(".metric") || root) : root;
+    }
+    function fillMetric(root, item) {
+      var el = metricEl(root);
+      el.querySelector(".k").textContent = item.k;
+      el.querySelector(".v").textContent = item.v;
+      var h = el.querySelector(".h");
+      h.textContent = item.h;
+      h.className = "h" + (item.warn ? " warn" : (item.ok ? " ok" : ""));
+      var bar = el.querySelector(".bar");
+      if (item.bar == null) {
+        bar.classList.add("hidden");
+      } else {
+        bar.classList.remove("hidden");
+        BearingTpl.setFill(bar.querySelector("i"), item.bar);
+      }
+    }
+    function ensureList(containerId, templateId, items, nodes, fillFn) {
+      var root = document.getElementById(containerId);
+      if (nodes.length === items.length && nodes.length) {
+        items.forEach(function (item, i) { fillFn(nodes[i], item, i); });
+        return nodes;
+      }
+      BearingTpl.mount(root, BearingTpl.renderList(templateId, items, fillFn));
+      return Array.prototype.slice.call(root.children);
+    }
+    function render(raw) {
+      var data = raw || {};
+      if (data.contents && data.contents[0] && data.contents[0].text) {
+        try { data = JSON.parse(data.contents[0].text); } catch (e) { data = {}; }
+      }
+      if (data.structuredContent) data = data.structuredContent;
+      var stageIndex = data.stage_index || 1;
+      var stageCount = data.stage_count || 6;
+      var scope = data.scope || {};
+      var findings = data.findings || {};
+      var eta = data.eta || {};
+      var budget = data.budget || {};
+      var current = data.current || {};
+      var stages = data.stages || [];
+      document.getElementById("subtitle").textContent =
+        data.status === "completed" ? "Archaeology complete." :
+        data.status === "failed" ? (data.message || "Recovery failed.") :
+        "Archaeology in progress.";
+      document.getElementById("live-label").textContent =
+        data.status === "running" ? "Auto-updates every 5s" : (data.status || "idle");
+      document.getElementById("live").classList.toggle("is-running", data.status === "running");
+      var scanned = scope.locations_scanned || 0;
+      var total = scope.locations_total || 0;
+      var locHint = pct(scanned, total) + "%";
+      var etaHint = budget.status === "constraining" ? "Constraining" : (eta.confidence ? eta.confidence + " confidence" : "Normal");
+      var metrics = [
+        { k: "Stage", v: stageIndex + " / " + stageCount, h: data.stage_label || "", bar: null, ok: false, warn: false },
+        { k: "Locations", v: scanned + " / " + (total || "—"), h: locHint, bar: pct(scanned, total), ok: false, warn: false },
+        { k: "Decisions", v: String(findings.candidate_decisions || 0), h: "Found", bar: null, ok: false, warn: false },
+        { k: "Records", v: String(findings.records_written || 0), h: "Written", bar: null, ok: false, warn: false },
+        { k: "Est. Time", v: eta.display || "—", h: etaHint, bar: null, ok: etaHint === "Normal" || String(etaHint).indexOf("confidence") >= 0, warn: budget.status === "constraining" }
+      ];
+      metricNodes = ensureList("metrics", "tpl-metric", metrics, metricNodes, fillMetric);
+      var stepItems = [];
+      var nSteps = stages.length || 6;
+      for (var i = 0; i < nSteps; i++) {
+        stepItems.push({
+          n: i + 1,
+          label: (stages[i] && stages[i].label) || ("Step " + (i + 1)),
+          cls: i + 1 < stageIndex ? "done" : (i + 1 === stageIndex ? "on" : "")
+        });
+      }
+      stepNodes = ensureList("steps", "tpl-step", stepItems, stepNodes, function (root, item) {
+        var el = root.querySelector(".step") || root;
+        el.className = "step " + item.cls;
+        el.querySelector(".n").textContent = String(item.n);
+        el.querySelector(".step-label").textContent = item.label;
+      });
+      var cells = scope.locations || [];
+      var n = Math.max(cells.length, 24);
+      var gridItems = [];
+      for (var g = 0; g < Math.min(n, 32); g++) {
+        var loc = cells[g] || {};
+        gridItems.push({
+          state: loc.state || (g < scanned ? "scanned" : (g === scanned ? "scanning" : "pending")),
+          path: loc.path || ""
+        });
+      }
+      BearingTpl.mount(document.getElementById("grid"), BearingTpl.renderList("tpl-cell", gridItems, function (root, item) {
+        var el = root.querySelector(".cell") || root;
+        el.className = "cell " + item.state;
+        el.title = item.path;
+      }));
+      var feed = data.recent_activity || [];
+      var feedRoot = document.getElementById("feed");
+      if (!feed.length) {
+        BearingTpl.mount(feedRoot, BearingTpl.cloneTemplate("tpl-feed-empty"));
+      } else {
+        BearingTpl.mount(feedRoot, BearingTpl.renderList("tpl-feed-item", feed.slice().reverse(), function (root, row) {
+          var li = root.querySelector("li") || root;
+          var kind = row.type || "info";
+          var badge = kind === "found" ? "found" : kind === "indexed" || kind === "idx" ? "idx" : kind === "scanning" ? "scan" : "info";
+          li.querySelector(".time").textContent = String(row.at || "").slice(11, 19);
+          var b = li.querySelector(".badge");
+          b.className = "badge " + badge;
+          b.textContent = kind;
+          li.querySelector(".feed-label").textContent = row.label || "";
+        }));
+      }
+      document.getElementById("focus-path").textContent = current.path || "—";
+      var bits = [];
+      if (current.kind) bits.push("Type: " + current.kind);
+      if (current.items) bits.push("Items: " + current.items);
+      if (current.depth) bits.push("Depth: " + current.depth);
+      document.getElementById("focus-meta").textContent = bits.join(" • ");
+      var mode = (budget.mode || "balanced");
+      document.getElementById("strategy").textContent = "Strategy: " + mode.charAt(0).toUpperCase() + mode.slice(1);
+      var constraint = document.getElementById("constraint");
+      if (budget.status === "constraining" && budget.constraint) {
+        var c = budget.constraint;
+        var text = c.reason || "";
+        if (c.before != null) text += " (" + c.before + " → " + c.after + ").";
+        document.getElementById("constraint-text").textContent = text;
+        constraint.classList.add("show");
+      } else {
+        document.getElementById("constraint-text").textContent = "";
+        constraint.classList.remove("show");
+      }
+      document.getElementById("done").classList.toggle("is-visible", data.status === "completed");
+      document.getElementById("last-update").textContent = data.updated_at ? ("Last update: " + String(data.updated_at).slice(11, 19)) : "";
+      tellSize();
+      return data;
+    }
+    function poll() {
+      rpc("resources/read", { uri: STATUS_URI }).then(function (result) {
+        var data = render(result);
+        if (data && data.status && data.status !== "running") {
+          if (timer) clearInterval(timer);
+          timer = null;
+        }
+      }).catch(function () {});
+    }
+    window.addEventListener("message", function (event) {
+      var data = event.data;
+      if (!data || data.jsonrpc !== "2.0") return;
+      if (data.id != null && pending[data.id]) {
+        var cb = pending[data.id];
+        delete pending[data.id];
+        cb(data.result || {}, data.error || null);
+        return;
+      }
+      if (data.method === "ui/notifications/tool-result") render(data.params || {});
+    });
+    try {
+      var boot = JSON.parse(document.getElementById("boot").textContent || "{}");
+      if (boot.run_id || boot.stage) render(boot);
+    } catch (e) {}
+    post({ jsonrpc: "2.0", method: "ui/notifications/initialized" });
+    tellSize();
+    timer = setInterval(poll, 5000);
+    document.addEventListener("visibilitychange", function () {
+      if (timer) clearInterval(timer);
+      timer = document.hidden ? setInterval(poll, 15000) : setInterval(poll, 5000);
+    });
+  </script>
+</body>
+</html>

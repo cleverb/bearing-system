@@ -161,15 +161,22 @@ Open the **target** repository in Cursor (or Claude Code / Codex).
 - Asking the agent to load `docs/decisions/index.json` (or your configured index)
   should surface Accepted Contracts for governed files.
 - To clear the shadow review queue in Cursor, use the **BEARING** MCP tools
-  (`list_reviewable`, `review_candidate`) or run `bearing review` /
+  (`open_recovery`, `list_reviewable`, `review_candidate`) or run `bearing review` /
   `bearing dispose`. Promote requires human judgment fields (scope, present
-  validity, lifecycle, EOCR); confidence alone never promotes.
+  validity, lifecycle, EOCR); confidence alone never promotes. Recovery progress
+  is written with `bearing recovery-status` (or `report_recovery` checkpoints)
+  into `.bearing/runs/recovery/`; the tally App polls that state.
 
 ### Cursor MCP
 
-Marketplace / local-plugin install ships `plugin/mcp.json`. After install, Cursor
-should list an MCP server named **BEARING** under Tools / MCP. It launches via
-`${PLUGIN_ROOT}` — not `${workspaceFolder}`.
+Marketplace install ships `plugin/mcp.json` with `${PLUGIN_ROOT}`. Cursor local
+plugins do **not** expand that variable. Maintainer iteration uses
+`bearing package --local`, which copies `plugin/` to
+`~/.cursor/plugins/local/bearing-plugin` and writes the local launch adapter to
+dest `mcp.json`.
+
+After install, Cursor should list an MCP server named **BEARING** under Tools /
+MCP.
 
 `review_candidate` does **not** block on a form by default (mid-tool elicitation
 hung some Cursor builds and made the agent feel stuck, including Skills
@@ -184,13 +191,13 @@ If you prefer a project-local MCP override that calls `bearing-mcp` on PATH,
 copy the template after the shim exists:
 
 ```bash
-cp plugin/src/bearing/data/templates/mcp.json.example /path/to/repo/.cursor/mcp.json
+cp plugin/src/bearing/data/templates/text/mcp.json.example /path/to/repo/.cursor/mcp.json
 ```
 
 `${workspaceFolder}` is only for that **project** `.cursor/mcp.json` path. Do <!-- bearing:ignore-paths: optional project MCP override, not this checkout -->
 not expect it inside the plugin-bundled MCP config.
 
-Tools: `list_reviewable`, `review_candidate`.
+Tools: `open_recovery`, `report_recovery`, `list_reviewable`, `review_candidate`.
 
 Cursor is **session-advisory**: the workspace-open hook injects context when the
 workspace opens. Do not treat that as proof the agent knew a file path *before*
@@ -222,22 +229,40 @@ cd bearing-system
 python3 --version   # 3.9 or newer
 ```
 
-### 2. Point the runtime at this working tree (Tier 0)
+### 2. Install the local plugin (Tier 0)
 
 ```bash
-mkdir -p ~/.cursor/plugins/local
-ln -s "$(pwd)/plugin" ~/.cursor/plugins/local/bearing
+PYTHONPATH=plugin/src python3 -m bearing package --local
 ```
 
-Reload Cursor. Edits under `plugin/skills/` and `plugin/hooks/` are what the
-client loads. This is the fastest iteration loop. It is not a marketplace
-install: Cursor is reading the checkout, not a copied cache.
+Reload Cursor. The copy at `~/.cursor/plugins/local/bearing-plugin` is solely a
+copy target — not a git checkout.
+
+The same command copies `plugin/` to `~/.codex/plugins/bearing` (next to Codex's
+`cache/`, not inside it) and upserts `~/.agents/plugins/marketplace.json`.
+Codex does **not** auto-load `~/.codex/plugins/local`. Restart Codex, install
+`bearing` from your personal marketplace once, and confirm with
+`codex plugin list --json`.
+
+Re-run `bearing package --local` after `plugin/` edits (skills, hooks, MCP App,
+manifests). Reload Cursor; restart Codex so it re-syncs the cache from the
+source tree.
+
+Cursor local is not a marketplace install: it loads with a `$HOME`-based MCP
+launch config, not `${PLUGIN_ROOT}`. Codex uses `plugin/.mcp.json` with
+`${PLUGIN_ROOT}` from the copied tree.
 
 For Claude Code, add this clone as a local marketplace (`claude plugin
 marketplace add . --scope local`) and install `bearing@bearing`. That *does*
 copy the tree; reinstall after Skill or hook changes.
 
 ### 3. Run the CLI from the working tree
+
+`bearing package --local` copies this checkout's `plugin/` into
+`~/.cursor/plugins/local/bearing-plugin` and `~/.codex/plugins/bearing`. When
+you run it from the `bearing-system` repository root, the checkout's `plugin/`
+is the source even if `bearing enable` already points the PATH shim at the
+local install copy.
 
 Do **not** rely on a one-time `uv tool install ./plugin` while you are changing
 CLI code. That command snapshots `plugin/` and will serve stale bytecode until
@@ -267,7 +292,10 @@ python3 -m unittest discover -s tests
 PYTHONPATH=plugin/src python3 -m bearing doctor
 PYTHONPATH=plugin/src python3 -m bearing render --check
 PYTHONPATH=plugin/src python3 -m bearing package --check
+PYTHONPATH=plugin/src python3 -m bearing ui-preview --open   # MCP App mock host; no init
 ```
+
+Preview Recovery and Reviewable MCP Apps without Cursor via `bearing ui-preview`. Stories live in `plugin/src/bearing/data/ui-preview/catalog.json`. See that directory's README. Do not put preview settings in workspace config.
 
 Generated adapters (`.cursor/`, `.claude/`, `.codex/`, per-client manifests, the
 BEARING block in `AGENTS.md`) are regenerated, never hand-edited. Change the

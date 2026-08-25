@@ -1,0 +1,420 @@
+{
+  "workspace": "/Users/oeist/Sites/bearing-system",
+  "count": 14,
+  "candidates": [
+    {
+      "candidate_id": "CAND-PREVIEW-0010",
+      "subject": "plugin/src/bearing/discovery-completes-at-i.py",
+      "candidate_object": "Discovery completes at injection.",
+      "candidate_relation": "constrains",
+      "candidate_eocr_function": "Contract",
+      "confidence": "HIGH",
+      "lifecycle_state": "Reviewable",
+      "conflicts_with_accepted": null,
+      "load_bearing": true,
+      "evidence": [
+        {
+          "evidence_source": "commit",
+          "evidence_excerpt": "Discovery completes at injection"
+        },
+        {
+          "evidence_source": "comment",
+          "evidence_excerpt": "Long title for wrapping: Discovery completes at injection \u2014 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      ],
+      "defaults": {
+        "eocr_function": "Contract",
+        "lifecycle_state": "Accepted",
+        "scope": "plugin/src/bearing/*.py",
+        "title": "Discovery completes at injection",
+        "trigger": "changing discovery completes at injection"
+      }
+    },
+    {
+      "candidate_id": "CAND-PREVIEW-0011",
+      "subject": "plugin/src/bearing/skill.md-is-not-projecte.py",
+      "candidate_object": "SKILL.md is not projected.",
+      "candidate_relation": "constrains",
+      "candidate_eocr_function": "Contract",
+      "confidence": "MEDIUM",
+      "lifecycle_state": "Reviewable",
+      "conflicts_with_accepted": null,
+      "load_bearing": true,
+      "evidence": [
+        {
+          "evidence_source": "commit",
+          "evidence_excerpt": "SKILL.md is not projected"
+        },
+        {
+          "evidence_source": "comment",
+          "evidence_excerpt": "Long title for wrapping: SKILL.md is not projected \u2014 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      ],
+      "defaults": {
+        "eocr_function": "Contract",
+        "lifecycle_state": "Accepted",
+        "scope": "plugin/src/bearing/*.py",
+        "title": "SKILL.md is not projected",
+        "trigger": "changing skill.md is not projected"
+      }
+    },
+    {
+      "candidate_id": "CAND-PREVIEW-0012",
+      "subject": "plugin/src/bearing/recovery-execution-is-op.py",
+      "candidate_object": "Recovery execution is operator-selected.",
+      "candidate_relation": "constrains",
+      "candidate_eocr_function": "Operations",
+      "confidence": "HIGH",
+      "lifecycle_state": "Reviewable",
+      "conflicts_with_accepted": null,
+      "load_bearing": true,
+      "evidence": [
+        {
+          "evidence_source": "commit",
+          "evidence_excerpt": "Recovery execution is operator-selected"
+        },
+        {
+          "evidence_source": "comment",
+          "evidence_excerpt": "Long title for wrapping: Recovery execution is operator-selected \u2014 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      ],
+      "defaults": {
+        "eocr_function": "Operations",
+        "lifecycle_state": "Accepted",
+        "scope": "plugin/src/bearing/*.py",
+        "title": "Recovery execution is operator-selected",
+        "trigger": "changing recovery execution is operator-selected"
+      }
+    },
+    {
+      "candidate_id": "CAND-PREVIEW-0013",
+      "subject": "plugin/src/bearing/assessment-is-informatio.py",
+      "candidate_object": "Assessment is informational.",
+      "candidate_relation": "constrains",
+      "candidate_eocr_function": "Contract",
+      "confidence": "MEDIUM",
+      "lifecycle_state": "Reviewable",
+      "conflicts_with_accepted": null,
+      "load_bearing": true,
+      "evidence": [
+        {
+          "evidence_source": "commit",
+          "evidence_excerpt": "Assessment is informational"
+        },
+        {
+          "evidence_source": "comment",
+          "evidence_excerpt": "Long title for wrapping: Assessment is informational \u2014 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      ],
+      "defaults": {
+        "eocr_function": "Contract",
+        "lifecycle_state": "Accepted",
+        "scope": "plugin/src/bearing/*.py",
+        "title": "Assessment is informational",
+        "trigger": "changing assessment is informational"
+      }
+    },
+    {
+      "candidate_id": "CAND-PREVIEW-0014",
+      "subject": "plugin/src/bearing/real-client-conformance-.py",
+      "candidate_object": "Real-client conformance qualifies support.",
+      "candidate_relation": "constrains",
+      "candidate_eocr_function": "Contract",
+      "confidence": "LOW",
+      "lifecycle_state": "Reviewable",
+      "conflicts_with_accepted": null,
+      "load_bearing": true,
+      "evidence": [
+        {
+          "evidence_source": "commit",
+          "evidence_excerpt": "Real-client conformance qualifies support"
+        },
+        {
+          "evidence_source": "comment",
+          "evidence_excerpt": "Long title for wrapping: Real-client conformance qualifies support \u2014 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      ],
+      "defaults": {
+        "eocr_function": "Contract",
+        "lifecycle_state": "Accepted",
+        "scope": "plugin/src/bearing/*.py",
+        "title": "Real-client conformance qualifies support",
+        "trigger": "changing real-client conformance qualifies support"
+      }
+    },
+    {
+      "candidate_id": "CAND-PREVIEW-0015",
+      "subject": "plugin/src/bearing/cursor-local-plugin-mcp-.py",
+      "candidate_object": "Cursor local plugin MCP adapter.",
+      "candidate_relation": "constrains",
+      "candidate_eocr_function": "Entry",
+      "confidence": "MEDIUM",
+      "lifecycle_state": "Reviewable",
+      "conflicts_with_accepted": null,
+      "load_bearing": true,
+      "evidence": [
+        {
+          "evidence_source": "commit",
+          "evidence_excerpt": "Cursor local plugin MCP adapter"
+        },
+        {
+          "evidence_source": "comment",
+          "evidence_excerpt": "Long title for wrapping: Cursor local plugin MCP adapter \u2014 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      ],
+      "defaults": {
+        "eocr_function": "Entry",
+        "lifecycle_state": "Accepted",
+        "scope": "plugin/src/bearing/*.py",
+        "title": "Cursor local plugin MCP adapter",
+        "trigger": "changing cursor local plugin mcp adapter"
+      }
+    },
+    {
+      "candidate_id": "CAND-PREVIEW-0016",
+      "subject": "plugin/src/bearing/recovery-telemetry-is-ru.py",
+      "candidate_object": "Recovery telemetry is run state.",
+      "candidate_relation": "constrains",
+      "candidate_eocr_function": "Operations",
+      "confidence": "HIGH",
+      "lifecycle_state": "Reviewable",
+      "conflicts_with_accepted": null,
+      "load_bearing": true,
+      "evidence": [
+        {
+          "evidence_source": "commit",
+          "evidence_excerpt": "Recovery telemetry is run state"
+        },
+        {
+          "evidence_source": "comment",
+          "evidence_excerpt": "Long title for wrapping: Recovery telemetry is run state \u2014 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      ],
+      "defaults": {
+        "eocr_function": "Operations",
+        "lifecycle_state": "Accepted",
+        "scope": "plugin/src/bearing/*.py",
+        "title": "Recovery telemetry is run state",
+        "trigger": "changing recovery telemetry is run state"
+      }
+    },
+    {
+      "candidate_id": "CAND-PREVIEW-0017",
+      "subject": "plugin/src/bearing/record-architecture-deci.py",
+      "candidate_object": "Record architecture decisions.",
+      "candidate_relation": "constrains",
+      "candidate_eocr_function": "Rationale",
+      "confidence": "HIGH",
+      "lifecycle_state": "Reviewable",
+      "conflicts_with_accepted": null,
+      "load_bearing": true,
+      "evidence": [
+        {
+          "evidence_source": "commit",
+          "evidence_excerpt": "Record architecture decisions"
+        },
+        {
+          "evidence_source": "comment",
+          "evidence_excerpt": "Long title for wrapping: Record architecture decisions \u2014 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      ],
+      "defaults": {
+        "eocr_function": "Rationale",
+        "lifecycle_state": "Accepted",
+        "scope": "plugin/src/bearing/*.py",
+        "title": "Record architecture decisions",
+        "trigger": "changing record architecture decisions"
+      }
+    },
+    {
+      "candidate_id": "CAND-PREVIEW-0018",
+      "subject": "plugin/src/bearing/project-canonical-source.py",
+      "candidate_object": "Project canonical sources into adapters.",
+      "candidate_relation": "constrains",
+      "candidate_eocr_function": "Operations",
+      "confidence": "MEDIUM",
+      "lifecycle_state": "Reviewable",
+      "conflicts_with_accepted": null,
+      "load_bearing": true,
+      "evidence": [
+        {
+          "evidence_source": "commit",
+          "evidence_excerpt": "Project canonical sources into adapters"
+        },
+        {
+          "evidence_source": "comment",
+          "evidence_excerpt": "Long title for wrapping: Project canonical sources into adapters \u2014 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      ],
+      "defaults": {
+        "eocr_function": "Operations",
+        "lifecycle_state": "Accepted",
+        "scope": "plugin/src/bearing/*.py",
+        "title": "Project canonical sources into adapters",
+        "trigger": "changing project canonical sources into adapters"
+      }
+    },
+    {
+      "candidate_id": "CAND-PREVIEW-0019",
+      "subject": "plugin/src/bearing/inference-never-blocks-a.py",
+      "candidate_object": "Inference never blocks a merge.",
+      "candidate_relation": "constrains",
+      "candidate_eocr_function": "Contract",
+      "confidence": "HIGH",
+      "lifecycle_state": "Reviewable",
+      "conflicts_with_accepted": null,
+      "load_bearing": true,
+      "evidence": [
+        {
+          "evidence_source": "commit",
+          "evidence_excerpt": "Inference never blocks a merge"
+        },
+        {
+          "evidence_source": "comment",
+          "evidence_excerpt": "Long title for wrapping: Inference never blocks a merge \u2014 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      ],
+      "defaults": {
+        "eocr_function": "Contract",
+        "lifecycle_state": "Accepted",
+        "scope": "plugin/src/bearing/*.py",
+        "title": "Inference never blocks a merge",
+        "trigger": "changing inference never blocks a merge"
+      }
+    },
+    {
+      "candidate_id": "CAND-PREVIEW-0020",
+      "subject": "plugin/src/bearing/plugin-install-is-user-d.py",
+      "candidate_object": "Plugin install is user distribution.",
+      "candidate_relation": "constrains",
+      "candidate_eocr_function": "Entry",
+      "confidence": "LOW",
+      "lifecycle_state": "Reviewable",
+      "conflicts_with_accepted": null,
+      "load_bearing": true,
+      "evidence": [
+        {
+          "evidence_source": "commit",
+          "evidence_excerpt": "Plugin install is user distribution"
+        },
+        {
+          "evidence_source": "comment",
+          "evidence_excerpt": "Long title for wrapping: Plugin install is user distribution \u2014 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      ],
+      "defaults": {
+        "eocr_function": "Entry",
+        "lifecycle_state": "Accepted",
+        "scope": "plugin/src/bearing/*.py",
+        "title": "Plugin install is user distribution",
+        "trigger": "changing plugin install is user distribution"
+      }
+    },
+    {
+      "candidate_id": "CAND-PREVIEW-0021",
+      "subject": "plugin/src/bearing/disposition-requires-hum.py",
+      "candidate_object": "Disposition requires human judgment.",
+      "candidate_relation": "constrains",
+      "candidate_eocr_function": "Rationale",
+      "confidence": "MEDIUM",
+      "lifecycle_state": "Reviewable",
+      "conflicts_with_accepted": null,
+      "load_bearing": true,
+      "evidence": [
+        {
+          "evidence_source": "commit",
+          "evidence_excerpt": "Disposition requires human judgment"
+        },
+        {
+          "evidence_source": "comment",
+          "evidence_excerpt": "Long title for wrapping: Disposition requires human judgment \u2014 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      ],
+      "defaults": {
+        "eocr_function": "Rationale",
+        "lifecycle_state": "Accepted",
+        "scope": "plugin/src/bearing/*.py",
+        "title": "Disposition requires human judgment",
+        "trigger": "changing disposition requires human judgment"
+      }
+    },
+    {
+      "candidate_id": "CAND-PREVIEW-0022",
+      "subject": "plugin/src/bearing/shadow-graph-is-never-au.py",
+      "candidate_object": "Shadow graph is never authoritative.",
+      "candidate_relation": "constrains",
+      "candidate_eocr_function": "Contract",
+      "confidence": "HIGH",
+      "lifecycle_state": "Reviewable",
+      "conflicts_with_accepted": null,
+      "load_bearing": true,
+      "evidence": [
+        {
+          "evidence_source": "commit",
+          "evidence_excerpt": "Shadow graph is never authoritative"
+        },
+        {
+          "evidence_source": "comment",
+          "evidence_excerpt": "Long title for wrapping: Shadow graph is never authoritative \u2014 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      ],
+      "defaults": {
+        "eocr_function": "Contract",
+        "lifecycle_state": "Accepted",
+        "scope": "plugin/src/bearing/*.py",
+        "title": "Shadow graph is never authoritative",
+        "trigger": "changing shadow graph is never authoritative"
+      }
+    },
+    {
+      "candidate_id": "CAND-PREVIEW-0023",
+      "subject": "plugin/src/bearing/generated-files-are-not-.py",
+      "candidate_object": "Generated files are not a second source of truth.",
+      "candidate_relation": "constrains",
+      "candidate_eocr_function": "Rationale",
+      "confidence": "MEDIUM",
+      "lifecycle_state": "Reviewable",
+      "conflicts_with_accepted": null,
+      "load_bearing": true,
+      "evidence": [
+        {
+          "evidence_source": "commit",
+          "evidence_excerpt": "Generated files are not a second source of truth"
+        },
+        {
+          "evidence_source": "comment",
+          "evidence_excerpt": "Long title for wrapping: Generated files are not a second source of truth \u2014 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      ],
+      "defaults": {
+        "eocr_function": "Rationale",
+        "lifecycle_state": "Accepted",
+        "scope": "plugin/src/bearing/*.py",
+        "title": "Generated files are not a second source of truth",
+        "trigger": "changing generated files are not a second source of truth"
+      }
+    }
+  ],
+  "enums": {
+    "actions": [
+      "Promote",
+      "Edit",
+      "Split",
+      "Reject",
+      "Defer"
+    ],
+    "eocr_functions": [
+      "Entry",
+      "Operations",
+      "Contract",
+      "Rationale"
+    ],
+    "lifecycle_states": [
+      "Proposed",
+      "Accepted",
+      "Deprecated",
+      "Superseded"
+    ]
+  },
+  "status": "ok"
+}

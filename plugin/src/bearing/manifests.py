@@ -15,6 +15,7 @@ Every client manifest is generated from it:
         +-- plugin/.cursor-plugin/plugin.json
         +-- plugin/.claude-plugin/plugin.json
         +-- plugin/.codex-plugin/plugin.json
+        +-- plugin/.mcp.json
         +-- plugin/skills/*/agents/openai.yaml
         +-- .cursor-plugin/marketplace.json   (repo root -- the repo *is* the marketplace)
         +-- .claude-plugin/marketplace.json
@@ -34,7 +35,7 @@ from typing import Any, Dict, List, Sequence, Tuple
 
 from .artifacts import Artifact, Skip, generated_dir_notice
 from .paths import PLUGIN_SKILL_NAMES
-from .util import BearingError, dump_json, parse_frontmatter, read_json, read_text
+from .util import BearingError, dump_json, parse_frontmatter, read_json, read_text, write_json, write_text
 
 MARKETPLACE_NAME = "bearing"
 # Human-facing product title. Cursor `name` must stay lowercase kebab-case;
@@ -87,6 +88,8 @@ CANONICAL_FIELDS = (
 # conventional directory paths auto-discovery would find (`./skills/`, etc.),
 # which lets the marketplace UI link to GitHub without changing what installs.
 CURSOR_SKILLS_PATH = "./skills/"
+CURSOR_MCP_PATH = "./mcp.json"
+CODEX_MCP_PATH = "./.mcp.json"
 SHARED_FIELDS = (
     "name",
     "version",
@@ -190,8 +193,17 @@ def plugin_manifests(plugin_root: str, canonical: Dict[str, Any]) -> List[Artifa
             body["hooks"] = "./hooks/cursor.json"
             # Same path auto-discovery would use; required for marketplace GitHub links.
             body["skills"] = CURSOR_SKILLS_PATH
+            # Cursor reads this copy after install, not the repo marketplace catalog.
+            # Without this key, plugin-only and symlink installs never surface MCP.
+            body["mcpServers"] = CURSOR_MCP_PATH
             # Cursor-only: marketplace title. `name` stays the install id.
             body["displayName"] = PRODUCT_DISPLAY_NAME
+        if directory == ".codex-plugin":
+            # Codex does not auto-discover skills the way Cursor folder
+            # discovery does; the official manifest points at components.
+            # @see ADR-0015
+            body["skills"] = CURSOR_SKILLS_PATH
+            body["mcpServers"] = CODEX_MCP_PATH
         out.append(
             Artifact(
                 path=os.path.join(plugin_root, directory, "plugin.json"),
@@ -247,11 +259,16 @@ def marketplace_manifests(
     entry["category"] = "engineering-governance"
     entry["tags"] = ["adr", "decisions", "architecture", "legacy"]
 
+    author = canonical.get("author") or {}
+    owner: Dict[str, Any] = {
+        "name": author.get("name", "BEARING maintainers"),
+    }
+    if author.get("email"):
+        owner["email"] = author["email"]
+
     catalog: Dict[str, Any] = {
         "name": name,
-        "owner": {
-            "name": (canonical.get("author") or {}).get("name", "BEARING maintainers"),
-        },
+        "owner": owner,
         "metadata": {
             "description": "The BEARING decision system.",
             "version": canonical.get("version", "0.0.0"),
@@ -278,7 +295,7 @@ def marketplace_manifests(
         if directory == ".cursor-plugin":
             cursor_entry = dict(entry)
             cursor_entry["displayName"] = PRODUCT_DISPLAY_NAME
-            cursor_entry["mcpServers"] = "./mcp.json"
+            cursor_entry["mcpServers"] = CURSOR_MCP_PATH
             cursor_entry["skills"] = CURSOR_SKILLS_PATH
             cursor_entry["hooks"] = "./hooks/cursor.json"
             body = dict(catalog)
@@ -304,15 +321,17 @@ def marketplace_manifests(
             )
         )
 
-    # Codex distributes through the shared ChatGPT/Codex plugin directory rather
-    # than a git-hosted catalog, so there is no third marketplace file to emit.
+    # Codex has no repo-root marketplace catalog. Contributor installs use
+    # `bearing package --local`, which upserts ~/.agents/plugins/marketplace.json.
+    # @see ADR-0015
     skips.append(
         Skip(
             "marketplace",
             "codex",
-            "Codex distributes plugins through the shared ChatGPT plugin directory and "
-            "defines no git-hosted marketplace manifest; .codex-plugin/plugin.json is "
-            "sufficient for installation",
+            "Codex has no git-hosted marketplace catalog at the repository root; "
+            "bearing package --local upserts the personal marketplace at "
+            "~/.agents/plugins/marketplace.json. .codex-plugin/plugin.json is the "
+            "plugin manifest",
             "package",
         )
     )
@@ -372,15 +391,21 @@ def _display_name(skill_name: str) -> str:
     return " ".join(part.capitalize() for part in skill_name.split("-"))
 
 
-def mcp_manifest(plugin_root: str) -> List[Artifact]:
-    """Ship MCP with the plugin so marketplace install surfaces disposition tools.
+# Cursor local plugins live here. The folder name is a product location, not
+# an operator secret; Cursor does not expand ${PLUGIN_ROOT} in this mode.
+LOCAL_PLUGIN_DIRNAME = "bearing-plugin"
+LOCAL_PLUGIN_HOME_PATH = "$HOME/.cursor/plugins/local/%s" % LOCAL_PLUGIN_DIRNAME
 
-    Uses `${PLUGIN_ROOT}` (Cursor/Agent Plugins built-in), not `${workspaceFolder}`.
-    The latter only applies to a project's `.cursor/mcp.json` and is the wrong
-    variable for plugin-bundled servers — it is what made MCP feel "broken"
-    after a plugin-only install.
-    """
-    payload = {
+
+def default_local_plugin_dest() -> str:
+    return os.path.join(
+        os.path.expanduser("~"), ".cursor", "plugins", "local", LOCAL_PLUGIN_DIRNAME
+    )
+
+
+def marketplace_mcp_payload() -> Dict[str, Any]:
+    """Launch config for marketplace install — requires ${PLUGIN_ROOT}."""
+    return {
         "mcpServers": {
             PRODUCT_DISPLAY_NAME: {
                 "command": "python3",
@@ -389,16 +414,238 @@ def mcp_manifest(plugin_root: str) -> List[Artifact]:
             }
         }
     }
+
+
+def local_mcp_payload() -> Dict[str, Any]:
+    """Launch config for Cursor local plugins — ${PLUGIN_ROOT} is never expanded."""
+    return {
+        "mcpServers": {
+            PRODUCT_DISPLAY_NAME: {
+                "type": "stdio",
+                "command": "sh",
+                "args": [
+                    "-c",
+                    'exec python3 "%s/hooks/run_mcp.py"' % LOCAL_PLUGIN_HOME_PATH,
+                ],
+            }
+        }
+    }
+
+
+def codex_mcp_payload() -> Dict[str, Any]:
+    """Launch config for Codex — a direct server map, not Cursor's mcpServers wrapper.
+
+    @see ADR-0015
+    """
+    return {
+        PRODUCT_DISPLAY_NAME: {
+            "command": "python3",
+            "args": ["${PLUGIN_ROOT}/hooks/run_mcp.py"],
+        }
+    }
+
+
+def mcp_manifest(plugin_root: str) -> List[Artifact]:
+    """Ship MCP with the plugin so marketplace install surfaces disposition tools.
+
+    Uses `${PLUGIN_ROOT}` (Cursor/Agent Plugins built-in), not `${workspaceFolder}`.
+    The latter only applies to a project's `.cursor/mcp.json` and is the wrong
+    variable for plugin-bundled servers — it is what made MCP feel "broken"
+    after a plugin-only install.
+
+    `mcp.local.json` is the Cursor-local launch adapter. Cursor will not read
+    it in place; `bearing package --local` copies it to dest/mcp.json.
+
+    `.mcp.json` is the Codex adapter (direct server map).
+    """
     return [
         Artifact(
             path=os.path.join(plugin_root, "mcp.json"),
-            content=dump_json(payload),
+            content=dump_json(marketplace_mcp_payload()),
             source="plugin/src/bearing/manifests.py",
             kind="manifest",
             target="cursor",
             scope="package",
-        )
+        ),
+        Artifact(
+            path=os.path.join(plugin_root, "mcp.local.json"),
+            content=dump_json(local_mcp_payload()),
+            source="plugin/src/bearing/manifests.py",
+            kind="manifest",
+            target="cursor-local",
+            scope="package",
+        ),
+        Artifact(
+            path=os.path.join(plugin_root, ".mcp.json"),
+            content=dump_json(codex_mcp_payload()),
+            source="plugin/src/bearing/manifests.py",
+            kind="manifest",
+            target="codex",
+            scope="package",
+        ),
     ]
+
+
+def _ignore_local_copy(_directory: str, names: List[str]) -> List[str]:
+    ignored = []
+    for name in names:
+        if name in ("__pycache__", ".git", "build", "dist", "plugin") or name.endswith(
+            ".egg-info"
+        ):
+            ignored.append(name)
+    return ignored
+
+
+def _stage_plugin_copy(plugin_root: str, dest: str) -> str:
+    """Copy plugin_root into dest.bearing-staging and strip .git. Caller commits dest."""
+    import shutil
+
+    plugin_root = os.path.abspath(plugin_root)
+    dest = os.path.abspath(dest)
+    if dest == plugin_root:
+        raise BearingError(
+            "refusing to install the local plugin onto itself (%s). "
+            "Run from a bearing-system checkout that contains plugin/, or use "
+            "PYTHONPATH=plugin/src python3 -m bearing package --local"
+            % dest
+        )
+    parent = os.path.dirname(dest)
+    os.makedirs(parent, exist_ok=True)
+    staging = dest + ".bearing-staging"
+    if os.path.lexists(staging):
+        if os.path.isdir(staging) and not os.path.islink(staging):
+            shutil.rmtree(staging)
+        else:
+            os.remove(staging)
+    shutil.copytree(
+        plugin_root,
+        staging,
+        ignore=_ignore_local_copy,
+        symlinks=False,
+        ignore_dangling_symlinks=True,
+    )
+    git_dir = os.path.join(staging, ".git")
+    if os.path.isdir(git_dir):
+        shutil.rmtree(git_dir)
+    elif os.path.isfile(git_dir) or os.path.islink(git_dir):
+        os.remove(git_dir)
+    return staging
+
+
+def _commit_staged_copy(dest: str, staging: str) -> str:
+    import shutil
+
+    dest = os.path.abspath(dest)
+    if os.path.lexists(dest):
+        if os.path.isdir(dest) and not os.path.islink(dest):
+            shutil.rmtree(dest)
+        else:
+            os.remove(dest)
+    os.rename(staging, dest)
+    return dest
+
+
+def sync_local_plugin(plugin_root: str, dest: str) -> str:
+    """Copy `plugin/` to a Cursor local plugin dir and overlay the local MCP adapter.
+
+    The dest is solely a copy target: any `.git` there is deleted. Marketplace
+    `mcp.json` (${PLUGIN_ROOT}) is replaced with the local launch config.
+    """
+    staging = _stage_plugin_copy(plugin_root, dest)
+    write_text(os.path.join(staging, "mcp.json"), dump_json(local_mcp_payload()))
+    return _commit_staged_copy(dest, staging)
+
+
+CODEX_LOCAL_PLUGIN_DIRNAME = "bearing"
+CODEX_PERSONAL_SOURCE_PATH = "./.codex/plugins/bearing"
+
+
+def default_codex_local_plugin_dest() -> str:
+    return os.path.join(
+        os.path.expanduser("~"), ".codex", "plugins", CODEX_LOCAL_PLUGIN_DIRNAME
+    )
+
+
+def default_codex_marketplace_path() -> str:
+    return os.path.join(
+        os.path.expanduser("~"), ".agents", "plugins", "marketplace.json"
+    )
+
+
+def _codex_marketplace_source_path(dest: str) -> str:
+    home = os.path.abspath(os.path.expanduser("~"))
+    dest = os.path.abspath(dest)
+    prefix = home + os.sep
+    if dest == home or dest.startswith(prefix):
+        rel = os.path.relpath(dest, home).replace(os.sep, "/")
+        if rel == ".":
+            return "./"
+        return "./" + rel
+    return CODEX_PERSONAL_SOURCE_PATH
+
+
+def sync_codex_local_plugin(plugin_root: str, dest: str) -> str:
+    """Copy `plugin/` to the Codex personal plugin source dir.
+
+    Does not overlay Cursor's local MCP adapter. Codex reads `.mcp.json`.
+
+    @see ADR-0015
+    """
+    staging = _stage_plugin_copy(plugin_root, dest)
+    return _commit_staged_copy(dest, staging)
+
+
+def upsert_codex_personal_marketplace(path: str, plugin_dest: str) -> str:
+    """Insert or update the bearing entry in a Codex personal marketplace catalog.
+
+    Never replaces the whole file: other plugins and marketplace metadata stay.
+
+    @see ADR-0015
+    """
+    existing = read_json(path, None)
+    if existing is None:
+        catalog: Dict[str, Any] = {
+            "name": "local-plugins",
+            "interface": {"displayName": "Local Plugins"},
+            "plugins": [],
+        }
+    elif isinstance(existing, dict):
+        catalog = existing
+    else:
+        raise BearingError(
+            "refusing to modify %s: expected a JSON object marketplace catalog" % path
+        )
+    plugins = catalog.get("plugins")
+    if plugins is None:
+        plugins = []
+        catalog["plugins"] = plugins
+    elif not isinstance(plugins, list):
+        raise BearingError("refusing to modify %s: `plugins` must be an array" % path)
+
+    source_path = _codex_marketplace_source_path(plugin_dest)
+    incoming = {
+        "name": MARKETPLACE_NAME,
+        "source": {"source": "local", "path": source_path},
+        "policy": {
+            "installation": "AVAILABLE",
+            "authentication": "ON_INSTALL",
+        },
+        "category": "Productivity",
+    }
+    replaced = False
+    for index, item in enumerate(plugins):
+        if isinstance(item, dict) and item.get("name") == MARKETPLACE_NAME:
+            merged = dict(item)
+            merged["source"] = incoming["source"]
+            merged["policy"] = incoming["policy"]
+            merged["category"] = incoming["category"]
+            plugins[index] = merged
+            replaced = True
+            break
+    if not replaced:
+        plugins.append(incoming)
+    write_json(path, catalog)
+    return path
 
 
 def hooks_manifests(plugin_root: str) -> List[Artifact]:
@@ -478,7 +725,9 @@ def all_package_artifacts(
     artifacts.extend(codex_skill_metadata(plugin_root))
     artifacts.extend(hooks_manifests(plugin_root))
     artifacts.extend(mcp_manifest(plugin_root))
-    schema_source = os.path.join(plugin_root, "src", "bearing", "data", "config.schema.json")
+    schema_source = os.path.join(
+        plugin_root, "src", "bearing", "data", "templates", "schemas", "config.schema.json"
+    )
     schema_content = read_text(schema_source)
     if schema_content is None:
         raise BearingError("missing packaged configuration schema at %s" % schema_source)
@@ -487,7 +736,7 @@ def all_package_artifacts(
             Artifact(
                 path=os.path.join(workspace, "schemas", "config-1.json"),
                 content=schema_content,
-                source="plugin/src/bearing/data/config.schema.json",
+                source="plugin/src/bearing/data/templates/schemas/config.schema.json",
                 kind="schema",
                 target="public",
                 scope="package",
@@ -498,7 +747,7 @@ def all_package_artifacts(
                     "The public configuration schema is generated from the schema shipped "
                     "inside the BEARING Python package."
                 ),
-                source="plugin/src/bearing/data/config.schema.json",
+                source="plugin/src/bearing/data/templates/schemas/config.schema.json",
                 kind="schema",
                 target="public",
                 scope="package",

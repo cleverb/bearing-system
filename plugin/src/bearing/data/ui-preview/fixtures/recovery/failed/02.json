@@ -1,0 +1,116 @@
+{
+  "run_id": "recovery-preview-failed",
+  "status": "running",
+  "stage": "discover",
+  "stage_index": 2,
+  "stage_count": 6,
+  "stage_label": "Discover",
+  "started_at": "2026-08-23T21:00:00Z",
+  "updated_at": "2026-08-23T21:01:10Z",
+  "elapsed_seconds": 70,
+  "message": "",
+  "eta": {
+    "remaining_seconds_low": 110,
+    "remaining_seconds_high": 250,
+    "confidence": "low",
+    "display": "4m remaining"
+  },
+  "scope": {
+    "locations_total": 6,
+    "locations_scanned": 2,
+    "files_indexed": 4,
+    "locations": [
+      {
+        "path": "docs/decisions",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/mcp_server.py",
+        "state": "scanned"
+      },
+      {
+        "path": "plugin/src/bearing/cli.py",
+        "state": "scanning"
+      },
+      {
+        "path": "plugin/src/bearing/config.py",
+        "state": "pending"
+      },
+      {
+        "path": "AGENTS.md",
+        "state": "pending"
+      },
+      {
+        "path": "SETUP.md",
+        "state": "pending"
+      }
+    ]
+  },
+  "current": {
+    "path": "plugin/src/bearing/cli.py",
+    "activity": "scanning",
+    "kind": "file",
+    "items": 2,
+    "depth": 2
+  },
+  "findings": {
+    "candidate_decisions": 0,
+    "evidence_items": 0,
+    "records_prepared": 0,
+    "records_written": 0
+  },
+  "budget": {
+    "mode": "balanced",
+    "time_budget_seconds": 600,
+    "max_candidates": 60,
+    "pressure": 0,
+    "status": "normal",
+    "constraint": null
+  },
+  "rates": {
+    "files_per_minute": 18
+  },
+  "stages": [
+    {
+      "id": "scope_plan",
+      "label": "Scope & Plan"
+    },
+    {
+      "id": "discover",
+      "label": "Discover"
+    },
+    {
+      "id": "extract",
+      "label": "Extract"
+    },
+    {
+      "id": "identify",
+      "label": "Identify"
+    },
+    {
+      "id": "synthesize",
+      "label": "Synthesize"
+    },
+    {
+      "id": "write_persist",
+      "label": "Write & Persist"
+    }
+  ],
+  "recent_activity": [
+    {
+      "type": "info",
+      "at": "2026-08-23T21:00:00Z",
+      "label": "Recovery started"
+    },
+    {
+      "type": "scanning",
+      "at": "2026-08-23T21:00:15Z",
+      "label": "Scanning plugin/src/bearing"
+    },
+    {
+      "type": "found",
+      "at": "2026-08-23T21:00:40Z",
+      "label": "Found candidate: plugin tree is read-only"
+    }
+  ]
+}

@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from . import CONFIG_VERSION, RENDERER_VERSION
 from .jsonschema import validate
-from .paths import data_dir, plugin_root
+from .paths import data_dir, plugin_root, schema_path
 from .util import dump_json, read_json, sha256_text
 
 COMPATIBILITY_API = 1
@@ -118,7 +118,7 @@ def load_evidence(workspace: str) -> List[Dict[str, Any]]:
 
 
 def evidence_errors(row: Dict[str, Any]) -> List[str]:
-    schema = read_json(os.path.join(data_dir(), "conformance-evidence.schema.json"), {}) or {}
+    schema = read_json(schema_path("conformance-evidence.schema.json"), {}) or {}
     return validate(row, schema)
 
 

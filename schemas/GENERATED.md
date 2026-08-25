@@ -1,4 +1,4 @@
-<!-- DO NOT EDIT. Generated from plugin/src/bearing/data/config.schema.json by bearing 0.2.0. Run `bearing render` to update; edits here are overwritten and reported as drift by `bearing render --check`. -->
+<!-- DO NOT EDIT. Generated from plugin/src/bearing/data/templates/schemas/config.schema.json by bearing 0.2.0. Run `bearing render` to update; edits here are overwritten and reported as drift by `bearing render --check`. -->
 
 # Generated directory — do not edit
 

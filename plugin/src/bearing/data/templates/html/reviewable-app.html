@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <!-- BEARING:APP-CSS -->
+  <style>
+    header.top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-5); }
+    button, select, input, textarea {
+      font: inherit; color: var(--text); background: var(--surface-input); border: 1px solid var(--border-input);
+      border-radius: var(--radius-sm); padding: var(--space-2) var(--space-4);
+    }
+    button { cursor: pointer; }
+    button.primary { background: var(--accent); border-color: var(--accent); }
+    button.ghost { background: transparent; }
+    button:disabled { opacity: 0.45; cursor: default; }
+    .hub-cards { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-bottom: var(--space-4); }
+    .hub-cards.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .stat {
+      background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: var(--space-5);
+      display: flex; justify-content: space-between; gap: var(--space-2);
+    }
+    .stat .n { font-size: var(--font-stat); font-weight: var(--weight-black); letter-spacing: var(--tracking-display); }
+    .stat .k { color: var(--muted); font-size: var(--font-md); }
+    .section { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: var(--space-5); margin-bottom: var(--space-4); }
+    .qrow {
+      display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) 0;
+      border-bottom: 1px solid var(--surface-bar); font-size: var(--font-md);
+    }
+    .qrow:last-child { border-bottom: 0; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-lg);
+      padding: var(--space-4) var(--space-5); margin-bottom: var(--space-2); cursor: pointer;
+    }
+    .card.sel { border-color: var(--accent); }
+    .card p { margin: 6px 0 0; font-size: var(--font-md); color: #ddd; }
+    .card .meta { margin-top: var(--space-2); display: flex; gap: var(--space-4); }
+    .search {
+      flex: 1; display: flex; align-items: center; gap: var(--space-2);
+      background: var(--surface-input); border: 1px solid var(--border-input);
+      border-radius: var(--radius-sm); padding: 0 var(--space-3);
+    }
+    .search input { border: 0; background: transparent; width: 100%; outline: none; }
+    .pager { display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-4); }
+    .dots { display: flex; gap: 6px; }
+    .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--border-input); display: block; }
+    .dots i.on { background: #fff; }
+    .tabs { display: flex; gap: var(--space-6); border-bottom: 1px solid var(--line); margin: var(--space-4) 0; }
+    .tabs button { background: none; border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: var(--muted); padding: var(--space-2) 0; }
+    .tabs button.on { color: var(--text); border-bottom-color: var(--text); }
+    .ev { font-size: var(--font-md); color: #ccc; line-height: 1.45; margin: 0 0 var(--space-2); }
+    label { display: grid; gap: 6px; font-size: var(--font-md); color: #cfcfcf; margin-bottom: var(--space-4); }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); }
+    .radio { display: flex; gap: var(--space-3); padding: var(--space-3); border-radius: var(--radius-md); cursor: pointer; align-items: flex-start; }
+    .radio.on { background: var(--radio-on); }
+    .radio input { margin-top: 3px; }
+    .radio small { color: var(--muted); display: block; }
+    .actions { display: flex; justify-content: space-between; gap: var(--space-2); margin-top: var(--space-2); }
+    .actions-inline { margin: 0; }
+    .nexts button { width: 100%; text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--surface-bar); border-radius: 0; padding: var(--space-4) var(--space-1); display: flex; justify-content: space-between; }
+    .folder { color: #fde68a; font-weight: var(--weight-semibold); }
+    .path-prefix { color: inherit; }
+    @media (max-width: 720px) {
+      .hub-cards, .hub-cards.cols-3, .split { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <!-- BEARING:ICONS -->
+  <header class="top">
+    <div>
+      <h1>Decision Review</h1>
+      <p class="sub" id="subtitle">Human governance on agentic decisions.</p>
+    </div>
+    <button type="button" class="ghost" id="close-x" title="Back to hub" hidden>
+      <svg class="icon"><use href="#icon-close"/></svg>
+    </button>
+  </header>
+  <p id="banner" class="error hidden"></p>
+  <div id="view"></div>
+
+  <template id="view-hub">
+    <div class="hub-cards">
+      <article class="stat">
+        <div>
+          <div class="k">Shadow Candidates</div>
+          <div class="n" data-bind="remaining"></div>
+          <div class="k">Requires review</div>
+          <div class="bar orange"><i data-fill="remainFill"></i></div>
+        </div>
+        <svg class="icon"><use href="#icon-file"/></svg>
+      </article>
+      <article class="stat">
+        <div>
+          <div class="k">Newly Approved</div>
+          <div class="n" data-bind="approved"></div>
+          <div class="k">This session</div>
+          <div class="bar green"><i data-fill="approvedFill"></i></div>
+        </div>
+        <svg class="icon"><use href="#icon-check-circle"/></svg>
+      </article>
+    </div>
+    <div class="section">
+      <div class="spread"><strong>Review Progress</strong><span class="hint">Today</span></div>
+      <div class="bar tall"><i data-fill="pct"></i></div>
+      <div class="spread hint">
+        <span><span data-bind="reviewed"></span> / <span data-bind="ring"></span> decisions reviewed</span>
+        <span><span data-bind="pct"></span>%</span>
+      </div>
+    </div>
+    <div class="section">
+      <strong>Queue Snapshot</strong>
+      <div id="hub-snapshot"></div>
+    </div>
+    <div class="spread">
+      <button type="button" class="primary" data-act="queue">View Review Queue <svg class="icon"><use href="#icon-arrow"/></svg></button>
+      <span class="hint"><svg class="icon"><use href="#icon-refresh"/></svg> Refresh from tools/call</span>
+    </div>
+  </template>
+
+  <template id="tpl-hub-qrow">
+    <div class="qrow">
+      <svg class="icon"><use href="#icon-file"/></svg>
+      <code data-bind="candidate_id"></code>
+      <span class="pill" data-pill></span>
+      <span class="pill muted" data-bind="candidate_eocr_function"></span>
+      <span class="ml-auto hint" data-bind="lifecycle_state"></span>
+    </div>
+  </template>
+  <template id="tpl-empty-hint">
+    <p class="hint"></p>
+  </template>
+
+  <template id="view-queue">
+    <div class="row mb-toolbar">
+      <div class="search">
+        <svg class="icon"><use href="#icon-search"/></svg>
+        <input id="qsearch" placeholder="Search candidates...">
+      </div>
+      <select id="qfn">
+        <option value="">All Functions</option>
+        <option>Entry</option>
+        <option>Operations</option>
+        <option>Contract</option>
+        <option>Rationale</option>
+      </select>
+      <select id="qconf">
+        <option value="">All Confidence</option>
+        <option>HIGH</option>
+        <option>MEDIUM</option>
+        <option>LOW</option>
+      </select>
+    </div>
+    <div id="queue-list"></div>
+    <div id="queue-pager"></div>
+    <div class="spread hint">
+      <span id="queue-range"></span>
+      <button type="button" class="ghost" data-act="refresh"><svg class="icon"><use href="#icon-refresh"/></svg></button>
+    </div>
+  </template>
+  <template id="tpl-queue-card">
+    <article class="card">
+      <div class="spread">
+        <code data-bind="candidate_id"></code>
+        <span>
+          <span class="pill" data-pill></span>
+          <span class="pill muted" data-bind="candidate_eocr_function"></span>
+        </span>
+      </div>
+      <p data-object></p>
+      <div class="meta">
+        <span data-bind="lifecycle_state"></span>
+        <span><svg class="icon"><use href="#icon-clock"/></svg> reviewable</span>
+        <span><svg class="icon"><use href="#icon-file"/></svg> <span data-bind="subject"></span></span>
+      </div>
+    </article>
+  </template>
+  <template id="tpl-pager">
+    <div class="pager">
+      <button type="button" class="ghost" data-act="qprev"><svg class="icon"><use href="#icon-arrow-left"/></svg> Previous</button>
+      <div class="dots"></div>
+      <button type="button" class="primary" data-act="qnext">Next <svg class="icon"><use href="#icon-arrow"/></svg></button>
+    </div>
+  </template>
+  <template id="tpl-dot">
+    <i></i>
+  </template>
+
+  <template id="view-evidence">
+    <div class="section">
+      <div class="spread">
+        <code data-bind="candidate_id"></code>
+        <span>
+          <span class="pill" data-pill></span>
+          <span class="pill muted" data-bind="candidate_eocr_function"></span>
+        </span>
+      </div>
+      <p class="hint" data-bind="subject"></p>
+      <p data-bind="candidate_object"></p>
+      <div class="tabs">
+        <button type="button" data-act="tab-evidence">Evidence (<span data-bind="nEvidence"></span>)</button>
+        <button type="button" data-act="tab-comments">Code Comments (<span data-bind="nComments"></span>)</button>
+        <button type="button" data-act="tab-adrs">Related ADRs (<span data-bind="nAdrs"></span>)</button>
+      </div>
+      <div id="evidence-list"></div>
+    </div>
+    <div class="actions">
+      <button type="button" class="ghost" data-act="queue"><svg class="icon icon-back"><use href="#icon-arrow"/></svg> Back to queue</button>
+      <button type="button" class="primary" data-act="edit-start"><svg class="icon"><use href="#icon-edit"/></svg> Edit this candidate <svg class="icon"><use href="#icon-arrow"/></svg></button>
+    </div>
+  </template>
+  <template id="tpl-evidence-item">
+    <p class="ev"></p>
+  </template>
+
+  <template id="view-questions">
+    <div class="section">
+      <div class="spread"><strong>Clarifying Questions</strong><span class="pill muted">AI-suggested</span></div>
+      <label>What is the intended impact of this decision?
+        <select id="q-impact">
+          <option>Reliability</option>
+          <option>Security</option>
+          <option>Performance</option>
+          <option>DX</option>
+        </select>
+        <span class="hint">e.g., Reliability, Security, Performance, DX</span>
+      </label>
+      <label>What failure mode does this decision prevent?
+        <input id="q-fail">
+        <span class="hint">Maps to the Promote trigger field.</span>
+      </label>
+      <label>What are the key trade-offs?
+        <input id="q-trade">
+        <span class="hint">Folded into the candidate object on Edit, or trigger on Promote.</span>
+      </label>
+    </div>
+    <div class="actions">
+      <button type="button" class="ghost" data-act="back-ev"><svg class="icon icon-back"><use href="#icon-arrow"/></svg> Back</button>
+      <button type="button" class="ghost" data-act="draft"><svg class="icon"><use href="#icon-save"/></svg> Save Draft</button>
+      <button type="button" class="primary" data-act="go-disp">Continue <svg class="icon"><use href="#icon-arrow"/></svg></button>
+    </div>
+  </template>
+
+  <template id="view-disposition">
+    <div class="section split">
+      <div>
+        <strong>Select Disposition</strong>
+        <div id="disp-radios"></div>
+      </div>
+      <div>
+        <strong>Additional Details</strong>
+        <label>EOCR Function<select id="d-eocr"></select></label>
+        <label>Still valid organizational intent?
+          <select id="d-valid">
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+          <span class="hint">Required for Promote.</span>
+        </label>
+        <label>Authored lifecycle
+          <select id="d-life"></select>
+          <span class="hint">Deprecated / Superseded are lifecycle on Promote, not separate actions.</span>
+        </label>
+        <label>Scope<input id="d-scope"></label>
+        <label>Title (editable)<textarea id="d-title"></textarea></label>
+        <label>Trigger<textarea id="d-trigger"></textarea></label>
+        <label id="edit-wrap" class="hidden">Revised candidate object<textarea id="d-edit"></textarea></label>
+        <label id="rej-wrap" class="hidden">Rejection reason<textarea id="d-rej"></textarea></label>
+        <label id="def-wrap" class="hidden">Defer note<textarea id="d-def"></textarea></label>
+        <label id="spl-wrap" class="hidden">Split notes<textarea id="d-spl"></textarea></label>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="button" class="ghost" data-act="back-q"><svg class="icon icon-back"><use href="#icon-arrow"/></svg> Back</button>
+      <label class="row actions-inline"><input type="checkbox" id="d-adr" checked> Create ADR record</label>
+      <button type="button" class="primary" data-act="submit">Submit Disposition</button>
+    </div>
+  </template>
+  <template id="tpl-radio">
+    <label class="radio">
+      <input type="radio" name="action">
+      <div><strong></strong><small></small></div>
+    </label>
+  </template>
+  <template id="tpl-option">
+    <option></option>
+  </template>
+
+  <template id="view-done">
+    <div class="section">
+      <strong>Decision record updated</strong>
+      <p class="hint" data-bind="message"></p>
+    </div>
+    <div class="hub-cards cols-3">
+      <article class="stat"><div><div class="k">Shadow Candidates</div><div class="n" data-bind="remaining"></div><div class="k">Remaining</div></div></article>
+      <article class="stat"><div><div class="k">Newly Approved</div><div class="n" data-bind="approved"></div><div class="k">This session</div></div></article>
+      <article class="stat">
+        <div>
+          <div class="k">Review Progress</div>
+          <div class="n"><span data-bind="approved"></span> / <span data-bind="ring"></span></div>
+          <div class="k"><span data-bind="pct"></span>%</div>
+        </div>
+        <svg class="icon"><use href="#icon-ring"/></svg>
+      </article>
+    </div>
+    <div class="section nexts">
+      <strong>What's Next?</strong>
+      <button type="button" data-act="queue"><svg class="icon"><use href="#icon-file"/></svg> Review the next candidate in queue <svg class="icon"><use href="#icon-chevron"/></svg></button>
+      <button type="button" data-act="hub"><svg class="icon"><use href="#icon-records"/></svg> View all decision records <svg class="icon"><use href="#icon-chevron"/></svg></button>
+      <button type="button" data-act="hub"><svg class="icon"><use href="#icon-spark"/></svg> Start a new decision interview <svg class="icon"><use href="#icon-chevron"/></svg></button>
+    </div>
+    <button type="button" class="ghost full-width" data-act="queue">Back to Queue</button>
+  </template>
+
+  <script type="application/json" id="boot">{}</script>
+  <!-- BEARING:TPL-JS -->
+  <script>
+    var parentWin = window.parent;
+    var nextId = 1;
+    var pending = {};
+    var state = {
+      view: "hub",
+      candidates: [],
+      enums: {},
+      workspace: "",
+      queuePage: 0,
+      selectedId: "",
+      evidenceTab: "evidence",
+      evidencePage: 0,
+      q: { impact: "Reliability", failure: "", tradeoffs: "" },
+      search: "",
+      filterFn: "",
+      filterConf: "",
+      sessionApproved: 0,
+      lastResult: null,
+      busy: false,
+      draft: {}
+    };
+    var PAGE = 3;
+
+    function post(msg) { parentWin.postMessage(msg, "*"); }
+    function tellSize() {
+      var h = Math.max(
+        document.documentElement.scrollHeight || 0,
+        document.body.scrollHeight || 0,
+        420
+      );
+      post({ jsonrpc: "2.0", method: "ui/notifications/size-changed", params: { height: h } });
+    }
+    function rpc(method, params) {
+      return new Promise(function (resolve, reject) {
+        var id = nextId++;
+        var timer = setTimeout(function () {
+          if (!pending[id]) return;
+          delete pending[id];
+          reject({ message: "Host did not answer " + method + "." });
+        }, 20000);
+        pending[id] = function (result, error) {
+          clearTimeout(timer);
+          if (error) reject(error);
+          else resolve(result || {});
+        };
+        post({ jsonrpc: "2.0", id: id, method: method, params: params || {} });
+      });
+    }
+    function callTool(name, args) {
+      return rpc("tools/call", { name: name, arguments: args || {} }).then(function (result) {
+        if (result && result.isError) {
+          throw { message: ((result.content || [])[0] || {}).text || "tool error" };
+        }
+        return result;
+      });
+    }
+    function setPill(el, conf) {
+      if (!el) return;
+      var v = String(conf || "").toUpperCase();
+      el.className = "pill" + (v === "LOW" ? " low" : v === "HIGH" ? " high" : "");
+      el.textContent = v || "—";
+    }
+    function applyFills(root, map) {
+      root.querySelectorAll("[data-fill]").forEach(function (el) {
+        BearingTpl.setFill(el, map[el.getAttribute("data-fill")]);
+      });
+    }
+    function selected() {
+      for (var i = 0; i < state.candidates.length; i++) {
+        if (state.candidates[i].candidate_id === state.selectedId) return state.candidates[i];
+      }
+      return state.candidates[0] || null;
+    }
+    function filtered() {
+      return (state.candidates || []).filter(function (row) {
+        if (state.search) {
+          var blob = (row.candidate_id + " " + row.subject + " " + row.candidate_object).toLowerCase();
+          if (blob.indexOf(state.search.toLowerCase()) < 0) return false;
+        }
+        if (state.filterFn && row.candidate_eocr_function !== state.filterFn) return false;
+        if (state.filterConf && row.confidence !== state.filterConf) return false;
+        return true;
+      });
+    }
+    function pages(n, size) { return Math.max(1, Math.ceil(n / size)); }
+    function homeRelativePath(raw) {
+      var path = String(raw || "").replace(/\\/g, "/");
+      if (!path) return "";
+      var unix = path.match(/^\/(?:Users|home)\/[^/]+\//);
+      if (unix) return "~/" + path.slice(unix[0].length);
+      var win = path.match(/^[A-Za-z]:\/Users\/[^/]+\//i);
+      if (win) return "~/" + path.slice(win[0].length);
+      return path;
+    }
+    function workspaceSubtitle(path, count) {
+      var display = homeRelativePath(path) || "workspace";
+      var parts = display.split("/");
+      var name = parts.pop() || display;
+      var prefix = parts.length ? parts.join("/") + "/" : "";
+      var wrap = document.createElement("span");
+      var pre = document.createElement("span");
+      pre.className = "path-prefix";
+      pre.textContent = prefix;
+      var folder = document.createElement("span");
+      folder.className = "folder";
+      folder.textContent = name;
+      wrap.appendChild(pre);
+      wrap.appendChild(folder);
+      wrap.appendChild(document.createTextNode(" · " + count + " surfaced"));
+      return wrap;
+    }
+    function fillCandidatePills(root, row) {
+      BearingTpl.bind(root, row);
+      setPill(root.querySelector("[data-pill]"), row.confidence);
+    }
+
+    function viewHub() {
+      var remaining = state.candidates.length;
+      var approved = state.sessionApproved;
+      var reviewed = approved;
+      var ring = remaining + reviewed;
+      var total = ring || 1;
+      var pct = Math.round((reviewed / total) * 100);
+      var clone = BearingTpl.cloneTemplate("view-hub");
+      var data = {
+        remaining: remaining,
+        approved: approved,
+        reviewed: reviewed,
+        ring: ring,
+        pct: pct
+      };
+      BearingTpl.bind(clone, data);
+      applyFills(clone, {
+        remainFill: Math.min(100, remaining * 12),
+        approvedFill: Math.min(100, approved * 20 + 10),
+        pct: pct
+      });
+      var snap = clone.querySelector("#hub-snapshot");
+      var rows = state.candidates.slice(0, 4);
+      if (!rows.length) {
+        var empty = BearingTpl.cloneTemplate("tpl-empty-hint");
+        empty.querySelector(".hint").textContent = "No reviewable candidates.";
+        snap.appendChild(empty);
+      } else {
+        snap.appendChild(BearingTpl.renderList("tpl-hub-qrow", rows, fillCandidatePills));
+      }
+      return clone;
+    }
+
+    function fillQueueCard(root, row) {
+      var card = root.querySelector(".card") || root;
+      fillCandidatePills(root, row);
+      card.classList.toggle("sel", row.candidate_id === state.selectedId);
+      card.setAttribute("data-id", row.candidate_id);
+      card.querySelector("[data-object]").textContent = row.candidate_object || row.subject || "";
+    }
+
+    function refreshQueue() {
+      var rows = filtered();
+      var totalPages = pages(rows.length, PAGE);
+      if (state.queuePage >= totalPages) state.queuePage = totalPages - 1;
+      var slice = rows.slice(state.queuePage * PAGE, state.queuePage * PAGE + PAGE);
+      var list = document.getElementById("queue-list");
+      if (!slice.length) {
+        var empty = BearingTpl.cloneTemplate("tpl-empty-hint");
+        empty.querySelector(".hint").textContent = "No matching candidates.";
+        BearingTpl.mount(list, empty);
+      } else {
+        BearingTpl.mount(list, BearingTpl.renderList("tpl-queue-card", slice, fillQueueCard));
+      }
+      var pagerMount = document.getElementById("queue-pager");
+      var pager = BearingTpl.cloneTemplate("tpl-pager");
+      var prev = pager.querySelector('[data-act="qprev"]');
+      var next = pager.querySelector('[data-act="qnext"]');
+      prev.disabled = state.queuePage <= 0;
+      next.disabled = state.queuePage >= totalPages - 1;
+      var dots = pager.querySelector(".dots");
+      for (var i = 0; i < totalPages; i++) {
+        var dot = BearingTpl.cloneTemplate("tpl-dot");
+        var mark = dot.querySelector("i");
+        if (i === state.queuePage) mark.classList.add("on");
+        dots.appendChild(dot);
+      }
+      BearingTpl.mount(pagerMount, pager);
+      var from = rows.length ? (state.queuePage * PAGE + 1) : 0;
+      var to = Math.min(rows.length, state.queuePage * PAGE + PAGE);
+      document.getElementById("queue-range").textContent =
+        "Showing " + from + " to " + to + " of " + rows.length;
+    }
+
+    function viewQueue() {
+      var clone = BearingTpl.cloneTemplate("view-queue");
+      clone.querySelector("#qsearch").value = state.search;
+      clone.querySelector("#qfn").value = state.filterFn;
+      clone.querySelector("#qconf").value = state.filterConf;
+      document.getElementById("view").replaceChildren(clone);
+      refreshQueue();
+      return null;
+    }
+
+    function classifyEvidence(row) {
+      var ev = row.evidence || [];
+      var comments = ev.filter(function (e) { return /comment/i.test(e.evidence_source || ""); });
+      var adrs = ev.filter(function (e) { return /adr|decision/i.test(e.evidence_source || ""); });
+      return { evidence: ev, comments: comments, adrs: adrs };
+    }
+
+    function viewEvidence() {
+      var row = selected();
+      if (!row) {
+        var empty = BearingTpl.cloneTemplate("tpl-empty-hint");
+        empty.querySelector(".hint").textContent = "Select a candidate first.";
+        return empty;
+      }
+      var groups = classifyEvidence(row);
+      var tab = state.evidenceTab;
+      var list = groups[tab] || groups.evidence;
+      var clone = BearingTpl.cloneTemplate("view-evidence");
+      BearingTpl.bind(clone, {
+        candidate_id: row.candidate_id,
+        candidate_eocr_function: row.candidate_eocr_function,
+        subject: row.subject || "",
+        candidate_object: row.candidate_object || "",
+        nEvidence: groups.evidence.length,
+        nComments: groups.comments.length,
+        nAdrs: groups.adrs.length
+      });
+      setPill(clone.querySelector("[data-pill]"), row.confidence);
+      clone.querySelector('[data-act="tab-evidence"]').classList.toggle("on", tab === "evidence");
+      clone.querySelector('[data-act="tab-comments"]').classList.toggle("on", tab === "comments");
+      clone.querySelector('[data-act="tab-adrs"]').classList.toggle("on", tab === "adrs");
+      var host = clone.querySelector("#evidence-list");
+      if (!list.length) {
+        var none = BearingTpl.cloneTemplate("tpl-empty-hint");
+        none.querySelector(".hint").textContent = "None in this tab.";
+        host.appendChild(none);
+      } else {
+        host.appendChild(BearingTpl.renderList("tpl-evidence-item", list, function (frag, item) {
+          frag.querySelector(".ev").textContent = "[" + (item.evidence_source || "") + "] " + (item.evidence_excerpt || "");
+        }));
+      }
+      return clone;
+    }
+
+    function viewQuestions() {
+      var row = selected() || {};
+      var d = row.defaults || {};
+      if (!state.q.failure) state.q.failure = d.trigger || "";
+      var clone = BearingTpl.cloneTemplate("view-questions");
+      clone.querySelector("#q-impact").value = state.q.impact;
+      clone.querySelector("#q-fail").value = state.q.failure;
+      clone.querySelector("#q-trade").value = state.q.tradeoffs;
+      return clone;
+    }
+
+    function fillOptions(select, values, current) {
+      BearingTpl.mount(select, BearingTpl.renderList("tpl-option", values, function (frag, v) {
+        var opt = frag.querySelector("option");
+        opt.textContent = v;
+        opt.value = v;
+        if (v === current) opt.selected = true;
+      }));
+    }
+
+    function syncDispositionAction(action) {
+      document.getElementById("edit-wrap").classList.toggle("hidden", action !== "Edit");
+      document.getElementById("rej-wrap").classList.toggle("hidden", action !== "Reject");
+      document.getElementById("def-wrap").classList.toggle("hidden", action !== "Defer");
+      document.getElementById("spl-wrap").classList.toggle("hidden", action !== "Split");
+      document.querySelectorAll("#disp-radios .radio").forEach(function (el) {
+        var input = el.querySelector("input");
+        el.classList.toggle("on", input && input.value === action);
+      });
+    }
+
+    function viewDisposition() {
+      var row = selected() || {};
+      var d = row.defaults || {};
+      var draft = state.draft;
+      var action = draft.action || "Promote";
+      var eocr = (state.enums.eocr_functions || ["Entry", "Operations", "Contract", "Rationale"]);
+      var life = (state.enums.lifecycle_states || ["Proposed", "Accepted", "Deprecated", "Superseded"]);
+      var radios = [
+        ["Promote", "Accept", "Endorsed for inclusion in ADRs"],
+        ["Defer", "Defer", "Revisit after more information"],
+        ["Reject", "Reject", "Should not be promoted or re-surfaced as-is"],
+        ["Edit", "Edit", "Revise the candidate object"],
+        ["Split", "Split", "Evidence should become multiple decisions"]
+      ];
+      var clone = BearingTpl.cloneTemplate("view-disposition");
+      clone.querySelector("#disp-radios").appendChild(BearingTpl.renderList("tpl-radio", radios, function (frag, item) {
+        var label = frag.querySelector(".radio");
+        var input = frag.querySelector("input");
+        input.value = item[0];
+        input.checked = action === item[0];
+        if (action === item[0]) label.classList.add("on");
+        label.querySelector("strong").textContent = item[1];
+        label.querySelector("small").textContent = item[2];
+      }));
+      fillOptions(clone.querySelector("#d-eocr"), eocr, draft.eocr_function || d.eocr_function);
+      clone.querySelector("#d-valid").value = draft.still_valid !== false ? "yes" : "no";
+      fillOptions(clone.querySelector("#d-life"), life, draft.lifecycle_state || d.lifecycle_state || "Accepted");
+      clone.querySelector("#d-scope").value = draft.scope || d.scope || "";
+      clone.querySelector("#d-title").value = draft.title || d.title || row.candidate_object || "";
+      clone.querySelector("#d-trigger").value = draft.trigger || state.q.failure || d.trigger || "";
+      clone.querySelector("#d-edit").value = draft.edit_object || row.candidate_object || "";
+      clone.querySelector("#d-rej").value = draft.rejection_reason || "";
+      clone.querySelector("#d-def").value = draft.defer_note || "";
+      clone.querySelector("#d-spl").value = draft.split_brief || "";
+      clone.querySelector("#edit-wrap").classList.toggle("hidden", action !== "Edit");
+      clone.querySelector("#rej-wrap").classList.toggle("hidden", action !== "Reject");
+      clone.querySelector("#def-wrap").classList.toggle("hidden", action !== "Defer");
+      clone.querySelector("#spl-wrap").classList.toggle("hidden", action !== "Split");
+      return clone;
+    }
+
+    function viewDone() {
+      var res = state.lastResult || {};
+      var remaining = state.candidates.length;
+      var ring = remaining + state.sessionApproved;
+      var pct = ring ? Math.round((state.sessionApproved / ring) * 100) : 0;
+      var clone = BearingTpl.cloneTemplate("view-done");
+      BearingTpl.bind(clone, {
+        message: res.message || "Disposition recorded.",
+        remaining: remaining,
+        approved: state.sessionApproved,
+        ring: ring,
+        pct: pct
+      });
+      return clone;
+    }
+
+    function paint() {
+      document.getElementById("close-x").hidden = state.view === "hub";
+      var sub = document.getElementById("subtitle");
+      if (state.view === "hub") {
+        sub.textContent = "Human governance on agentic decisions.";
+      } else {
+        sub.replaceChildren(workspaceSubtitle(state.workspace, state.candidates.length));
+      }
+      if (state.view === "queue" && document.getElementById("queue-list")) {
+        refreshQueue();
+        tellSize();
+        return;
+      }
+      if (state.view === "queue") {
+        viewQueue();
+        tellSize();
+        return;
+      }
+      var html;
+      if (state.view === "hub") html = viewHub();
+      else if (state.view === "evidence") html = viewEvidence();
+      else if (state.view === "questions") html = viewQuestions();
+      else if (state.view === "disposition") html = viewDisposition();
+      else html = viewDone();
+      BearingTpl.mount(document.getElementById("view"), html);
+      tellSize();
+    }
+
+    function ingest(payload) {
+      var data = payload || {};
+      if (data.params && (data.params.structuredContent || data.params.candidates)) {
+        data = data.params;
+      }
+      if (data.structuredContent) data = data.structuredContent;
+      else if (data.result && data.result.structuredContent) data = data.result.structuredContent;
+      if (data.candidates) state.candidates = data.candidates;
+      if (data.enums) state.enums = data.enums;
+      if (data.workspace) state.workspace = data.workspace;
+      if (data.status === "needs_disposition" && data.candidate_id) {
+        state.selectedId = data.candidate_id;
+        state.view = "evidence";
+      } else if (data.status === "disposed") {
+        state.lastResult = data.result || {};
+        if ((data.result || {}).action === "Promote") state.sessionApproved += 1;
+        state.view = "done";
+      } else if (state.view === "hub" && (state.candidates || []).length) {
+        state.view = "queue";
+      }
+      paint();
+    }
+
+    function collectDraft() {
+      var actionEl = document.querySelector('input[name="action"]:checked');
+      state.draft.action = actionEl ? actionEl.value : "Promote";
+      var ge = function (id) { var el = document.getElementById(id); return el ? el.value : ""; };
+      state.draft.eocr_function = ge("d-eocr");
+      state.draft.still_valid = ge("d-valid") === "yes";
+      state.draft.lifecycle_state = ge("d-life");
+      state.draft.scope = ge("d-scope");
+      state.draft.title = ge("d-title");
+      state.draft.trigger = ge("d-trigger");
+      state.draft.edit_object = ge("d-edit");
+      state.draft.rejection_reason = ge("d-rej");
+      state.draft.defer_note = ge("d-def");
+      state.draft.split_brief = ge("d-spl");
+      var fail = document.getElementById("q-fail");
+      var trade = document.getElementById("q-trade");
+      var impact = document.getElementById("q-impact");
+      if (fail) state.q.failure = fail.value;
+      if (trade) state.q.tradeoffs = trade.value;
+      if (impact) state.q.impact = impact.value;
+    }
+
+    function dispositionFromDraft() {
+      var d = state.draft;
+      var action = d.action || "Promote";
+      var out = { action: action };
+      if (action === "Promote") {
+        out.still_valid = !!d.still_valid;
+        out.eocr_function = d.eocr_function;
+        out.lifecycle_state = d.lifecycle_state;
+        out.scope = d.scope;
+        out.title = d.title;
+        var trigger = d.trigger || state.q.failure || "";
+        if (state.q.tradeoffs) trigger = (trigger ? trigger + " Trade-offs: " : "") + state.q.tradeoffs;
+        out.trigger = trigger;
+        if (!out.still_valid) throw new Error("Promote requires affirming still valid today.");
+        if (!String(out.scope || "").trim()) throw new Error("Promote requires a non-empty scope.");
+      } else if (action === "Edit") {
+        out.edit_object = d.edit_object;
+        out.eocr_function = d.eocr_function;
+      } else if (action === "Reject") {
+        out.rejection_reason = d.rejection_reason;
+      } else if (action === "Defer") {
+        out.defer_note = d.defer_note;
+      } else if (action === "Split") {
+        out.split_brief = d.split_brief;
+      }
+      return out;
+    }
+
+    document.getElementById("view").addEventListener("click", function (event) {
+      var act = event.target.closest("[data-act]");
+      var card = event.target.closest(".card");
+      if (card && state.view === "queue") {
+        state.selectedId = card.getAttribute("data-id");
+        state.view = "evidence";
+        state.evidencePage = 0;
+        paint();
+        return;
+      }
+      if (!act) return;
+      var name = act.getAttribute("data-act");
+      if (name === "queue") { state.view = "queue"; paint(); }
+      if (name === "hub") { state.view = "hub"; paint(); }
+      if (name === "qprev") { state.queuePage = Math.max(0, state.queuePage - 1); refreshQueue(); tellSize(); }
+      if (name === "qnext") { state.queuePage += 1; refreshQueue(); tellSize(); }
+      if (name === "tab-evidence") { state.evidenceTab = "evidence"; paint(); }
+      if (name === "tab-comments") { state.evidenceTab = "comments"; paint(); }
+      if (name === "tab-adrs") { state.evidenceTab = "adrs"; paint(); }
+      if (name === "edit-start") { state.view = "questions"; paint(); }
+      if (name === "back-ev") { collectDraft(); state.view = "evidence"; paint(); }
+      if (name === "go-disp" || name === "draft") { collectDraft(); state.view = "disposition"; paint(); }
+      if (name === "back-q") { collectDraft(); state.view = "questions"; paint(); }
+      if (name === "refresh") {
+        callTool("list_reviewable", {}).then(ingest).catch(function (err) {
+          document.getElementById("banner").textContent = err.message || "Refresh failed";
+          document.getElementById("banner").classList.remove("hidden");
+        });
+      }
+      if (name === "submit") {
+        collectDraft();
+        var banner = document.getElementById("banner");
+        try {
+          var disposition = dispositionFromDraft();
+        } catch (ex) {
+          banner.textContent = ex.message || String(ex);
+          banner.classList.remove("hidden");
+          tellSize();
+          return;
+        }
+        var row = selected();
+        if (!row || state.busy) return;
+        state.busy = true;
+        banner.classList.add("hidden");
+        callTool("review_candidate", { candidate_id: row.candidate_id, disposition: disposition })
+          .then(function (result) {
+            state.busy = false;
+            ingest(result);
+          })
+          .catch(function (error) {
+            state.busy = false;
+            banner.textContent = (error && error.message) || "Disposition failed.";
+            banner.classList.remove("hidden");
+            tellSize();
+          });
+      }
+    });
+    document.getElementById("view").addEventListener("change", function (event) {
+      if (event.target && event.target.id === "qfn") {
+        state.filterFn = event.target.value === "All Functions" ? "" : event.target.value;
+        state.queuePage = 0;
+        refreshQueue();
+        tellSize();
+      }
+      if (event.target && event.target.id === "qconf") {
+        state.filterConf = event.target.value === "All Confidence" ? "" : event.target.value;
+        state.queuePage = 0;
+        refreshQueue();
+        tellSize();
+      }
+      if (event.target && event.target.name === "action") {
+        collectDraft();
+        syncDispositionAction(state.draft.action);
+      }
+    });
+    document.getElementById("view").addEventListener("input", function (event) {
+      if (event.target && event.target.id === "qsearch") {
+        state.search = event.target.value;
+        state.queuePage = 0;
+        refreshQueue();
+        tellSize();
+      }
+    });
+    document.getElementById("close-x").addEventListener("click", function () {
+      state.view = "hub";
+      paint();
+    });
+    window.addEventListener("message", function (event) {
+      var data = event.data;
+      if (!data || data.jsonrpc !== "2.0") return;
+      if (data.id != null && pending[data.id]) {
+        var cb = pending[data.id];
+        delete pending[data.id];
+        cb(data.result || {}, data.error || null);
+        return;
+      }
+      if (data.method === "ui/notifications/tool-result") ingest(data.params || {});
+    });
+    try {
+      var boot = JSON.parse(document.getElementById("boot").textContent || "{}");
+      if (boot.candidates || boot.candidate_id) ingest(boot);
+      else paint();
+    } catch (e) { paint(); }
+    post({ jsonrpc: "2.0", method: "ui/notifications/initialized" });
+    tellSize();
+  </script>
+</body>
+</html>

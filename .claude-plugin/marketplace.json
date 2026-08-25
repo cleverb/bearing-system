@@ -5,11 +5,13 @@
   },
   "name": "bearing",
   "owner": {
+    "email": "plugins@cleverboy.com",
     "name": "BEARING maintainers"
   },
   "plugins": [
     {
       "author": {
+        "email": "plugins@cleverboy.com",
         "name": "BEARING maintainers"
       },
       "category": "engineering-governance",

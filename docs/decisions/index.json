@@ -97,6 +97,30 @@
       "scope": "plugin/bin/**, plugin/hooks/**, plugin/src/bearing/enable.py, plugin/src/bearing/paths.py, plugin/src/bearing/doctor.py, plugin/src/bearing/cli.py",
       "source": "docs/decisions/0012-plugin-install-is-user-distribution.md",
       "trigger": "changing how the CLI is distributed or discovered after a marketplace plugin install"
+    },
+    {
+      "eocr_function": "Contract",
+      "id": "ADR-0013",
+      "lifecycle_state": "Proposed",
+      "scope": "plugin/src/bearing/manifests.py, plugin/src/bearing/cli.py, plugin/mcp.json, plugin/mcp.local.json",
+      "source": "docs/decisions/0013-cursor-local-plugin-mcp-adapter.md",
+      "trigger": "changing how the BEARING plugin is launched in Cursor local mode versus marketplace install"
+    },
+    {
+      "eocr_function": "Contract",
+      "id": "ADR-0014",
+      "lifecycle_state": "Proposed",
+      "scope": "plugin/src/bearing/mcp_server.py, plugin/src/bearing/recovery_run.py, plugin/src/bearing/cli.py, plugin/src/bearing/data/templates/html/recovery-app.html, plugin/src/bearing/data/templates/html/reviewable-app.html, plugin/skills/decision-recovery/**",
+      "source": "docs/decisions/0014-recovery-telemetry-is-run-state.md",
+      "trigger": "adding recovery progress UI, a recovery heartbeat tool, or changing where recovery run telemetry is stored"
+    },
+    {
+      "eocr_function": "Contract",
+      "id": "ADR-0015",
+      "lifecycle_state": "Proposed",
+      "scope": "plugin/src/bearing/manifests.py, plugin/src/bearing/cli.py, plugin/.mcp.json, plugin/.codex-plugin/plugin.json",
+      "source": "docs/decisions/0015-codex-personal-marketplace-is-the-local-loop.md",
+      "trigger": "changing how the BEARING plugin is installed for Codex contributor iteration versus a git-hosted marketplace"
     }
   ]
 }

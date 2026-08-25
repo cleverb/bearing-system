@@ -10,7 +10,7 @@ from typing import Any, Dict, List
 
 from .config import ResolvedConfig
 from .jsonschema import validate
-from .paths import data_dir
+from .paths import schema_path
 from .util import BearingError, read_json, read_jsonl
 
 OBSERVED = {
@@ -111,7 +111,7 @@ def score_set(config: ResolvedConfig, set_name: str) -> Dict[str, Any]:
 
 
 def _schema(name: str) -> Dict[str, Any]:
-    return read_json(os.path.join(data_dir(), name), {}) or {}
+    return read_json(schema_path(name), {}) or {}
 
 
 def _atomic_write(path: str, content: str) -> None:

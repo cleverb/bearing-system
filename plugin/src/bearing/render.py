@@ -260,7 +260,7 @@ def render_rules(
                 Artifact(
                     path=os.path.join(root, ".cursor", "rules", "bearing.mdc"),
                     content=emit_frontmatter(front) + "\n" + rule_body,
-                    source="plugin/src/bearing/data/templates/agents-block.md",
+                    source="plugin/src/bearing/data/templates/md/agents-block.md",
                     kind="rules",
                     target=target,
                     scope=scope,
@@ -272,7 +272,7 @@ def render_rules(
                 Artifact(
                     path=os.path.join(root, ".github", "copilot-instructions.md"),
                     content=rule_body,
-                    source="plugin/src/bearing/data/templates/agents-block.md",
+                    source="plugin/src/bearing/data/templates/md/agents-block.md",
                     kind="rules",
                     target=target,
                     scope=scope,

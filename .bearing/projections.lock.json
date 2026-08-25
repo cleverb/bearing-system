@@ -100,8 +100,8 @@
       "kind": "rules",
       "path": ".cursor/rules/bearing.mdc",
       "scope": "repo",
-      "sha256": "c61a5a6b53662e0529271bbbbd0155e663d54666fe0c6fdbc35f0e0d4ac840a1",
-      "source": "plugin/src/bearing/data/templates/agents-block.md",
+      "sha256": "c8bca86d67ae0930057bc897ff694f298928ba588174489110d55d335aece400",
+      "source": "plugin/src/bearing/data/templates/md/agents-block.md",
       "target": "cursor"
     }
   ],

@@ -128,14 +128,57 @@ def plugin_root() -> str:
     return os.path.dirname(os.path.abspath(__file__))
 
 
+def maintainer_plugin_root(workspace: str) -> str:
+    """Canonical ``plugin/`` tree for maintainer commands such as ``bearing package``.
+
+    When the workspace contains a ``plugin/`` directory with a BEARING manifest,
+    that checkout tree wins over the operator-enabled install copy. Without
+    this, ``bearing package --local`` fails once ``bearing enable`` points
+    ``install.json`` at the local Cursor plugin destination.
+    """
+    checkout = os.path.join(os.path.abspath(workspace), "plugin")
+    manifest_path = os.path.join(checkout, "plugin.json")
+    if os.path.isfile(manifest_path):
+        manifest = read_json(manifest_path, {}) or {}
+        if manifest.get("name") == "bearing":
+            skill = os.path.join(checkout, "skills", "decision-recovery", "SKILL.md")
+            if os.path.isfile(skill):
+                return checkout
+    return plugin_root()
+
+
 def data_dir() -> str:
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 
 
 def template_path(name: str) -> str:
-    path = os.path.join(data_dir(), "templates", name)
+    for folder in ("md", "text"):
+        path = os.path.join(data_dir(), "templates", folder, name)
+        if os.path.isfile(path):
+            return path
+    raise BearingError("missing packaged template %r (plugin install may be incomplete)" % name)
+
+
+def schema_path(name: str) -> str:
+    filename = name if name.endswith(".json") else "%s.schema.json" % name
+    path = os.path.join(data_dir(), "templates", "schemas", filename)
     if not os.path.isfile(path):
-        raise BearingError("missing packaged template %r (plugin install may be incomplete)" % name)
+        raise BearingError("missing packaged schema %r (plugin install may be incomplete)" % name)
+    return path
+
+
+def asset_path(name: str, data_root: Optional[str] = None) -> str:
+    path = os.path.join(data_root or data_dir(), "assets", name)
+    if not os.path.isfile(path):
+        raise BearingError("missing packaged asset %r (plugin install may be incomplete)" % name)
+    return path
+
+
+def app_html_path(kind: str, data_root: Optional[str] = None) -> str:
+    name = "recovery-app.html" if kind == "recovery" else "reviewable-app.html"
+    path = os.path.join(data_root or data_dir(), "templates", "html", name)
+    if not os.path.isfile(path):
+        raise BearingError("missing App HTML %s" % path)
     return path
 
 
@@ -291,6 +334,11 @@ class Layout:
     @property
     def runs(self) -> str:
         return self._path(self.bearing, "runs")
+
+    @property
+    def recovery_runs(self) -> str:
+        """`.bearing/runs/recovery/` — gitignored telemetry (ADR-0014)."""
+        return self._path(self.runs, "recovery")
 
     @property
     def cache(self) -> str:
