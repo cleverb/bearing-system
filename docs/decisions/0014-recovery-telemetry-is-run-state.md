@@ -3,7 +3,7 @@ id: ADR-0014
 status: Proposed
 eocr_function: Contract
 trigger: adding recovery progress UI, a recovery heartbeat tool, or changing where recovery run telemetry is stored
-scope: plugin/src/bearing/mcp_server.py, plugin/src/bearing/recovery_run.py, plugin/src/bearing/cli.py, plugin/src/bearing/data/recovery-app.html, plugin/src/bearing/data/reviewable-app.html, plugin/skills/decision-recovery/**
+scope: plugin/src/bearing/mcp_server.py, plugin/src/bearing/recovery_run.py, plugin/src/bearing/cli.py, plugin/src/bearing/data/templates/html/recovery-app.html, plugin/src/bearing/data/templates/html/reviewable-app.html, plugin/skills/decision-recovery/**
 ---
 
 # ADR-0014: Recovery telemetry is durable run-state; MCP Apps project it

@@ -935,13 +935,13 @@ def cmd_schema(args: argparse.Namespace) -> int:
     resolve outside the plugin root. Resolving from the root works whether BEARING
     is installed, vendored, or run from a checkout.
     """
-    from .paths import data_dir, plugin_root
+    from .paths import plugin_root, schema_path
 
     if args.name == "config":
         # Config's schema lives with the CLI's packaged data rather than with a
         # skill, and its `$schema` URL is not resolvable offline, so an editor or
         # a CI step needs a real path.
-        path = os.path.join(data_dir(), "config.schema.json")
+        path = schema_path("config.schema.json")
     else:
         path = os.path.join(
             plugin_root(),

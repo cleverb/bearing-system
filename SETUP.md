@@ -191,7 +191,7 @@ If you prefer a project-local MCP override that calls `bearing-mcp` on PATH,
 copy the template after the shim exists:
 
 ```bash
-cp plugin/src/bearing/data/templates/mcp.json.example /path/to/repo/.cursor/mcp.json
+cp plugin/src/bearing/data/templates/text/mcp.json.example /path/to/repo/.cursor/mcp.json
 ```
 
 `${workspaceFolder}` is only for that **project** `.cursor/mcp.json` path. Do <!-- bearing:ignore-paths: optional project MCP override, not this checkout -->

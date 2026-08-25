@@ -57,8 +57,12 @@ class InjectionAndRpcTest(BearingTestCase):
         )
         self.assertIn("preview-test", html)
         self.assertNotIn("<!-- BEARING:ICONS -->", html)
+        self.assertNotIn("<!-- BEARING:APP-CSS -->", html)
+        self.assertNotIn("<!-- BEARING:TPL-JS -->", html)
         self.assertIn('id="icon-file"', html)
         self.assertIn('id="boot"', html)
+        self.assertIn("--radius-lg", html)
+        self.assertIn("BearingTpl", html)
 
     def test_preview_session_resources_and_tools(self):
         catalog = load_catalog(_catalog_path())

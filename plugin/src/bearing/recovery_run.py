@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from .config import ResolvedConfig
 from .jsonschema import validate
-from .paths import data_dir
+from .paths import schema_path
 from .util import BearingError, append_jsonl, dump_json, read_json, read_jsonl, read_text, write_text
 
 STAGES = (
@@ -393,7 +393,7 @@ def _human_seconds(value: int) -> str:
 
 
 def _schema() -> Dict[str, Any]:
-    return read_json(os.path.join(data_dir(), "recovery-status.schema.json"), {}) or {}
+    return read_json(schema_path("recovery-status.schema.json"), {}) or {}
 
 
 def _write_status(config: ResolvedConfig, status: Dict[str, Any]) -> None:

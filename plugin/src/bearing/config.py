@@ -34,7 +34,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from . import CONFIG_VERSION
 from . import jsonschema
-from .paths import Layout, data_dir, find_workspace_root, user_root
+from .paths import Layout, data_dir, find_workspace_root, schema_path, user_root
 from .util import BearingError, flatten, read_json, unflatten
 
 REPO_FACT = "repo"
@@ -104,7 +104,7 @@ def default_config() -> Dict[str, Any]:
 
 
 def config_schema() -> Dict[str, Any]:
-    return read_json(os.path.join(data_dir(), "config.schema.json"), {}) or {}
+    return read_json(schema_path("config.schema.json"), {}) or {}
 
 
 def env_overrides(environ: Optional[Dict[str, str]] = None) -> Dict[str, Any]:

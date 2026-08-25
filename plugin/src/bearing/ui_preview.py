@@ -2,7 +2,8 @@
 
 @see ADR-0002 — this command never writes the plugin tree.
 @see ADR-0005 — stdlib only (http.server, json).
-@see ADR-0007 — preview settings are catalog + CLI flags, not workspace config.
+
+Preview settings are catalog + CLI flags, not workspace config.
 """
 
 from __future__ import annotations
@@ -17,8 +18,8 @@ from typing import Any, Dict, List, Optional, Tuple, Type
 from urllib.parse import parse_qs, unquote, urlparse
 
 from .jsonschema import validate
-from .mcp_server import RECOVERY_STATUS_URI, _BOOT_SCRIPT, _ICON_MARK
-from .paths import data_dir
+from .mcp_server import RECOVERY_STATUS_URI, assemble_app_html
+from .paths import data_dir, schema_path
 from .util import BearingError, read_json
 
 DEFAULT_BIND = "127.0.0.1"
@@ -124,7 +125,7 @@ def story_fixture_paths(story, catalog_dir, fixtures_dir):
 
 
 def recovery_schema():
-    path = os.path.join(data_dir(), "recovery-status.schema.json")
+    path = schema_path("recovery-status.schema.json")
     schema = read_json(path, None)
     if not isinstance(schema, dict):
         raise BearingError("missing recovery-status.schema.json")
@@ -211,24 +212,7 @@ def catalog_issues(catalog, catalog_path, fixtures_dir=None):
 
 
 def inject_app_html(kind, payload, html_root):
-    name = "recovery-app.html" if kind == "recovery" else "reviewable-app.html"
-    html_path = os.path.join(html_root, name)
-    sprite_path = os.path.join(html_root, "mcp-icons.svg")
-    if not os.path.isfile(html_path):
-        raise BearingError("missing App HTML %s" % html_path)
-    if not os.path.isfile(sprite_path):
-        raise BearingError("missing icon sprite %s" % sprite_path)
-    with open(html_path, encoding="utf-8") as handle:
-        html = handle.read()
-    with open(sprite_path, encoding="utf-8") as handle:
-        sprite = handle.read()
-    blob = json.dumps(payload or {}, separators=(",", ":")).replace("<", "\\u003c")
-    html = html.replace(
-        _BOOT_SCRIPT,
-        '<script type="application/json" id="boot">%s</script>' % blob,
-        1,
-    )
-    return html.replace(_ICON_MARK, sprite, 1)
+    return assemble_app_html(kind, payload, html_root)
 
 
 def tool_result(structured, text="ok", is_error=False):

@@ -725,7 +725,9 @@ def all_package_artifacts(
     artifacts.extend(codex_skill_metadata(plugin_root))
     artifacts.extend(hooks_manifests(plugin_root))
     artifacts.extend(mcp_manifest(plugin_root))
-    schema_source = os.path.join(plugin_root, "src", "bearing", "data", "config.schema.json")
+    schema_source = os.path.join(
+        plugin_root, "src", "bearing", "data", "templates", "schemas", "config.schema.json"
+    )
     schema_content = read_text(schema_source)
     if schema_content is None:
         raise BearingError("missing packaged configuration schema at %s" % schema_source)
@@ -734,7 +736,7 @@ def all_package_artifacts(
             Artifact(
                 path=os.path.join(workspace, "schemas", "config-1.json"),
                 content=schema_content,
-                source="plugin/src/bearing/data/config.schema.json",
+                source="plugin/src/bearing/data/templates/schemas/config.schema.json",
                 kind="schema",
                 target="public",
                 scope="package",
@@ -745,7 +747,7 @@ def all_package_artifacts(
                     "The public configuration schema is generated from the schema shipped "
                     "inside the BEARING Python package."
                 ),
-                source="plugin/src/bearing/data/config.schema.json",
+                source="plugin/src/bearing/data/templates/schemas/config.schema.json",
                 kind="schema",
                 target="public",
                 scope="package",

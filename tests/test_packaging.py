@@ -530,7 +530,9 @@ class ManifestConformanceTest(BearingTestCase):
             ),
             ignore_dangling_symlinks=True,
         )
-        sentinel = os.path.join(dest, "src", "bearing", "data", "reviewable-app.html")
+        sentinel = os.path.join(
+            dest, "src", "bearing", "data", "templates", "html", "reviewable-app.html"
+        )
         os.remove(sentinel)
 
         bearing_home = os.path.join(scratch, ".bearing")

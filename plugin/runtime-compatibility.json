@@ -7,7 +7,7 @@
       "config_schema_version": 1,
       "discovery_mode": "session-advisory",
       "evidence": null,
-      "fingerprint": "adef438c6891c323bad798271ce1f775749959909d0258f70a3fe9b8913f91e7",
+      "fingerprint": "5783cabce75f3dbff08c2856c091c8f06de6834bd96d2a9f2fe2fc53ce874e0b",
       "renderer_version": 1,
       "runtime": "claude",
       "supported": true
@@ -16,7 +16,7 @@
       "config_schema_version": 1,
       "discovery_mode": "session-advisory",
       "evidence": null,
-      "fingerprint": "cd27199b132cbeb915ab0b07bd09331e1a602696034381311a2c2efda51bba44",
+      "fingerprint": "ae3e51ba923462dfcfb80ee021c0f5cbbd8146f67e46d165f09c754e28aa23db",
       "renderer_version": 1,
       "runtime": "codex",
       "supported": true
@@ -25,7 +25,7 @@
       "config_schema_version": 1,
       "discovery_mode": "session-advisory",
       "evidence": null,
-      "fingerprint": "3796d373d3be466e519f80768a6fb09ae37ef04d7dff97eeaac5cc479fe3abf4",
+      "fingerprint": "e0cb3fd486aeb010b44aa2b9649c4b8602961be64a188855bc06210bc1114386",
       "renderer_version": 1,
       "runtime": "cursor",
       "supported": true

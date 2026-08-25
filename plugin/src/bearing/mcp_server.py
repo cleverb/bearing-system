@@ -52,6 +52,7 @@ from .recovery_run import (
     snapshot as recovery_snapshot,
     start_run,
 )
+from .paths import app_html_path, asset_path
 from .util import BearingError
 
 PROTOCOL_VERSION = "2025-06-18"
@@ -62,6 +63,8 @@ RECOVERY_STATUS_URI = "bearing://runs/recovery/current"
 REVIEWABLE_UI_MIME = "text/html;profile=mcp-app"
 _BOOT_SCRIPT = '<script type="application/json" id="boot">{}</script>'
 _ICON_MARK = "<!-- BEARING:ICONS -->"
+_TPL_JS_MARK = "<!-- BEARING:TPL-JS -->"
+_APP_CSS_MARK = "<!-- BEARING:APP-CSS -->"
 
 
 def _client_supports_ui(params: Dict[str, Any]) -> bool:
@@ -893,25 +896,37 @@ def _recovery_fallback_text(structured: Dict[str, Any]) -> str:
 
 
 def _resource_html(kind: str, payload: Optional[Dict[str, Any]] = None) -> str:
-    """App shell with boot JSON and an inline SVG sprite (CSP-safe)."""
+    """App shell with boot JSON, CSS, template helper, and an inline SVG sprite."""
+    return assemble_app_html(kind, payload)
+
+
+def assemble_app_html(kind: str, payload: Optional[Dict[str, Any]] = None, data_root: Optional[str] = None) -> str:
     blob = json.dumps(payload or {}, separators=(",", ":")).replace("<", "\\u003c")
-    html = _app_html(kind).replace(
+    html = _read_packaged(app_html_path(kind, data_root))
+    html = html.replace(
         _BOOT_SCRIPT,
         '<script type="application/json" id="boot">%s</script>' % blob,
         1,
     )
-    return html.replace(_ICON_MARK, _icon_sprite(), 1)
+    html = html.replace(_ICON_MARK, _read_packaged(asset_path("mcp-icons.svg", data_root)), 1)
+    html = html.replace(
+        _APP_CSS_MARK,
+        "<style>\n%s\n</style>" % _read_packaged(asset_path("app.css", data_root)),
+        1,
+    )
+    html = html.replace(
+        _TPL_JS_MARK,
+        "<script>\n%s\n</script>" % _read_packaged(asset_path("template-render.js", data_root)),
+        1,
+    )
+    return html
 
 
 def _app_html(kind: str) -> str:
-    name = "recovery-app.html" if kind == "recovery" else "reviewable-app.html"
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", name)
-    with open(path, encoding="utf-8") as handle:
-        return handle.read()
+    return _read_packaged(app_html_path(kind))
 
 
-def _icon_sprite() -> str:
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "mcp-icons.svg")
+def _read_packaged(path: str) -> str:
     with open(path, encoding="utf-8") as handle:
         return handle.read()
 

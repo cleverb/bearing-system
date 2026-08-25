@@ -43,4 +43,4 @@ When App markup or behavior adds a UI state, add or extend a catalog story in th
 - CLI flags: `--port`, `--bind`, `--open`, `--list`, `--story`, `--catalog`, `--fixtures`, `--html-root`, `--sim-ms`.
 - Not in `.bearing/config.json` / `bearing.yaml`.
 
-`--html-root` loads App HTML/SVG from a checkout `plugin/src/bearing/data` while the installed CLI is a packaged copy.
+`--html-root` loads App HTML, CSS, JS, and SVG from a checkout `plugin/src/bearing/data` (templates under `templates/html`, assets under `assets/`) while the installed CLI is a packaged copy.

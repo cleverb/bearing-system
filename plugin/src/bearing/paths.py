@@ -152,9 +152,33 @@ def data_dir() -> str:
 
 
 def template_path(name: str) -> str:
-    path = os.path.join(data_dir(), "templates", name)
+    for folder in ("md", "text"):
+        path = os.path.join(data_dir(), "templates", folder, name)
+        if os.path.isfile(path):
+            return path
+    raise BearingError("missing packaged template %r (plugin install may be incomplete)" % name)
+
+
+def schema_path(name: str) -> str:
+    filename = name if name.endswith(".json") else "%s.schema.json" % name
+    path = os.path.join(data_dir(), "templates", "schemas", filename)
     if not os.path.isfile(path):
-        raise BearingError("missing packaged template %r (plugin install may be incomplete)" % name)
+        raise BearingError("missing packaged schema %r (plugin install may be incomplete)" % name)
+    return path
+
+
+def asset_path(name: str, data_root: Optional[str] = None) -> str:
+    path = os.path.join(data_root or data_dir(), "assets", name)
+    if not os.path.isfile(path):
+        raise BearingError("missing packaged asset %r (plugin install may be incomplete)" % name)
+    return path
+
+
+def app_html_path(kind: str, data_root: Optional[str] = None) -> str:
+    name = "recovery-app.html" if kind == "recovery" else "reviewable-app.html"
+    path = os.path.join(data_root or data_dir(), "templates", "html", name)
+    if not os.path.isfile(path):
+        raise BearingError("missing App HTML %s" % path)
     return path
 
 
