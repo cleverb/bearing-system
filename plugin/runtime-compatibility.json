@@ -16,7 +16,7 @@
       "config_schema_version": 1,
       "discovery_mode": "session-advisory",
       "evidence": null,
-      "fingerprint": "fc1b7281a88755086513fac3b604388766d07ad62586c52ef594e95546e72c4d",
+      "fingerprint": "cd27199b132cbeb915ab0b07bd09331e1a602696034381311a2c2efda51bba44",
       "renderer_version": 1,
       "runtime": "codex",
       "supported": true

@@ -15,6 +15,7 @@ Every client manifest is generated from it:
         +-- plugin/.cursor-plugin/plugin.json
         +-- plugin/.claude-plugin/plugin.json
         +-- plugin/.codex-plugin/plugin.json
+        +-- plugin/.mcp.json
         +-- plugin/skills/*/agents/openai.yaml
         +-- .cursor-plugin/marketplace.json   (repo root -- the repo *is* the marketplace)
         +-- .claude-plugin/marketplace.json
@@ -34,7 +35,7 @@ from typing import Any, Dict, List, Sequence, Tuple
 
 from .artifacts import Artifact, Skip, generated_dir_notice
 from .paths import PLUGIN_SKILL_NAMES
-from .util import BearingError, dump_json, parse_frontmatter, read_json, read_text, write_text
+from .util import BearingError, dump_json, parse_frontmatter, read_json, read_text, write_json, write_text
 
 MARKETPLACE_NAME = "bearing"
 # Human-facing product title. Cursor `name` must stay lowercase kebab-case;
@@ -88,6 +89,7 @@ CANONICAL_FIELDS = (
 # which lets the marketplace UI link to GitHub without changing what installs.
 CURSOR_SKILLS_PATH = "./skills/"
 CURSOR_MCP_PATH = "./mcp.json"
+CODEX_MCP_PATH = "./.mcp.json"
 SHARED_FIELDS = (
     "name",
     "version",
@@ -196,6 +198,12 @@ def plugin_manifests(plugin_root: str, canonical: Dict[str, Any]) -> List[Artifa
             body["mcpServers"] = CURSOR_MCP_PATH
             # Cursor-only: marketplace title. `name` stays the install id.
             body["displayName"] = PRODUCT_DISPLAY_NAME
+        if directory == ".codex-plugin":
+            # Codex does not auto-discover skills the way Cursor folder
+            # discovery does; the official manifest points at components.
+            # @see ADR-0015
+            body["skills"] = CURSOR_SKILLS_PATH
+            body["mcpServers"] = CODEX_MCP_PATH
         out.append(
             Artifact(
                 path=os.path.join(plugin_root, directory, "plugin.json"),
@@ -313,15 +321,17 @@ def marketplace_manifests(
             )
         )
 
-    # Codex distributes through the shared ChatGPT/Codex plugin directory rather
-    # than a git-hosted catalog, so there is no third marketplace file to emit.
+    # Codex has no repo-root marketplace catalog. Contributor installs use
+    # `bearing package --local`, which upserts ~/.agents/plugins/marketplace.json.
+    # @see ADR-0015
     skips.append(
         Skip(
             "marketplace",
             "codex",
-            "Codex distributes plugins through the shared ChatGPT plugin directory and "
-            "defines no git-hosted marketplace manifest; .codex-plugin/plugin.json is "
-            "sufficient for installation",
+            "Codex has no git-hosted marketplace catalog at the repository root; "
+            "bearing package --local upserts the personal marketplace at "
+            "~/.agents/plugins/marketplace.json. .codex-plugin/plugin.json is the "
+            "plugin manifest",
             "package",
         )
     )
@@ -422,6 +432,19 @@ def local_mcp_payload() -> Dict[str, Any]:
     }
 
 
+def codex_mcp_payload() -> Dict[str, Any]:
+    """Launch config for Codex — a direct server map, not Cursor's mcpServers wrapper.
+
+    @see ADR-0015
+    """
+    return {
+        PRODUCT_DISPLAY_NAME: {
+            "command": "python3",
+            "args": ["${PLUGIN_ROOT}/hooks/run_mcp.py"],
+        }
+    }
+
+
 def mcp_manifest(plugin_root: str) -> List[Artifact]:
     """Ship MCP with the plugin so marketplace install surfaces disposition tools.
 
@@ -432,6 +455,8 @@ def mcp_manifest(plugin_root: str) -> List[Artifact]:
 
     `mcp.local.json` is the Cursor-local launch adapter. Cursor will not read
     it in place; `bearing package --local` copies it to dest/mcp.json.
+
+    `.mcp.json` is the Codex adapter (direct server map).
     """
     return [
         Artifact(
@@ -450,6 +475,14 @@ def mcp_manifest(plugin_root: str) -> List[Artifact]:
             target="cursor-local",
             scope="package",
         ),
+        Artifact(
+            path=os.path.join(plugin_root, ".mcp.json"),
+            content=dump_json(codex_mcp_payload()),
+            source="plugin/src/bearing/manifests.py",
+            kind="manifest",
+            target="codex",
+            scope="package",
+        ),
     ]
 
 
@@ -463,12 +496,8 @@ def _ignore_local_copy(_directory: str, names: List[str]) -> List[str]:
     return ignored
 
 
-def sync_local_plugin(plugin_root: str, dest: str) -> str:
-    """Copy `plugin/` to a Cursor local plugin dir and overlay the local MCP adapter.
-
-    The dest is solely a copy target: any `.git` there is deleted. Marketplace
-    `mcp.json` (${PLUGIN_ROOT}) is replaced with the local launch config.
-    """
+def _stage_plugin_copy(plugin_root: str, dest: str) -> str:
+    """Copy plugin_root into dest.bearing-staging and strip .git. Caller commits dest."""
     import shutil
 
     plugin_root = os.path.abspath(plugin_root)
@@ -495,12 +524,18 @@ def sync_local_plugin(plugin_root: str, dest: str) -> str:
         symlinks=False,
         ignore_dangling_symlinks=True,
     )
-    write_text(os.path.join(staging, "mcp.json"), dump_json(local_mcp_payload()))
     git_dir = os.path.join(staging, ".git")
     if os.path.isdir(git_dir):
         shutil.rmtree(git_dir)
     elif os.path.isfile(git_dir) or os.path.islink(git_dir):
         os.remove(git_dir)
+    return staging
+
+
+def _commit_staged_copy(dest: str, staging: str) -> str:
+    import shutil
+
+    dest = os.path.abspath(dest)
     if os.path.lexists(dest):
         if os.path.isdir(dest) and not os.path.islink(dest):
             shutil.rmtree(dest)
@@ -508,6 +543,109 @@ def sync_local_plugin(plugin_root: str, dest: str) -> str:
             os.remove(dest)
     os.rename(staging, dest)
     return dest
+
+
+def sync_local_plugin(plugin_root: str, dest: str) -> str:
+    """Copy `plugin/` to a Cursor local plugin dir and overlay the local MCP adapter.
+
+    The dest is solely a copy target: any `.git` there is deleted. Marketplace
+    `mcp.json` (${PLUGIN_ROOT}) is replaced with the local launch config.
+    """
+    staging = _stage_plugin_copy(plugin_root, dest)
+    write_text(os.path.join(staging, "mcp.json"), dump_json(local_mcp_payload()))
+    return _commit_staged_copy(dest, staging)
+
+
+CODEX_LOCAL_PLUGIN_DIRNAME = "bearing"
+CODEX_PERSONAL_SOURCE_PATH = "./.codex/plugins/bearing"
+
+
+def default_codex_local_plugin_dest() -> str:
+    return os.path.join(
+        os.path.expanduser("~"), ".codex", "plugins", CODEX_LOCAL_PLUGIN_DIRNAME
+    )
+
+
+def default_codex_marketplace_path() -> str:
+    return os.path.join(
+        os.path.expanduser("~"), ".agents", "plugins", "marketplace.json"
+    )
+
+
+def _codex_marketplace_source_path(dest: str) -> str:
+    home = os.path.abspath(os.path.expanduser("~"))
+    dest = os.path.abspath(dest)
+    prefix = home + os.sep
+    if dest == home or dest.startswith(prefix):
+        rel = os.path.relpath(dest, home).replace(os.sep, "/")
+        if rel == ".":
+            return "./"
+        return "./" + rel
+    return CODEX_PERSONAL_SOURCE_PATH
+
+
+def sync_codex_local_plugin(plugin_root: str, dest: str) -> str:
+    """Copy `plugin/` to the Codex personal plugin source dir.
+
+    Does not overlay Cursor's local MCP adapter. Codex reads `.mcp.json`.
+
+    @see ADR-0015
+    """
+    staging = _stage_plugin_copy(plugin_root, dest)
+    return _commit_staged_copy(dest, staging)
+
+
+def upsert_codex_personal_marketplace(path: str, plugin_dest: str) -> str:
+    """Insert or update the bearing entry in a Codex personal marketplace catalog.
+
+    Never replaces the whole file: other plugins and marketplace metadata stay.
+
+    @see ADR-0015
+    """
+    existing = read_json(path, None)
+    if existing is None:
+        catalog: Dict[str, Any] = {
+            "name": "local-plugins",
+            "interface": {"displayName": "Local Plugins"},
+            "plugins": [],
+        }
+    elif isinstance(existing, dict):
+        catalog = existing
+    else:
+        raise BearingError(
+            "refusing to modify %s: expected a JSON object marketplace catalog" % path
+        )
+    plugins = catalog.get("plugins")
+    if plugins is None:
+        plugins = []
+        catalog["plugins"] = plugins
+    elif not isinstance(plugins, list):
+        raise BearingError("refusing to modify %s: `plugins` must be an array" % path)
+
+    source_path = _codex_marketplace_source_path(plugin_dest)
+    incoming = {
+        "name": MARKETPLACE_NAME,
+        "source": {"source": "local", "path": source_path},
+        "policy": {
+            "installation": "AVAILABLE",
+            "authentication": "ON_INSTALL",
+        },
+        "category": "Productivity",
+    }
+    replaced = False
+    for index, item in enumerate(plugins):
+        if isinstance(item, dict) and item.get("name") == MARKETPLACE_NAME:
+            merged = dict(item)
+            merged["source"] = incoming["source"]
+            merged["policy"] = incoming["policy"]
+            merged["category"] = incoming["category"]
+            plugins[index] = merged
+            replaced = True
+            break
+    if not replaced:
+        plugins.append(incoming)
+    write_json(path, catalog)
+    return path
 
 
 def hooks_manifests(plugin_root: str) -> List[Artifact]:

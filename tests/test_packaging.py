@@ -65,6 +65,20 @@ _EXPLANATORY_MARKERS = (
 _SKIP_DIRS = {"__pycache__", ".git", "build", "dist", ".eggs"}
 
 
+def _isolated_local_args(scratch, cursor_dest):
+    """Keep `--local` tests off the real ~/.codex cache and personal marketplace."""
+    return [
+        "package",
+        "--local",
+        "--dest",
+        cursor_dest,
+        "--codex-dest",
+        os.path.join(scratch, "codex-bearing"),
+        "--codex-marketplace",
+        os.path.join(scratch, "codex-marketplace.json"),
+    ]
+
+
 def _iter_text_files(root):
     for directory, dirnames, filenames in os.walk(root):
         dirnames[:] = [
@@ -410,6 +424,7 @@ class ManifestConformanceTest(BearingTestCase):
             "plugin/.cursor-plugin/plugin.json",
             "plugin/.claude-plugin/plugin.json",
             "plugin/.codex-plugin/plugin.json",
+            "plugin/.mcp.json",
             ".cursor-plugin/marketplace.json",
             ".claude-plugin/marketplace.json",
         ):
@@ -432,6 +447,25 @@ class ManifestConformanceTest(BearingTestCase):
         self.assertIn("workspaceOpen", cursor["hooks"])
         self.assertIn("PreToolUse", claude["hooks"])
         self.assertNotEqual(cursor, claude)
+
+    def test_codex_plugin_manifest_points_at_skills_and_mcp(self):
+        with open(os.path.join(PLUGIN_ROOT, ".codex-plugin", "plugin.json"), "r", encoding="utf-8") as handle:
+            manifest = json.load(handle)
+        self.assertEqual(manifest["skills"], "./skills/")
+        self.assertEqual(manifest["mcpServers"], "./.mcp.json")
+        self.assertNotIn("hooks", manifest)
+
+    def test_plugin_ships_codex_mcp_as_direct_server_map(self):
+        path = os.path.join(PLUGIN_ROOT, ".mcp.json")
+        self.assertTrue(os.path.isfile(path), "plugin/.mcp.json must ship as the Codex MCP adapter")
+        with open(path, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        self.assertNotIn("mcpServers", payload)
+        self.assertIn("BEARING", payload)
+        server = payload["BEARING"]
+        self.assertEqual(server.get("command"), "python3")
+        self.assertEqual(server.get("args"), ["${PLUGIN_ROOT}/hooks/run_mcp.py"])
+        self.assertNotIn("${workspaceFolder}", json.dumps(server))
 
     def test_plugin_ships_mcp_with_plugin_root_not_workspace_folder(self):
         path = os.path.join(PLUGIN_ROOT, "mcp.json")
@@ -469,7 +503,7 @@ class ManifestConformanceTest(BearingTestCase):
             handle.write("ref: refs/heads/main\n")
 
         result = run_cli(
-            ["package", "--local", "--dest", dest],
+            _isolated_local_args(scratch, dest),
             workspace=REPO_ROOT,
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -512,7 +546,7 @@ class ManifestConformanceTest(BearingTestCase):
             )
 
         result = run_cli(
-            ["package", "--local", "--dest", dest],
+            _isolated_local_args(scratch, dest),
             workspace=REPO_ROOT,
             env={
                 "BEARING_HOME": bearing_home,
@@ -521,6 +555,90 @@ class ManifestConformanceTest(BearingTestCase):
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue(os.path.isfile(sentinel), "package --local should copy from workspace plugin/")
+
+    def test_package_local_cannot_combine_with_check(self):
+        result = run_cli(
+            ["package", "--local", "--check"],
+            workspace=REPO_ROOT,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        combined = result.stdout + result.stderr
+        self.assertIn("--local", combined)
+        self.assertIn("--check", combined)
+
+    def test_package_local_copies_codex_tree_without_cursor_local_mcp_overlay(self):
+        scratch = os.path.realpath(tempfile.mkdtemp(prefix="bearing-codex-local-"))
+        self.addCleanup(shutil.rmtree, scratch, True)
+        cursor_dest = os.path.join(scratch, "bearing-plugin")
+        args = _isolated_local_args(scratch, cursor_dest)
+        result = run_cli(args, workspace=REPO_ROOT)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+        codex_dest = os.path.join(scratch, "codex-bearing")
+        self.assertTrue(os.path.isdir(os.path.join(codex_dest, "skills")))
+        self.assertTrue(os.path.isfile(os.path.join(codex_dest, ".codex-plugin", "plugin.json")))
+        self.assertTrue(os.path.isfile(os.path.join(codex_dest, ".mcp.json")))
+        with open(os.path.join(codex_dest, "mcp.json"), "r", encoding="utf-8") as handle:
+            marketplace_mcp = json.load(handle)
+        with open(os.path.join(PLUGIN_ROOT, "mcp.json"), "r", encoding="utf-8") as handle:
+            expected_marketplace = json.load(handle)
+        with open(os.path.join(PLUGIN_ROOT, "mcp.local.json"), "r", encoding="utf-8") as handle:
+            local_adapter = json.load(handle)
+        self.assertEqual(marketplace_mcp, expected_marketplace)
+        self.assertNotEqual(marketplace_mcp, local_adapter)
+        with open(os.path.join(codex_dest, ".mcp.json"), "r", encoding="utf-8") as handle:
+            codex_mcp = json.load(handle)
+        self.assertIn("BEARING", codex_mcp)
+        self.assertNotIn("mcpServers", codex_mcp)
+
+        marketplace_path = os.path.join(scratch, "codex-marketplace.json")
+        with open(marketplace_path, "r", encoding="utf-8") as handle:
+            catalog = json.load(handle)
+        self.assertEqual(len(catalog["plugins"]), 1)
+        entry = catalog["plugins"][0]
+        self.assertEqual(entry["name"], "bearing")
+        self.assertEqual(entry["source"]["source"], "local")
+        self.assertEqual(entry["policy"]["installation"], "AVAILABLE")
+        self.assertEqual(entry["policy"]["authentication"], "ON_INSTALL")
+        self.assertEqual(entry["category"], "Productivity")
+        self.assertEqual(entry["source"]["path"], "./.codex/plugins/bearing")
+
+    def test_codex_marketplace_upsert_preserves_other_plugins(self):
+        from bearing.manifests import upsert_codex_personal_marketplace
+
+        scratch = os.path.realpath(tempfile.mkdtemp(prefix="bearing-codex-mkt-"))
+        self.addCleanup(shutil.rmtree, scratch, True)
+        path = os.path.join(scratch, "marketplace.json")
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(
+                {
+                    "name": "already-mine",
+                    "interface": {"displayName": "Mine"},
+                    "plugins": [
+                        {
+                            "name": "other-plugin",
+                            "source": {"source": "local", "path": "./other"},
+                            "category": "Productivity",
+                        }
+                    ],
+                },
+                handle,
+            )
+        dest = os.path.join(scratch, "not-under-home", "bearing")
+        upsert_codex_personal_marketplace(path, dest)
+        with open(path, "r", encoding="utf-8") as handle:
+            catalog = json.load(handle)
+        self.assertEqual(catalog["name"], "already-mine")
+        self.assertEqual(catalog["interface"]["displayName"], "Mine")
+        names = [item["name"] for item in catalog["plugins"]]
+        self.assertEqual(names, ["other-plugin", "bearing"])
+        bearing = catalog["plugins"][1]
+        self.assertEqual(bearing["source"]["path"], "./.codex/plugins/bearing")
+        upsert_codex_personal_marketplace(path, dest)
+        with open(path, "r", encoding="utf-8") as handle:
+            again = json.load(handle)
+        self.assertEqual(len(again["plugins"]), 2)
+        self.assertEqual(again["plugins"][0]["name"], "other-plugin")
 
     def test_marketplace_entry_advertises_bearing_display_name_and_mcp(self):
         with open(os.path.join(REPO_ROOT, ".cursor-plugin/marketplace.json"), "r", encoding="utf-8") as handle:

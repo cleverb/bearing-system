@@ -30,15 +30,20 @@ command remain `bearing` so installation naming does not leak into runtime use.
 
 Five tiers, each catching a failure class the one below it cannot see. The same list is in [`tests/README.md`](../../tests/README.md).
 
-**Tier 0 — iteration.** Copy the plugin into Cursor's local plugin directory.
+**Tier 0 — iteration.** Copy the plugin into Cursor's local plugin directory
+and Codex's personal plugin source directory.
 
 ```bash
 PYTHONPATH=plugin/src python3 -m bearing package --local
 ```
 
 Reload Cursor after each copy. Marketplace `plugin/mcp.json` uses
-`${PLUGIN_ROOT}`; the local copy gets a separate launch adapter written to dest
-`mcp.json` because Cursor local mode does not expand `${PLUGIN_ROOT}`.
+`${PLUGIN_ROOT}`; the Cursor local copy gets a separate launch adapter written
+to dest `mcp.json` because Cursor local mode does not expand `${PLUGIN_ROOT}`.
+Codex has no `plugins/local` auto-load folder: the copy lands at
+`~/.codex/plugins/bearing` and the personal marketplace at
+`~/.agents/plugins/marketplace.json` is upserted. Restart Codex after each copy
+so the installed cache re-syncs. See ADR-0015.
 
 **Tier 1 — manifest validation.** Every client manifest is generated from `plugin/plugin.json`. A hand-edited manifest is drift.
 

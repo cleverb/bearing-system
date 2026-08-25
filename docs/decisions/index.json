@@ -113,6 +113,14 @@
       "scope": "plugin/src/bearing/mcp_server.py, plugin/src/bearing/recovery_run.py, plugin/src/bearing/cli.py, plugin/src/bearing/data/recovery-app.html, plugin/src/bearing/data/reviewable-app.html, plugin/skills/decision-recovery/**",
       "source": "docs/decisions/0014-recovery-telemetry-is-run-state.md",
       "trigger": "adding recovery progress UI, a recovery heartbeat tool, or changing where recovery run telemetry is stored"
+    },
+    {
+      "eocr_function": "Contract",
+      "id": "ADR-0015",
+      "lifecycle_state": "Proposed",
+      "scope": "plugin/src/bearing/manifests.py, plugin/src/bearing/cli.py, plugin/.mcp.json, plugin/.codex-plugin/plugin.json",
+      "source": "docs/decisions/0015-codex-personal-marketplace-is-the-local-loop.md",
+      "trigger": "changing how the BEARING plugin is installed for Codex contributor iteration versus a git-hosted marketplace"
     }
   ]
 }

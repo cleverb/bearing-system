@@ -34,14 +34,16 @@ only exists in a git context, so a fake directory would test a different program
 
 Five tiers, each catching a failure class the one below it cannot see.
 
-**Tier 0 — iteration.** Copy the plugin into Cursor's local plugin directory.
+**Tier 0 — iteration.** Copy the plugin into Cursor's local plugin directory
+and Codex's personal plugin source directory.
 
 ```bash
 PYTHONPATH=plugin/src python3 -m bearing package --local
 ```
 
-Reload Cursor after each copy. See ADR-0013 for why local and marketplace MCP
-launch configs differ.
+Reload Cursor after each copy. See ADR-0013 for why Cursor local and
+marketplace MCP launch configs differ. See ADR-0015 for the Codex personal
+marketplace copy (`~/.codex/plugins/bearing`, not `plugins/local`).
 
 **Tier 1 — manifest validation.** Every client manifest is generated from
 `plugin/plugin.json`, so a hand-edited manifest is drift rather than a fix.

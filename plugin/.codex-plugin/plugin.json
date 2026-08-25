@@ -15,7 +15,9 @@
     "code-archaeology"
   ],
   "license": "MIT",
+  "mcpServers": "./.mcp.json",
   "name": "bearing",
   "repository": "https://github.com/cleverb/bearing-system",
+  "skills": "./skills/",
   "version": "0.2.0"
 }

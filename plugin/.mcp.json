@@ -1,0 +1,8 @@
+{
+  "BEARING": {
+    "args": [
+      "${PLUGIN_ROOT}/hooks/run_mcp.py"
+    ],
+    "command": "python3"
+  }
+}

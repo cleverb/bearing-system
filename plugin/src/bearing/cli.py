@@ -3,6 +3,7 @@
 @see ADR-0008 — judgment belongs to Skills; this file is mechanical. Recovery
 has no extractor binary.
 @see ADR-0014 — `recovery-status` writes `.bearing/runs/recovery/` telemetry.
+@see ADR-0015 — `package --local` also copies to the Codex personal marketplace.
 @see ADR-0005 — standard library argparse, no third-party CLI framework.
 @see ADR-0009 — assessment is informational; this file must not fail the process.
 
@@ -462,7 +463,11 @@ def _migrate_projection_locks(workspace, repo_lock_path, check, lock_path_fn, re
 
 
 def cmd_package(args: argparse.Namespace) -> int:
-    """Maintainer command: regenerate every client manifest from `plugin.json`."""
+    """Maintainer command: regenerate every client manifest from `plugin.json`.
+
+    @see ADR-0013 — Cursor `--local` overlays mcp.local.json.
+    @see ADR-0015 — the same flag copies to the Codex personal marketplace.
+    """
     from .artifacts import apply as apply_artifacts
     from .manifests import all_package_artifacts, version_consistency_errors
     from .paths import find_workspace_root, maintainer_plugin_root
@@ -513,11 +518,31 @@ def cmd_package(args: argparse.Namespace) -> int:
             return EXIT_FAIL
         print(status_line("ok", "Tier 4 client conformance", "all supported runtimes qualified"))
     if getattr(args, "local", False):
-        from .manifests import default_local_plugin_dest, sync_local_plugin
+        from .manifests import (
+            default_codex_local_plugin_dest,
+            default_codex_marketplace_path,
+            default_local_plugin_dest,
+            sync_codex_local_plugin,
+            sync_local_plugin,
+            upsert_codex_personal_marketplace,
+        )
 
         dest = getattr(args, "dest", None) or default_local_plugin_dest()
         synced = sync_local_plugin(root, dest)
         print(status_line("ok", "local plugin", synced))
+        codex_dest = getattr(args, "codex_dest", None) or default_codex_local_plugin_dest()
+        codex_synced = sync_codex_local_plugin(root, codex_dest)
+        print(status_line("ok", "codex plugin", codex_synced))
+        marketplace = (
+            getattr(args, "codex_marketplace", None) or default_codex_marketplace_path()
+        )
+        catalog = upsert_codex_personal_marketplace(marketplace, codex_dest)
+        print(status_line("ok", "codex marketplace", catalog))
+        print(
+            "Restart Codex and install bearing from your personal marketplace once; "
+            "confirm with `codex plugin list --json`. Re-run `bearing package --local` "
+            "and restart Codex after plugin/ edits."
+        )
     print(paint("OK: %d manifest artifact(s) current." % len(artifacts), "ok"))
     print()
     return EXIT_OK
@@ -1310,12 +1335,22 @@ def build_parser() -> argparse.ArgumentParser:
     package.add_argument(
         "--local",
         action="store_true",
-        help="copy plugin/ to the Cursor local plugin dir with the local MCP launch adapter",
+        help="copy plugin/ to Cursor local and Codex personal plugin dirs",
     )
     package.add_argument(
         "--dest",
         default=None,
-        help="override dest for --local (default ~/.cursor/plugins/local/bearing-plugin)",
+        help="override Cursor dest for --local (default ~/.cursor/plugins/local/bearing-plugin)",
+    )
+    package.add_argument(
+        "--codex-dest",
+        default=None,
+        help="override Codex dest for --local (default ~/.codex/plugins/bearing)",
+    )
+    package.add_argument(
+        "--codex-marketplace",
+        default=None,
+        help="override Codex personal marketplace path (default ~/.agents/plugins/marketplace.json)",
     )
 
     index = add("index", "Regenerate the progressive-disclosure index.", cmd_index)

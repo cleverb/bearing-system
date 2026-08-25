@@ -229,18 +229,28 @@ cd bearing-system
 python3 --version   # 3.9 or newer
 ```
 
-### 2. Install the local Cursor plugin (Tier 0)
+### 2. Install the local plugin (Tier 0)
 
 ```bash
 PYTHONPATH=plugin/src python3 -m bearing package --local
 ```
 
 Reload Cursor. The copy at `~/.cursor/plugins/local/bearing-plugin` is solely a
-copy target — not a git checkout. Re-run `bearing package --local` after
-`plugin/` edits (skills, hooks, MCP App, manifests).
+copy target — not a git checkout.
 
-This is not a marketplace install: Cursor loads the local copy with a
-`$HOME`-based MCP launch config, not `${PLUGIN_ROOT}`.
+The same command copies `plugin/` to `~/.codex/plugins/bearing` (next to Codex's
+`cache/`, not inside it) and upserts `~/.agents/plugins/marketplace.json`.
+Codex does **not** auto-load `~/.codex/plugins/local`. Restart Codex, install
+`bearing` from your personal marketplace once, and confirm with
+`codex plugin list --json`.
+
+Re-run `bearing package --local` after `plugin/` edits (skills, hooks, MCP App,
+manifests). Reload Cursor; restart Codex so it re-syncs the cache from the
+source tree.
+
+Cursor local is not a marketplace install: it loads with a `$HOME`-based MCP
+launch config, not `${PLUGIN_ROOT}`. Codex uses `plugin/.mcp.json` with
+`${PLUGIN_ROOT}` from the copied tree.
 
 For Claude Code, add this clone as a local marketplace (`claude plugin
 marketplace add . --scope local`) and install `bearing@bearing`. That *does*
@@ -249,9 +259,10 @@ copy the tree; reinstall after Skill or hook changes.
 ### 3. Run the CLI from the working tree
 
 `bearing package --local` copies this checkout's `plugin/` into
-`~/.cursor/plugins/local/bearing-plugin`. When you run it from the
-`bearing-system` repository root, the checkout's `plugin/` is the source even if
-`bearing enable` already points the PATH shim at the local install copy.
+`~/.cursor/plugins/local/bearing-plugin` and `~/.codex/plugins/bearing`. When
+you run it from the `bearing-system` repository root, the checkout's `plugin/`
+is the source even if `bearing enable` already points the PATH shim at the
+local install copy.
 
 Do **not** rely on a one-time `uv tool install ./plugin` while you are changing
 CLI code. That command snapshots `plugin/` and will serve stale bytecode until
